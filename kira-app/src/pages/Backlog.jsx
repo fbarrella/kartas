@@ -27,12 +27,23 @@ const Backlog = () => {
     const [project, setProject] = useState(null);
     const [stories, setStories] = useState([]);
     const [sprints, setSprints] = useState([]);
+    const [members, setMembers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [selectedStory, setSelectedStory] = useState(null);
     const [selectedStories, setSelectedStories] = useState([]);
     const [selectedSprint, setSelectedSprint] = useState('');
+    const [selectedAssignee, setSelectedAssignee] = useState('');
+    const [selectedStatus, setSelectedStatus] = useState('');
+    const [selectedEpic, setSelectedEpic] = useState('');
+    const [filterAssignee, setFilterAssignee] = useState('');
+    const [filterType, setFilterType] = useState('');
+    const [filterStatus, setFilterStatus] = useState('');
+    const [filterEpic, setFilterEpic] = useState('');
+    const [filterSprint, setFilterSprint] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
     const [addingToSprint, setAddingToSprint] = useState(false);
+    const [epics, setEpics] = useState([]);
     const [newStory, setNewStory] = useState({
         title: '',
         description: '',
@@ -47,6 +58,8 @@ const Backlog = () => {
         fetchProject();
         fetchStories();
         fetchSprints();
+        fetchMembers();
+        fetchEpics();
     }, [projectId]);
 
     useEffect(() => {
@@ -81,6 +94,24 @@ const Backlog = () => {
             setSprints(response.data.filter(s => s.status !== 'completed'));
         } catch (error) {
             console.error('Error fetching sprints:', error);
+        }
+    };
+
+    const fetchMembers = async () => {
+        try {
+            const response = await api.get(`/projects/${projectId}/members`);
+            setMembers(response.data);
+        } catch (error) {
+            console.error('Error fetching members:', error);
+        }
+    };
+
+    const fetchEpics = async () => {
+        try {
+            const response = await api.get(`/project/${projectId}/epics`);
+            setEpics(response.data);
+        } catch (error) {
+            console.error('Error fetching epics:', error);
         }
     };
 
@@ -155,6 +186,99 @@ const Backlog = () => {
         }
     };
 
+    const handleBulkAssign = async () => {
+        if (!selectedAssignee || selectedStories.length === 0) return;
+
+        setError('');
+        setSuccessMessage('');
+
+        try {
+            await Promise.all(
+                selectedStories.map(storyId =>
+                    api.put(`/stories/${storyId}`, {
+                        assigneeId: selectedAssignee === 'unassigned' ? null : parseInt(selectedAssignee)
+                    })
+                )
+            );
+            setSuccessMessage(`Successfully assigned ${selectedStories.length} ${selectedStories.length === 1 ? 'story' : 'stories'}`);
+            setSelectedStories([]);
+            setSelectedAssignee('');
+            fetchStories();
+            setTimeout(() => setSuccessMessage(''), 3000);
+        } catch (error) {
+            setError(error.response?.data?.error || 'Failed to assign stories');
+        }
+    };
+
+    const handleBulkStatusChange = async () => {
+        if (!selectedStatus || selectedStories.length === 0) return;
+
+        setError('');
+        setSuccessMessage('');
+
+        try {
+            await Promise.all(
+                selectedStories.map(storyId =>
+                    api.put(`/stories/${storyId}`, { status: selectedStatus })
+                )
+            );
+            setSuccessMessage(`Successfully updated status for ${selectedStories.length} ${selectedStories.length === 1 ? 'story' : 'stories'}`);
+            setSelectedStories([]);
+            setSelectedStatus('');
+            fetchStories();
+            setTimeout(() => setSuccessMessage(''), 3000);
+        } catch (error) {
+            setError(error.response?.data?.error || 'Failed to update status');
+        }
+    };
+
+    const handleBulkEpicAssign = async () => {
+        if (!selectedEpic || selectedStories.length === 0) return;
+
+        setError('');
+        setSuccessMessage('');
+
+        try {
+            await Promise.all(
+                selectedStories.map(storyId =>
+                    api.put(`/stories/${storyId}`, {
+                        epicId: selectedEpic === 'none' ? null : parseInt(selectedEpic)
+                    })
+                )
+            );
+            setSuccessMessage(`Successfully assigned ${selectedStories.length} ${selectedStories.length === 1 ? 'story' : 'stories'} to epic`);
+            setSelectedStories([]);
+            setSelectedEpic('');
+            fetchStories();
+            setTimeout(() => setSuccessMessage(''), 3000);
+        } catch (error) {
+            setError(error.response?.data?.error || 'Failed to assign to epic');
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedStories.length === 0) return;
+
+        if (!window.confirm(`Are you sure you want to delete ${selectedStories.length} ${selectedStories.length === 1 ? 'story' : 'stories'}? This action cannot be undone.`)) {
+            return;
+        }
+
+        setError('');
+        setSuccessMessage('');
+
+        try {
+            await Promise.all(
+                selectedStories.map(storyId => api.delete(`/stories/${storyId}`))
+            );
+            setSuccessMessage(`Successfully deleted ${selectedStories.length} ${selectedStories.length === 1 ? 'story' : 'stories'}`);
+            setSelectedStories([]);
+            fetchStories();
+            setTimeout(() => setSuccessMessage(''), 3000);
+        } catch (error) {
+            setError(error.response?.data?.error || 'Failed to delete stories');
+        }
+    };
+
     const getStatusBadgeClass = (status) => {
         const statusOption = STATUS_OPTIONS.find(opt => opt.value === status);
         return statusOption ? statusOption.color : 'var(--color-neutral-400)';
@@ -164,6 +288,82 @@ const Backlog = () => {
         const typeOption = TYPE_OPTIONS.find(opt => opt.value === type);
         return typeOption ? typeOption.icon : '📄';
     };
+
+    // Enhanced filtering with multiple criteria
+    const filteredStories = stories.filter(story => {
+        // Search query (title or ID)
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            const matchesTitle = story.title.toLowerCase().includes(query);
+            const matchesId = story.storyId.toLowerCase().includes(query);
+            if (!matchesTitle && !matchesId) return false;
+        }
+
+        // Assignee filter
+        if (filterAssignee) {
+            if (filterAssignee === 'unassigned' && story.assigneeId) return false;
+            if (filterAssignee !== 'unassigned' && story.assigneeId !== parseInt(filterAssignee)) return false;
+        }
+
+        // Type filter
+        if (filterType && story.type !== filterType) return false;
+
+        // Status filter
+        if (filterStatus && story.status !== filterStatus) return false;
+
+        // Epic filter
+        if (filterEpic) {
+            if (filterEpic === 'none' && story.epicId) return false;
+            if (filterEpic !== 'none' && story.epicId !== parseInt(filterEpic)) return false;
+        }
+
+        // Sprint filter
+        if (filterSprint) {
+            if (filterSprint === 'none' && story.sprintId) return false;
+            if (filterSprint !== 'none' && story.sprintId !== parseInt(filterSprint)) return false;
+        }
+
+        return true;
+    });
+
+    // Quick filter presets
+    const applyQuickFilter = (preset) => {
+        setSearchQuery('');
+        setFilterAssignee('');
+        setFilterType('');
+        setFilterStatus('');
+        setFilterEpic('');
+        setFilterSprint('');
+
+        switch (preset) {
+            case 'my-stories':
+                // This would need current user ID - simplified for now
+                setFilterAssignee('1'); // Replace with actual current user ID
+                break;
+            case 'unassigned':
+                setFilterAssignee('unassigned');
+                break;
+            case 'no-sprint':
+                setFilterSprint('none');
+                break;
+            case 'ready':
+                setFilterStatus('ready');
+                break;
+            default:
+                break;
+        }
+    };
+
+    const clearAllFilters = () => {
+        setSearchQuery('');
+        setFilterAssignee('');
+        setFilterType('');
+        setFilterStatus('');
+        setFilterEpic('');
+        setFilterSprint('');
+    };
+
+    const hasActiveFilters = !!(searchQuery || filterAssignee || filterType || filterStatus || filterEpic || filterSprint);
 
     return (
         <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-background)' }}>
@@ -188,8 +388,129 @@ const Backlog = () => {
 
             {/* Main Content */}
             <div className="container" style={{ marginTop: 'var(--spacing-xl)' }}>
+                {/* Filter Bar */}
+                <div className="card mb-md" style={{ padding: 'var(--spacing-md)' }}>
+                    <div style={{ marginBottom: 'var(--spacing-sm)' }}>
+                        <strong>Filters</strong>
+                        {hasActiveFilters && (
+                            <button
+                                onClick={clearAllFilters}
+                                className="btn btn-secondary btn-sm"
+                                style={{ marginLeft: 'var(--spacing-sm)' }}
+                            >
+                                Clear All
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Search and Quick Filters */}
+                    <div className="flex flex-gap-sm mb-sm" style={{ flexWrap: 'wrap' }}>
+                        <input
+                            type="text"
+                            className="form-input"
+                            placeholder="Search by title or ID..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            style={{ flex: '1 1 300px' }}
+                        />
+                        <div className="flex flex-gap-xs">
+                            <button onClick={() => applyQuickFilter('unassigned')} className="btn btn-secondary btn-sm">
+                                Unassigned
+                            </button>
+                            <button onClick={() => applyQuickFilter('no-sprint')} className="btn btn-secondary btn-sm">
+                                No Sprint
+                            </button>
+                            <button onClick={() => applyQuickFilter('ready')} className="btn btn-secondary btn-sm">
+                                Ready
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Advanced Filters */}
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                        gap: 'var(--spacing-sm)'
+                    }}>
+                        <select
+                            className="form-select"
+                            value={filterType}
+                            onChange={(e) => setFilterType(e.target.value)}
+                        >
+                            <option value="">All Types</option>
+                            {TYPE_OPTIONS.map(type => (
+                                <option key={type.value} value={type.value}>
+                                    {type.icon} {type.label}
+                                </option>
+                            ))}
+                        </select>
+
+                        <select
+                            className="form-select"
+                            value={filterStatus}
+                            onChange={(e) => setFilterStatus(e.target.value)}
+                        >
+                            <option value="">All Statuses</option>
+                            {STATUS_OPTIONS.map(status => (
+                                <option key={status.value} value={status.value}>
+                                    {status.label}
+                                </option>
+                            ))}
+                        </select>
+
+                        <select
+                            className="form-select"
+                            value={filterAssignee}
+                            onChange={(e) => setFilterAssignee(e.target.value)}
+                        >
+                            <option value="">All Assignees</option>
+                            <option value="unassigned">Unassigned</option>
+                            {members.map(member => (
+                                <option key={member.id} value={member.id}>
+                                    {member.firstName} {member.lastName}
+                                </option>
+                            ))}
+                        </select>
+
+                        <select
+                            className="form-select"
+                            value={filterEpic}
+                            onChange={(e) => setFilterEpic(e.target.value)}
+                        >
+                            <option value="">All Epics</option>
+                            <option value="none">No Epic</option>
+                            {epics.map(epic => (
+                                <option key={epic.id} value={epic.id}>
+                                    {epic.title}
+                                </option>
+                            ))}
+                        </select>
+
+                        <select
+                            className="form-select"
+                            value={filterSprint}
+                            onChange={(e) => setFilterSprint(e.target.value)}
+                        >
+                            <option value="">All Sprints</option>
+                            <option value="none">No Sprint</option>
+                            {sprints.map(sprint => (
+                                <option key={sprint.id} value={sprint.id}>
+                                    {sprint.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
                 <div className="flex flex-between mb-lg" style={{ alignItems: 'center' }}>
-                    <h2>User Stories</h2>
+                    <h2>
+                        User Stories
+                        {hasActiveFilters && (
+                            <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-neutral-600)', marginLeft: 'var(--spacing-sm)' }}>
+                                ({filteredStories.length} of {stories.length})
+                            </span>
+                        )}
+                    </h2>
                     <button
                         onClick={() => setShowCreateModal(true)}
                         className="btn btn-primary"
@@ -198,21 +519,103 @@ const Backlog = () => {
                     </button>
                 </div>
 
-                {/* Sprint Assignment Toolbar */}
+                {/* Bulk Actions Toolbar */}
                 {selectedStories.length > 0 && (
                     <div className="card mb-md" style={{ backgroundColor: 'var(--color-info-light)', borderLeft: '4px solid var(--color-info)' }}>
-                        <div className="flex flex-between" style={{ alignItems: 'center' }}>
-                            <div>
-                                <strong>{selectedStories.length}</strong> {selectedStories.length === 1 ? 'story' : 'stories'} selected
+                        <div style={{ marginBottom: 'var(--spacing-sm)' }}>
+                            <strong>{selectedStories.length}</strong> {selectedStories.length === 1 ? 'story' : 'stories'} selected
+                        </div>
+
+                        {/* Bulk Actions Grid */}
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                            gap: 'var(--spacing-sm)'
+                        }}>
+                            {/* Assign to User */}
+                            <div className="flex flex-gap-xs">
+                                <select
+                                    className="form-select"
+                                    value={selectedAssignee}
+                                    onChange={(e) => setSelectedAssignee(e.target.value)}
+                                    style={{ flex: 1 }}
+                                >
+                                    <option value="">Assign to...</option>
+                                    <option value="unassigned">Unassigned</option>
+                                    {members.map(member => (
+                                        <option key={member.id} value={member.id}>
+                                            {member.firstName} {member.lastName}
+                                        </option>
+                                    ))}
+                                </select>
+                                <button
+                                    onClick={handleBulkAssign}
+                                    disabled={!selectedAssignee}
+                                    className="btn btn-secondary btn-sm"
+                                >
+                                    Assign
+                                </button>
                             </div>
-                            <div className="flex flex-gap-sm" style={{ alignItems: 'center' }}>
+
+                            {/* Change Status */}
+                            <div className="flex flex-gap-xs">
+                                <select
+                                    className="form-select"
+                                    value={selectedStatus}
+                                    onChange={(e) => setSelectedStatus(e.target.value)}
+                                    style={{ flex: 1 }}
+                                >
+                                    <option value="">Change status...</option>
+                                    {STATUS_OPTIONS.map(status => (
+                                        <option key={status.value} value={status.value}>
+                                            {status.label}
+                                        </option>
+                                    ))}
+                                </select>
+                                <button
+                                    onClick={handleBulkStatusChange}
+                                    disabled={!selectedStatus}
+                                    className="btn btn-secondary btn-sm"
+                                >
+                                    Update
+                                </button>
+                            </div>
+
+                            {/* Assign to Epic */}
+                            <div className="flex flex-gap-xs">
+                                <select
+                                    className="form-select"
+                                    value={selectedEpic}
+                                    onChange={(e) => setSelectedEpic(e.target.value)}
+                                    style={{ flex: 1 }}
+                                >
+                                    <option value="">Assign to epic...</option>
+                                    <option value="none">No Epic</option>
+                                    {epics.map(epic => (
+                                        <option key={epic.id} value={epic.id}>
+                                            {epic.title}
+                                        </option>
+                                    ))}
+                                </select>
+                                <button
+                                    onClick={handleBulkEpicAssign}
+                                    disabled={!selectedEpic}
+                                    className="btn btn-secondary btn-sm"
+                                >
+                                    Assign
+                                </button>
+                            </div>
+
+                            {/* Add to Sprint */}
+                            <div className="flex flex-gap-xs">
                                 <select
                                     className="form-select"
                                     value={selectedSprint}
                                     onChange={(e) => setSelectedSprint(e.target.value)}
                                     disabled={addingToSprint}
+                                    style={{ flex: 1 }}
                                 >
-                                    <option value="">Select Sprint...</option>
+                                    <option value="">Add to sprint...</option>
                                     {sprints.map(sprint => (
                                         <option key={sprint.id} value={sprint.id}>
                                             {sprint.name} ({sprint.status})
@@ -224,16 +627,25 @@ const Backlog = () => {
                                     disabled={!selectedSprint || addingToSprint}
                                     className="btn btn-primary btn-sm"
                                 >
-                                    {addingToSprint ? 'Adding...' : 'Add to Sprint'}
-                                </button>
-                                <button
-                                    onClick={() => setSelectedStories([])}
-                                    className="btn btn-secondary btn-sm"
-                                    disabled={addingToSprint}
-                                >
-                                    Clear Selection
+                                    {addingToSprint ? 'Adding...' : 'Add'}
                                 </button>
                             </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex flex-gap-sm mt-md" style={{ justifyContent: 'flex-end' }}>
+                            <button
+                                onClick={handleBulkDelete}
+                                className="btn btn-danger btn-sm"
+                            >
+                                Delete Selected
+                            </button>
+                            <button
+                                onClick={() => setSelectedStories([])}
+                                className="btn btn-secondary btn-sm"
+                            >
+                                Clear Selection
+                            </button>
                         </div>
                     </div>
                 )}
@@ -257,6 +669,13 @@ const Backlog = () => {
                             Create your first user story to get started
                         </p>
                     </div>
+                ) : filteredStories.length === 0 ? (
+                    <div className="card text-center">
+                        <h3>No Matching Stories</h3>
+                        <p className="text-muted mt-md">
+                            No stories match the selected filter
+                        </p>
+                    </div>
                 ) : (
                     <div className="card">
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -265,7 +684,7 @@ const Backlog = () => {
                                     <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left', width: '40px' }}>
                                         <input
                                             type="checkbox"
-                                            checked={selectedStories.length === stories.length && stories.length > 0}
+                                            checked={selectedStories.length === filteredStories.length && filteredStories.length > 0}
                                             onChange={handleToggleAll}
                                         />
                                     </th>
@@ -278,7 +697,7 @@ const Backlog = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {stories.map((story) => (
+                                {filteredStories.map((story) => (
                                     <tr
                                         key={story.id}
                                         style={{

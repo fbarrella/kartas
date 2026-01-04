@@ -2,6 +2,208 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
+// Sprint with Metrics Component
+const SprintWithMetrics = ({ sprint, projectId, onEnd, navigate }) => {
+    const [metrics, setMetrics] = useState(null);
+    const [loadingMetrics, setLoadingMetrics] = useState(true);
+
+    useEffect(() => {
+        fetchMetrics();
+    }, [sprint.id]);
+
+    const fetchMetrics = async () => {
+        try {
+            const response = await api.get(`/kanban/sprints/${sprint.id}/metrics`);
+            setMetrics(response.data);
+        } catch (error) {
+            console.error('Error fetching metrics:', error);
+        } finally {
+            setLoadingMetrics(false);
+        }
+    };
+
+    const getStatusBadge = (status) => {
+        const badges = {
+            active: { class: 'badge-success', label: 'Active' },
+            planned: { class: 'badge-neutral', label: 'Planned' },
+            completed: { class: 'badge-primary', label: 'Completed' }
+        };
+        return badges[status] || badges.planned;
+    };
+
+    return (
+        <div className="card" style={{ borderLeft: '4px solid var(--color-success)' }}>
+            <div className="flex flex-between mb-sm">
+                <div>
+                    <h3 style={{ margin: 0 }}>{sprint.name}</h3>
+                    <span className={`badge ${getStatusBadge(sprint.status).class} mt-xs`}>
+                        {getStatusBadge(sprint.status).label}
+                    </span>
+                </div>
+                <div className="flex flex-gap-sm">
+                    <button
+                        onClick={() => navigate(`/project/${projectId}/kanban`)}
+                        className="btn btn-primary"
+                    >
+                        View Kanban
+                    </button>
+                    <button
+                        onClick={onEnd}
+                        className="btn btn-secondary"
+                    >
+                        End Sprint
+                    </button>
+                </div>
+            </div>
+
+            {sprint.objective && (
+                <p className="text-muted mt-sm">{sprint.objective}</p>
+            )}
+
+            <div className="mt-md" style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                gap: 'var(--spacing-md)'
+            }}>
+                <div>
+                    <strong>Stories:</strong> {sprint.storyCount}
+                </div>
+                <div>
+                    <strong>Points:</strong> {sprint.totalPoints}
+                </div>
+                <div>
+                    <strong>Start:</strong> {new Date(sprint.startDate).toLocaleDateString()}
+                </div>
+                <div>
+                    <strong>End:</strong> {new Date(sprint.endDate).toLocaleDateString()}
+                </div>
+            </div>
+
+            {/* Metrics Section */}
+            {loadingMetrics ? (
+                <div className="mt-lg text-center text-muted">Loading metrics...</div>
+            ) : metrics ? (
+                <div className="mt-lg" style={{
+                    padding: 'var(--spacing-md)',
+                    backgroundColor: 'var(--color-background)',
+                    borderRadius: 'var(--radius-md)'
+                }}>
+                    <h4 style={{ marginTop: 0, marginBottom: 'var(--spacing-md)' }}>Sprint Metrics</h4>
+
+                    {/* Progress Overview */}
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                        gap: 'var(--spacing-lg)',
+                        marginBottom: 'var(--spacing-lg)'
+                    }}>
+                        {/* Story Completion */}
+                        <div>
+                            <div className="flex flex-between mb-xs">
+                                <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>
+                                    Story Completion
+                                </span>
+                                <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-primary)' }}>
+                                    {metrics.completionRate}%
+                                </span>
+                            </div>
+                            <div style={{
+                                height: '8px',
+                                backgroundColor: 'var(--color-neutral-200)',
+                                borderRadius: '4px',
+                                overflow: 'hidden'
+                            }}>
+                                <div style={{
+                                    height: '100%',
+                                    width: `${metrics.completionRate}%`,
+                                    backgroundColor: 'var(--color-primary)',
+                                    transition: 'width 0.3s ease'
+                                }} />
+                            </div>
+                            <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-neutral-600)', marginTop: '4px' }}>
+                                {metrics.completedStories} of {metrics.totalStories} stories
+                            </div>
+                        </div>
+
+                        {/* Story Points */}
+                        <div>
+                            <div className="flex flex-between mb-xs">
+                                <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>
+                                    Story Points
+                                </span>
+                                <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-success)' }}>
+                                    {metrics.totalPoints > 0 ? Math.round((metrics.completedPoints / metrics.totalPoints) * 100) : 0}%
+                                </span>
+                            </div>
+                            <div style={{
+                                height: '8px',
+                                backgroundColor: 'var(--color-neutral-200)',
+                                borderRadius: '4px',
+                                overflow: 'hidden'
+                            }}>
+                                <div style={{
+                                    height: '100%',
+                                    width: `${metrics.totalPoints > 0 ? (metrics.completedPoints / metrics.totalPoints) * 100 : 0}%`,
+                                    backgroundColor: 'var(--color-success)',
+                                    transition: 'width 0.3s ease'
+                                }} />
+                            </div>
+                            <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-neutral-600)', marginTop: '4px' }}>
+                                {metrics.completedPoints} of {metrics.totalPoints} points
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Time in Status */}
+                    {metrics.timeInStatus && metrics.timeInStatus.length > 0 && (
+                        <div>
+                            <h5 style={{ marginBottom: 'var(--spacing-sm)', fontSize: 'var(--font-size-sm)' }}>
+                                Average Time in Status
+                            </h5>
+                            <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+                                gap: 'var(--spacing-sm)'
+                            }}>
+                                {metrics.timeInStatus.map((item) => (
+                                    <div key={item.status} style={{
+                                        padding: 'var(--spacing-sm)',
+                                        backgroundColor: 'white',
+                                        borderRadius: 'var(--radius-sm)',
+                                        border: '1px solid var(--color-border)'
+                                    }}>
+                                        <div style={{
+                                            fontSize: 'var(--font-size-xs)',
+                                            color: 'var(--color-neutral-600)',
+                                            marginBottom: '4px',
+                                            textTransform: 'capitalize'
+                                        }}>
+                                            {item.status.replace(/_/g, ' ')}
+                                        </div>
+                                        <div style={{
+                                            fontSize: 'var(--font-size-md)',
+                                            fontWeight: 600,
+                                            color: 'var(--color-neutral-900)'
+                                        }}>
+                                            {item.avgTimeHours}h
+                                        </div>
+                                        <div style={{
+                                            fontSize: 'var(--font-size-xs)',
+                                            color: 'var(--color-neutral-500)'
+                                        }}>
+                                            {item.storyCount} {item.storyCount === 1 ? 'story' : 'stories'}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            ) : null}
+        </div>
+    );
+};
+
 const Sprints = () => {
     const { projectId } = useParams();
     const navigate = useNavigate();
@@ -146,47 +348,13 @@ const Sprints = () => {
                             <div className="mb-xl">
                                 <h3 className="mb-md">Active Sprint</h3>
                                 {activeSprints.map(sprint => (
-                                    <div key={sprint.id} className="card" style={{ borderLeft: '4px solid var(--color-success)' }}>
-                                        <div className="flex flex-between mb-sm">
-                                            <div>
-                                                <h3 style={{ margin: 0 }}>{sprint.name}</h3>
-                                                <span className={`badge ${getStatusBadge(sprint.status).class} mt-xs`}>
-                                                    {getStatusBadge(sprint.status).label}
-                                                </span>
-                                            </div>
-                                            <div className="flex flex-gap-sm">
-                                                <button
-                                                    onClick={() => navigate(`/project/${projectId}/kanban`)}
-                                                    className="btn btn-primary"
-                                                >
-                                                    View Kanban
-                                                </button>
-                                                <button
-                                                    onClick={() => setShowEndDialog(sprint)}
-                                                    className="btn btn-secondary"
-                                                >
-                                                    End Sprint
-                                                </button>
-                                            </div>
-                                        </div>
-                                        {sprint.objective && (
-                                            <p className="text-muted mt-sm">{sprint.objective}</p>
-                                        )}
-                                        <div className="mt-md" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 'var(--spacing-md)' }}>
-                                            <div>
-                                                <strong>Stories:</strong> {sprint.storyCount}
-                                            </div>
-                                            <div>
-                                                <strong>Points:</strong> {sprint.totalPoints}
-                                            </div>
-                                            <div>
-                                                <strong>Start:</strong> {new Date(sprint.startDate).toLocaleDateString()}
-                                            </div>
-                                            <div>
-                                                <strong>End:</strong> {new Date(sprint.endDate).toLocaleDateString()}
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <SprintWithMetrics
+                                        key={sprint.id}
+                                        sprint={sprint}
+                                        projectId={projectId}
+                                        onEnd={() => setShowEndDialog(sprint)}
+                                        navigate={navigate}
+                                    />
                                 ))}
                             </div>
                         )}

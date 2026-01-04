@@ -80,6 +80,12 @@ const ProjectView = () => {
                         Backlog
                     </Link>
                     <Link
+                        to={`/project/${projectId}/epics`}
+                        className="btn btn-secondary"
+                    >
+                        Epics
+                    </Link>
+                    <Link
                         to={`/project/${projectId}/sprints`}
                         className="btn btn-secondary"
                     >

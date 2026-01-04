@@ -194,3 +194,16 @@ CREATE TRIGGER update_sub_tasks_updated_at BEFORE UPDATE ON sub_tasks FOR EACH R
 DROP TRIGGER IF EXISTS update_comments_updated_at ON comments;
 CREATE TRIGGER update_comments_updated_at BEFORE UPDATE ON comments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- User invites table
+CREATE TABLE IF NOT EXISTS user_invites (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  token VARCHAR(255) UNIQUE NOT NULL,
+  role VARCHAR(50) NOT NULL DEFAULT 'member',
+  invited_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  expires_at TIMESTAMP NOT NULL,
+  used_at TIMESTAMP,
+  used_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+);
+

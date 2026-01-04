@@ -11,6 +11,7 @@ import ProjectView from './pages/ProjectView';
 import Backlog from './pages/Backlog';
 import Sprints from './pages/Sprints';
 import KanbanBoard from './pages/KanbanBoard';
+import Epics from './pages/Epics';
 
 import './index.css';
 
@@ -75,6 +76,14 @@ function AppRoutes() {
                 element={
                     <ProtectedRoute>
                         <KanbanBoard />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/project/:projectId/epics"
+                element={
+                    <ProtectedRoute>
+                        <Epics />
                     </ProtectedRoute>
                 }
             />
