@@ -8,6 +8,8 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import projectRoutes from './routes/projects.js';
 import storyRoutes from './routes/stories.js';
+import sprintRoutes from './routes/sprints.js';
+import kanbanRoutes from './routes/kanban.js';
 
 // Import database
 import pool from './config/database.js';
@@ -36,6 +38,8 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/stories', storyRoutes);
+app.use('/api/sprints', sprintRoutes);
+app.use('/api/kanban', kanbanRoutes);
 
 // 404 handler
 app.use((req, res) => {

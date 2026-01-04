@@ -9,6 +9,8 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import ProjectView from './pages/ProjectView';
 import Backlog from './pages/Backlog';
+import Sprints from './pages/Sprints';
+import KanbanBoard from './pages/KanbanBoard';
 
 import './index.css';
 
@@ -57,6 +59,22 @@ function AppRoutes() {
                 element={
                     <ProtectedRoute>
                         <Backlog />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/project/:projectId/sprints"
+                element={
+                    <ProtectedRoute>
+                        <Sprints />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/project/:projectId/kanban"
+                element={
+                    <ProtectedRoute>
+                        <KanbanBoard />
                     </ProtectedRoute>
                 }
             />

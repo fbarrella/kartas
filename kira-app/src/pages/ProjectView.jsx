@@ -79,12 +79,18 @@ const ProjectView = () => {
                     >
                         Backlog
                     </Link>
-                    <button className="btn btn-secondary" disabled>
-                        Kanban (Phase 2)
-                    </button>
-                    <button className="btn btn-secondary" disabled>
-                        Sprints (Phase 2)
-                    </button>
+                    <Link
+                        to={`/project/${projectId}/sprints`}
+                        className="btn btn-secondary"
+                    >
+                        Sprints
+                    </Link>
+                    <Link
+                        to={`/project/${projectId}/kanban`}
+                        className="btn btn-secondary"
+                    >
+                        Kanban
+                    </Link>
                 </div>
             </div>
 
