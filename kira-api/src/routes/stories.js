@@ -1,0 +1,44 @@
+import express from 'express';
+import { body } from 'express-validator';
+import { storyController } from '../controllers/storyController.js';
+import { authenticateToken } from '../middleware/auth.js';
+
+const router = express.Router();
+
+// Validation middleware
+const validateStoryCreation = [
+    body('projectId').isInt(),
+    body('epicId').optional().isInt(),
+    body('type').isIn(['story', 'task', 'bug']),
+    body('title').trim().notEmpty().isLength({ max: 255 }),
+    body('description').optional().trim(),
+    body('storyPoints').optional().isInt({ min: 0 }),
+    body('assigneeId').optional().isInt()
+];
+
+const validateStoryUpdate = [
+    body('epicId').optional().isInt(),
+    body('type').optional().isIn(['story', 'task', 'bug']),
+    body('status').optional().isIn(['backlog', 'refining', 'ready', 'in_development', 'review', 'test', 'done', 'cancelled']),
+    body('title').optional().trim().isLength({ max: 255 }),
+    body('description').optional().trim(),
+    body('storyPoints').optional().isInt({ min: 0 }),
+    body('assigneeId').optional().isInt()
+];
+
+const validateComment = [
+    body('content').trim().notEmpty()
+];
+
+// All routes require authentication
+router.use(authenticateToken);
+
+// Routes
+router.post('/', validateStoryCreation, storyController.createStory);
+router.get('/project/:projectId', storyController.getProjectStories);
+router.get('/:storyId', storyController.getStory);
+router.put('/:storyId', validateStoryUpdate, storyController.updateStory);
+router.delete('/:storyId', storyController.deleteStory);
+router.post('/:storyId/comments', validateComment, storyController.addComment);
+
+export default router;
