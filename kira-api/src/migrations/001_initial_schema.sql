@@ -172,11 +172,25 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Apply updated_at triggers
+-- Apply updated_at triggers (drop first to make idempotent)
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_projects_updated_at ON projects;
 CREATE TRIGGER update_projects_updated_at BEFORE UPDATE ON projects FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_epics_updated_at ON epics;
 CREATE TRIGGER update_epics_updated_at BEFORE UPDATE ON epics FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_stories_updated_at ON stories;
 CREATE TRIGGER update_stories_updated_at BEFORE UPDATE ON stories FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_sprints_updated_at ON sprints;
 CREATE TRIGGER update_sprints_updated_at BEFORE UPDATE ON sprints FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_sub_tasks_updated_at ON sub_tasks;
 CREATE TRIGGER update_sub_tasks_updated_at BEFORE UPDATE ON sub_tasks FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_comments_updated_at ON comments;
 CREATE TRIGGER update_comments_updated_at BEFORE UPDATE ON comments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+

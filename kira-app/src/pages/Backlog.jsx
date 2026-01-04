@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 
 const STATUS_OPTIONS = [
@@ -21,11 +21,18 @@ const TYPE_OPTIONS = [
 
 const Backlog = () => {
     const { projectId } = useParams();
+    const [searchParams] = useSearchParams();
+    const sprintIdFromUrl = searchParams.get('sprint');
+
     const [project, setProject] = useState(null);
     const [stories, setStories] = useState([]);
+    const [sprints, setSprints] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [selectedStory, setSelectedStory] = useState(null);
+    const [selectedStories, setSelectedStories] = useState([]);
+    const [selectedSprint, setSelectedSprint] = useState('');
+    const [addingToSprint, setAddingToSprint] = useState(false);
     const [newStory, setNewStory] = useState({
         title: '',
         description: '',
@@ -34,11 +41,19 @@ const Backlog = () => {
         projectId: parseInt(projectId)
     });
     const [error, setError] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
 
     useEffect(() => {
         fetchProject();
         fetchStories();
+        fetchSprints();
     }, [projectId]);
+
+    useEffect(() => {
+        if (sprintIdFromUrl) {
+            setSelectedSprint(sprintIdFromUrl);
+        }
+    }, [sprintIdFromUrl]);
 
     const fetchProject = async () => {
         try {
@@ -57,6 +72,15 @@ const Backlog = () => {
             console.error('Error fetching stories:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchSprints = async () => {
+        try {
+            const response = await api.get(`/sprints/project/${projectId}`);
+            setSprints(response.data.filter(s => s.status !== 'completed'));
+        } catch (error) {
+            console.error('Error fetching sprints:', error);
         }
     };
 
@@ -91,6 +115,43 @@ const Backlog = () => {
             ));
         } catch (error) {
             console.error('Error updating story:', error);
+        }
+    };
+
+    const handleToggleStory = (storyId) => {
+        setSelectedStories(prev =>
+            prev.includes(storyId)
+                ? prev.filter(id => id !== storyId)
+                : [...prev, storyId]
+        );
+    };
+
+    const handleToggleAll = () => {
+        if (selectedStories.length === stories.length) {
+            setSelectedStories([]);
+        } else {
+            setSelectedStories(stories.map(s => s.id));
+        }
+    };
+
+    const handleAddToSprint = async () => {
+        if (!selectedSprint || selectedStories.length === 0) return;
+
+        setAddingToSprint(true);
+        setError('');
+        setSuccessMessage('');
+
+        try {
+            await api.post(`/sprints/${selectedSprint}/stories`, {
+                storyIds: selectedStories
+            });
+            setSuccessMessage(`Successfully added ${selectedStories.length} ${selectedStories.length === 1 ? 'story' : 'stories'} to sprint`);
+            setSelectedStories([]);
+            setTimeout(() => setSuccessMessage(''), 3000);
+        } catch (error) {
+            setError(error.response?.data?.error || 'Failed to add stories to sprint');
+        } finally {
+            setAddingToSprint(false);
         }
     };
 
@@ -137,6 +198,56 @@ const Backlog = () => {
                     </button>
                 </div>
 
+                {/* Sprint Assignment Toolbar */}
+                {selectedStories.length > 0 && (
+                    <div className="card mb-md" style={{ backgroundColor: 'var(--color-info-light)', borderLeft: '4px solid var(--color-info)' }}>
+                        <div className="flex flex-between" style={{ alignItems: 'center' }}>
+                            <div>
+                                <strong>{selectedStories.length}</strong> {selectedStories.length === 1 ? 'story' : 'stories'} selected
+                            </div>
+                            <div className="flex flex-gap-sm" style={{ alignItems: 'center' }}>
+                                <select
+                                    className="form-select"
+                                    value={selectedSprint}
+                                    onChange={(e) => setSelectedSprint(e.target.value)}
+                                    disabled={addingToSprint}
+                                >
+                                    <option value="">Select Sprint...</option>
+                                    {sprints.map(sprint => (
+                                        <option key={sprint.id} value={sprint.id}>
+                                            {sprint.name} ({sprint.status})
+                                        </option>
+                                    ))}
+                                </select>
+                                <button
+                                    onClick={handleAddToSprint}
+                                    disabled={!selectedSprint || addingToSprint}
+                                    className="btn btn-primary btn-sm"
+                                >
+                                    {addingToSprint ? 'Adding...' : 'Add to Sprint'}
+                                </button>
+                                <button
+                                    onClick={() => setSelectedStories([])}
+                                    className="btn btn-secondary btn-sm"
+                                    disabled={addingToSprint}
+                                >
+                                    Clear Selection
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Success/Error Messages */}
+                {successMessage && (
+                    <div className="card mb-md" style={{ backgroundColor: 'var(--color-success-light)', borderLeft: '4px solid var(--color-success)' }}>
+                        {successMessage}
+                    </div>
+                )}
+                {error && (
+                    <div className="form-error mb-md">{error}</div>
+                )}
+
                 {loading ? (
                     <div className="text-center">Loading stories...</div>
                 ) : stories.length === 0 ? (
@@ -151,6 +262,13 @@ const Backlog = () => {
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
                                 <tr style={{ borderBottom: '2px solid var(--color-border)' }}>
+                                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left', width: '40px' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedStories.length === stories.length && stories.length > 0}
+                                            onChange={handleToggleAll}
+                                        />
+                                    </th>
                                     <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>ID</th>
                                     <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Type</th>
                                     <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Title</th>
@@ -165,25 +283,45 @@ const Backlog = () => {
                                         key={story.id}
                                         style={{
                                             borderBottom: '1px solid var(--color-border)',
-                                            cursor: 'pointer'
+                                            backgroundColor: selectedStories.includes(story.id) ? 'var(--color-neutral-100)' : 'transparent'
                                         }}
-                                        onClick={() => setSelectedStory(story)}
                                         onMouseEnter={(e) => {
-                                            e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)';
+                                            if (!selectedStories.includes(story.id)) {
+                                                e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)';
+                                            }
                                         }}
                                         onMouseLeave={(e) => {
-                                            e.currentTarget.style.backgroundColor = 'transparent';
+                                            if (!selectedStories.includes(story.id)) {
+                                                e.currentTarget.style.backgroundColor = 'transparent';
+                                            }
                                         }}
                                     >
                                         <td style={{ padding: 'var(--spacing-sm)' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedStories.includes(story.id)}
+                                                onChange={() => handleToggleStory(story.id)}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </td>
+                                        <td
+                                            style={{ padding: 'var(--spacing-sm)', cursor: 'pointer' }}
+                                            onClick={() => setSelectedStory(story)}
+                                        >
                                             <strong>{story.storyId}</strong>
                                         </td>
-                                        <td style={{ padding: 'var(--spacing-sm)' }}>
+                                        <td
+                                            style={{ padding: 'var(--spacing-sm)', cursor: 'pointer' }}
+                                            onClick={() => setSelectedStory(story)}
+                                        >
                                             <span title={story.type}>
                                                 {getTypeIcon(story.type)}
                                             </span>
                                         </td>
-                                        <td style={{ padding: 'var(--spacing-sm)' }}>
+                                        <td
+                                            style={{ padding: 'var(--spacing-sm)', cursor: 'pointer' }}
+                                            onClick={() => setSelectedStory(story)}
+                                        >
                                             {story.title}
                                         </td>
                                         <td style={{ padding: 'var(--spacing-sm)' }}>
@@ -207,10 +345,16 @@ const Backlog = () => {
                                                 ))}
                                             </select>
                                         </td>
-                                        <td style={{ padding: 'var(--spacing-sm)' }}>
+                                        <td
+                                            style={{ padding: 'var(--spacing-sm)', cursor: 'pointer' }}
+                                            onClick={() => setSelectedStory(story)}
+                                        >
                                             {story.storyPoints || '-'}
                                         </td>
-                                        <td style={{ padding: 'var(--spacing-sm)', fontSize: 'var(--font-size-sm)' }}>
+                                        <td
+                                            style={{ padding: 'var(--spacing-sm)', fontSize: 'var(--font-size-sm)', cursor: 'pointer' }}
+                                            onClick={() => setSelectedStory(story)}
+                                        >
                                             {story.assigneeName || 'Unassigned'}
                                         </td>
                                     </tr>

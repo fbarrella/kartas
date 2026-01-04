@@ -6,12 +6,13 @@ import api from '../services/api';
 const KanbanBoard = () => {
     const { projectId } = useParams();
     const [project, setProject] = useState(null);
-    const [boardData, setBoardData] = useState(null);
+    const [sprint, setSprint] = useState(null);
+    const [columns, setColumns] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedStory, setSelectedStory] = useState(null);
     const [showColumnConfig, setShowColumnConfig] = useState(false);
     const [columnConfig, setColumnConfig] = useState([]);
-    const [filter, setFilter] = useState({ assignee: '', type: '', search: '' });
+    const [filter, setFilter] = useState({ type: '', search: '' });
 
     useEffect(() => {
         fetchProject();
@@ -31,11 +32,13 @@ const KanbanBoard = () => {
     const fetchKanbanBoard = async () => {
         try {
             const response = await api.get(`/kanban/project/${projectId}`);
-            setBoardData(response.data);
+            setSprint(response.data.sprint);
+            setColumns(response.data.columns || []);
         } catch (error) {
             console.error('Error fetching kanban board:', error);
             if (error.response?.status === 404) {
-                setBoardData({ error: 'No active sprint found' });
+                setSprint(null);
+                setColumns([]);
             }
         } finally {
             setLoading(false);
@@ -52,40 +55,62 @@ const KanbanBoard = () => {
     };
 
     const handleDragEnd = async (result) => {
-        if (!result.destination) return;
-
         const { source, destination, draggableId } = result;
 
-        // If dropped in same column, no change
-        if (source.droppableId === destination.droppableId) return;
+        // Dropped outside a droppable area
+        if (!destination) return;
+
+        // Dropped in same position
+        if (source.droppableId === destination.droppableId && source.index === destination.index) {
+            return;
+        }
 
         const storyId = parseInt(draggableId.replace('story-', ''));
-        const newStatus = destination.droppableId;
+        const sourceColumnId = source.droppableId;
+        const destColumnId = destination.droppableId;
 
-        // Optimistic update
-        const newBoardData = { ...boardData };
-        const sourceColumn = newBoardData.columns.find(c => c.status === source.droppableId);
-        const destColumn = newBoardData.columns.find(c => c.status === newStatus);
+        // Create new columns array with updated story positions
+        const newColumns = Array.from(columns);
+        const sourceColumn = newColumns.find(col => col.status === sourceColumnId);
+        const destColumn = newColumns.find(col => col.status === destColumnId);
 
+        // Remove from source
         const [movedStory] = sourceColumn.stories.splice(source.index, 1);
-        movedStory.status = newStatus;
-        destColumn.stories.splice(destination.index, 0, movedStory);
 
-        setBoardData(newBoardData);
+        // Add to destination
+        if (sourceColumnId === destColumnId) {
+            // Same column, just reorder
+            sourceColumn.stories.splice(destination.index, 0, movedStory);
+        } else {
+            // Different column, update status
+            movedStory.status = destColumnId;
+            destColumn.stories.splice(destination.index, 0, movedStory);
+        }
+
+        // Optimistically update UI
+        setColumns(newColumns);
 
         // Update backend
-        try {
-            await api.put(`/kanban/stories/${storyId}/status`, { status: newStatus });
-        } catch (error) {
-            console.error('Error updating story status:', error);
-            // Revert on error
-            fetchKanbanBoard();
+        if (sourceColumnId !== destColumnId) {
+            try {
+                await api.put(`/kanban/stories/${storyId}/status`, { status: destColumnId });
+            } catch (error) {
+                console.error('Error updating story status:', error);
+                // Revert on error
+                fetchKanbanBoard();
+            }
         }
     };
 
     const handleSaveColumnConfig = async () => {
         try {
-            await api.put(`/kanban/project/${projectId}/columns`, { columns: columnConfig });
+            const columnsToSave = columnConfig.map(col => ({
+                status: col.status,
+                displayName: col.display_name,
+                visible: col.visible,
+                position: col.position
+            }));
+            await api.put(`/kanban/project/${projectId}/columns`, { columns: columnsToSave });
             setShowColumnConfig(false);
             fetchKanbanBoard();
         } catch (error) {
@@ -94,11 +119,7 @@ const KanbanBoard = () => {
     };
 
     const getTypeIcon = (type) => {
-        const icons = {
-            story: '📖',
-            task: '✓',
-            bug: '🐛'
-        };
+        const icons = { story: '📖', task: '✓', bug: '🐛' };
         return icons[type] || '📄';
     };
 
@@ -113,7 +134,6 @@ const KanbanBoard = () => {
 
     const filterStories = (stories) => {
         return stories.filter(story => {
-            if (filter.assignee && story.assigneeId !== parseInt(filter.assignee)) return false;
             if (filter.type && story.type !== filter.type) return false;
             if (filter.search && !story.title.toLowerCase().includes(filter.search.toLowerCase())) return false;
             return true;
@@ -124,7 +144,7 @@ const KanbanBoard = () => {
         return <div className="container mt-lg">Loading kanban board...</div>;
     }
 
-    if (boardData?.error) {
+    if (!sprint) {
         return (
             <div className="container mt-lg">
                 <div className="card text-center">
@@ -153,12 +173,12 @@ const KanbanBoard = () => {
                             ← Back
                         </Link>
                         <h1 style={{ color: 'white', margin: 0 }}>
-                            {boardData?.sprint?.name || 'Kanban Board'}
+                            {sprint?.name || 'Kanban Board'}
                         </h1>
                     </div>
-                    {boardData?.sprint?.objective && (
+                    {sprint?.objective && (
                         <p style={{ color: 'rgba(255,255,255,0.9)', margin: 0 }}>
-                            {boardData.sprint.objective}
+                            {sprint.objective}
                         </p>
                     )}
                 </div>
@@ -209,7 +229,7 @@ const KanbanBoard = () => {
                         minWidth: 'fit-content',
                         paddingBottom: 'var(--spacing-lg)'
                     }}>
-                        {boardData?.columns?.map((column) => {
+                        {columns.map((column) => {
                             const filteredStories = filterStories(column.stories);
 
                             return (
@@ -217,17 +237,19 @@ const KanbanBoard = () => {
                                     minWidth: '300px',
                                     maxWidth: '350px',
                                     backgroundColor: 'var(--color-surface)',
-                                    borderRadius: 'var(--border-radius)',
-                                    padding: 'var(--spacing-sm)'
+                                    borderRadius: 'var(--radius-md)',
+                                    padding: 'var(--spacing-sm)',
+                                    boxShadow: 'var(--shadow-sm)'
                                 }}>
                                     {/* Column Header */}
                                     <div style={{
                                         padding: 'var(--spacing-sm)',
                                         marginBottom: 'var(--spacing-sm)',
-                                        fontWeight: 600
+                                        fontWeight: 600,
+                                        fontSize: 'var(--font-size-md)'
                                     }}>
                                         {column.displayName}
-                                        <span className="badge badge-neutral ml-sm">
+                                        <span className="badge badge-neutral" style={{ marginLeft: '8px' }}>
                                             {filteredStories.length}
                                         </span>
                                     </div>
@@ -239,17 +261,18 @@ const KanbanBoard = () => {
                                                 ref={provided.innerRef}
                                                 {...provided.droppableProps}
                                                 style={{
-                                                    minHeight: '200px',
+                                                    minHeight: '400px',
                                                     backgroundColor: snapshot.isDraggingOver
-                                                        ? 'var(--color-neutral-100)'
+                                                        ? 'var(--color-neutral-50)'
                                                         : 'transparent',
-                                                    borderRadius: 'var(--border-radius)',
-                                                    padding: 'var(--spacing-xs)'
+                                                    borderRadius: 'var(--radius-sm)',
+                                                    padding: 'var(--spacing-xs)',
+                                                    transition: 'background-color 0.2s ease'
                                                 }}
                                             >
                                                 {filteredStories.map((story, index) => (
                                                     <Draggable
-                                                        key={story.id}
+                                                        key={`story-${story.id}`}
                                                         draggableId={`story-${story.id}`}
                                                         index={index}
                                                     >
@@ -262,19 +285,20 @@ const KanbanBoard = () => {
                                                                 style={{
                                                                     ...provided.draggableProps.style,
                                                                     backgroundColor: 'white',
-                                                                    borderRadius: 'var(--border-radius)',
+                                                                    borderRadius: 'var(--radius-sm)',
                                                                     padding: 'var(--spacing-sm)',
                                                                     marginBottom: 'var(--spacing-sm)',
                                                                     boxShadow: snapshot.isDragging
-                                                                        ? 'var(--shadow-md)'
+                                                                        ? 'var(--shadow-lg)'
                                                                         : 'var(--shadow-sm)',
-                                                                    cursor: 'pointer',
-                                                                    borderLeft: `3px solid ${getTypeColor(story.type)}`
+                                                                    cursor: 'grab',
+                                                                    borderLeft: `4px solid ${getTypeColor(story.type)}`,
+                                                                    userSelect: 'none'
                                                                 }}
                                                             >
-                                                                {/* Story Card */}
+                                                                {/* Story Card Content */}
                                                                 <div className="flex flex-between mb-xs">
-                                                                    <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>
+                                                                    <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600, color: 'var(--color-neutral-700)' }}>
                                                                         {story.storyId}
                                                                     </span>
                                                                     <span title={story.type}>
@@ -284,25 +308,26 @@ const KanbanBoard = () => {
                                                                 <div style={{
                                                                     fontSize: 'var(--font-size-sm)',
                                                                     marginBottom: 'var(--spacing-xs)',
-                                                                    lineHeight: '1.4'
+                                                                    lineHeight: '1.4',
+                                                                    color: 'var(--color-neutral-900)'
                                                                 }}>
                                                                     {story.title}
                                                                 </div>
                                                                 <div className="flex flex-between" style={{
                                                                     fontSize: 'var(--font-size-xs)',
-                                                                    color: 'var(--color-text-muted)'
+                                                                    color: 'var(--color-neutral-500)'
                                                                 }}>
                                                                     <span>
                                                                         {story.assigneeName ? `@${story.assigneeName.split(' ')[0]}` : 'Unassigned'}
                                                                     </span>
                                                                     <div className="flex flex-gap-xs">
                                                                         {story.storyPoints && (
-                                                                            <span className="badge badge-neutral" style={{ fontSize: '10px' }}>
+                                                                            <span className="badge badge-neutral" style={{ fontSize: '10px', padding: '2px 6px' }}>
                                                                                 {story.storyPoints}
                                                                             </span>
                                                                         )}
                                                                         {story.totalSubtasks > 0 && (
-                                                                            <span className="badge badge-neutral" style={{ fontSize: '10px' }}>
+                                                                            <span className="badge badge-neutral" style={{ fontSize: '10px', padding: '2px 6px' }}>
                                                                                 ✓ {story.completedSubtasks}/{story.totalSubtasks}
                                                                             </span>
                                                                         )}
@@ -316,11 +341,11 @@ const KanbanBoard = () => {
                                                 {filteredStories.length === 0 && (
                                                     <div style={{
                                                         textAlign: 'center',
-                                                        padding: 'var(--spacing-lg)',
-                                                        color: 'var(--color-text-muted)',
+                                                        padding: 'var(--spacing-xl)',
+                                                        color: 'var(--color-neutral-400)',
                                                         fontSize: 'var(--font-size-sm)'
                                                     }}>
-                                                        No stories
+                                                        {filter.search || filter.type ? 'No matching stories' : 'No stories'}
                                                     </div>
                                                 )}
                                             </div>
@@ -432,7 +457,7 @@ const KanbanBoard = () => {
                                 <div key={col.status} className="flex flex-between mb-md" style={{
                                     padding: 'var(--spacing-sm)',
                                     backgroundColor: 'var(--color-background)',
-                                    borderRadius: 'var(--border-radius)'
+                                    borderRadius: 'var(--radius-sm)'
                                 }}>
                                     <div className="flex flex-gap-md" style={{ alignItems: 'center', flex: 1 }}>
                                         <input
