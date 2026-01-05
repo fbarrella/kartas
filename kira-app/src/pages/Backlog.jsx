@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import ProjectLayout from '../components/ProjectLayout';
 
 const STATUS_OPTIONS = [
     { value: 'backlog', label: 'Backlog', color: 'var(--color-neutral-400)' },
@@ -22,7 +23,9 @@ const TYPE_OPTIONS = [
 const Backlog = () => {
     const { projectId } = useParams();
     const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
     const sprintIdFromUrl = searchParams.get('sprint');
+    const epicIdFromUrl = searchParams.get('epic');
 
     const [project, setProject] = useState(null);
     const [stories, setStories] = useState([]);
@@ -67,6 +70,12 @@ const Backlog = () => {
             setSelectedSprint(sprintIdFromUrl);
         }
     }, [sprintIdFromUrl]);
+
+    useEffect(() => {
+        if (epicIdFromUrl) {
+            setFilterEpic(epicIdFromUrl);
+        }
+    }, [epicIdFromUrl]);
 
     const fetchProject = async () => {
         try {
@@ -319,8 +328,8 @@ const Backlog = () => {
 
         // Sprint filter
         if (filterSprint) {
-            if (filterSprint === 'none' && story.sprintId) return false;
-            if (filterSprint !== 'none' && story.sprintId !== parseInt(filterSprint)) return false;
+            if (filterSprint === 'none' && story.sprints && story.sprints.length > 0) return false;
+            if (filterSprint !== 'none' && (!story.sprints || !story.sprints.find(s => s.id === parseInt(filterSprint)))) return false;
         }
 
         return true;
@@ -366,423 +375,429 @@ const Backlog = () => {
     const hasActiveFilters = !!(searchQuery || filterAssignee || filterType || filterStatus || filterEpic || filterSprint);
 
     return (
-        <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-background)' }}>
-            {/* Header */}
-            <header style={{
-                backgroundColor: 'var(--color-primary)',
-                color: 'white',
-                padding: 'var(--spacing-md) 0',
-                boxShadow: 'var(--shadow-md)'
-            }}>
-                <div className="container">
-                    <div className="flex flex-gap-md" style={{ alignItems: 'center' }}>
-                        <Link to={`/project/${projectId}`} style={{ color: 'white', textDecoration: 'none' }}>
-                            ← Back
-                        </Link>
-                        <h1 style={{ color: 'white', margin: 0 }}>
-                            {project?.name} - Backlog
-                        </h1>
+        <ProjectLayout projectId={projectId} projectName={project?.name || 'Loading...'}>
+            {/* Page Title */}
+            <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
+                <h2>
+                    Backlog
+                    {hasActiveFilters && (
+                        <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-neutral-600)', marginLeft: 'var(--spacing-sm)' }}>
+                            ({filteredStories.length} of {stories.length})
+                        </span>
+                    )}
+                </h2>
+                <button
+                    onClick={() => setShowCreateModal(true)}
+                    className="btn btn-primary"
+                >
+                    + Create Story
+                </button>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="card mb-md" style={{ padding: 'var(--spacing-md)' }}>
+                <div style={{ marginBottom: 'var(--spacing-sm)' }}>
+                    <strong>Filters</strong>
+                    {hasActiveFilters && (
+                        <button
+                            onClick={clearAllFilters}
+                            className="btn btn-secondary btn-sm"
+                            style={{ marginLeft: 'var(--spacing-sm)' }}
+                        >
+                            Clear All
+                        </button>
+                    )}
+                </div>
+
+                {/* Search and Quick Filters */}
+                <div className="flex flex-gap-sm mb-sm" style={{ flexWrap: 'wrap' }}>
+                    <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Search by title or ID..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        style={{ flex: '1 1 300px' }}
+                    />
+                    <div className="flex" style={{ gap: 'var(--spacing-sm)' }}>
+                        <button onClick={() => applyQuickFilter('unassigned')} className="btn btn-secondary btn-sm">
+                            Unassigned
+                        </button>
+                        <button onClick={() => applyQuickFilter('no-sprint')} className="btn btn-secondary btn-sm">
+                            No Sprint
+                        </button>
+                        <button onClick={() => applyQuickFilter('ready')} className="btn btn-secondary btn-sm">
+                            Ready
+                        </button>
                     </div>
                 </div>
-            </header>
 
-            {/* Main Content */}
-            <div className="container" style={{ marginTop: 'var(--spacing-xl)' }}>
-                {/* Filter Bar */}
-                <div className="card mb-md" style={{ padding: 'var(--spacing-md)' }}>
+                {/* Advanced Filters */}
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                    gap: 'var(--spacing-sm)'
+                }}>
+                    <select
+                        className="form-select"
+                        value={filterType}
+                        onChange={(e) => setFilterType(e.target.value)}
+                    >
+                        <option value="">All Types</option>
+                        {TYPE_OPTIONS.map(type => (
+                            <option key={type.value} value={type.value}>
+                                {type.icon} {type.label}
+                            </option>
+                        ))}
+                    </select>
+
+                    <select
+                        className="form-select"
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                    >
+                        <option value="">All Statuses</option>
+                        {STATUS_OPTIONS.map(status => (
+                            <option key={status.value} value={status.value}>
+                                {status.label}
+                            </option>
+                        ))}
+                    </select>
+
+                    <select
+                        className="form-select"
+                        value={filterAssignee}
+                        onChange={(e) => setFilterAssignee(e.target.value)}
+                    >
+                        <option value="">All Assignees</option>
+                        <option value="unassigned">Unassigned</option>
+                        {members.map(member => (
+                            <option key={member.id} value={member.id}>
+                                {member.firstName} {member.lastName}
+                            </option>
+                        ))}
+                    </select>
+
+                    <select
+                        className="form-select"
+                        value={filterEpic}
+                        onChange={(e) => setFilterEpic(e.target.value)}
+                    >
+                        <option value="">All Epics</option>
+                        <option value="none">No Epic</option>
+                        {epics.map(epic => (
+                            <option key={epic.id} value={epic.id}>
+                                {epic.title}
+                            </option>
+                        ))}
+                    </select>
+
+                    <select
+                        className="form-select"
+                        value={filterSprint}
+                        onChange={(e) => setFilterSprint(e.target.value)}
+                    >
+                        <option value="">All Sprints</option>
+                        <option value="none">No Sprint</option>
+                        {sprints.map(sprint => (
+                            <option key={sprint.id} value={sprint.id}>
+                                {sprint.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+
+            {/* Bulk Actions Toolbar */}
+            {selectedStories.length > 0 && (
+                <div className="card mb-md" style={{ backgroundColor: 'var(--color-info-light)', borderLeft: '4px solid var(--color-info)' }}>
                     <div style={{ marginBottom: 'var(--spacing-sm)' }}>
-                        <strong>Filters</strong>
-                        {hasActiveFilters && (
-                            <button
-                                onClick={clearAllFilters}
-                                className="btn btn-secondary btn-sm"
-                                style={{ marginLeft: 'var(--spacing-sm)' }}
-                            >
-                                Clear All
-                            </button>
-                        )}
+                        <strong>{selectedStories.length}</strong> {selectedStories.length === 1 ? 'story' : 'stories'} selected
                     </div>
 
-                    {/* Search and Quick Filters */}
-                    <div className="flex flex-gap-sm mb-sm" style={{ flexWrap: 'wrap' }}>
-                        <input
-                            type="text"
-                            className="form-input"
-                            placeholder="Search by title or ID..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            style={{ flex: '1 1 300px' }}
-                        />
-                        <div className="flex flex-gap-xs">
-                            <button onClick={() => applyQuickFilter('unassigned')} className="btn btn-secondary btn-sm">
-                                Unassigned
-                            </button>
-                            <button onClick={() => applyQuickFilter('no-sprint')} className="btn btn-secondary btn-sm">
-                                No Sprint
-                            </button>
-                            <button onClick={() => applyQuickFilter('ready')} className="btn btn-secondary btn-sm">
-                                Ready
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Advanced Filters */}
+                    {/* Bulk Actions Grid */}
                     <div style={{
                         display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
                         gap: 'var(--spacing-sm)'
                     }}>
-                        <select
-                            className="form-select"
-                            value={filterType}
-                            onChange={(e) => setFilterType(e.target.value)}
-                        >
-                            <option value="">All Types</option>
-                            {TYPE_OPTIONS.map(type => (
-                                <option key={type.value} value={type.value}>
-                                    {type.icon} {type.label}
-                                </option>
-                            ))}
-                        </select>
-
-                        <select
-                            className="form-select"
-                            value={filterStatus}
-                            onChange={(e) => setFilterStatus(e.target.value)}
-                        >
-                            <option value="">All Statuses</option>
-                            {STATUS_OPTIONS.map(status => (
-                                <option key={status.value} value={status.value}>
-                                    {status.label}
-                                </option>
-                            ))}
-                        </select>
-
-                        <select
-                            className="form-select"
-                            value={filterAssignee}
-                            onChange={(e) => setFilterAssignee(e.target.value)}
-                        >
-                            <option value="">All Assignees</option>
-                            <option value="unassigned">Unassigned</option>
-                            {members.map(member => (
-                                <option key={member.id} value={member.id}>
-                                    {member.firstName} {member.lastName}
-                                </option>
-                            ))}
-                        </select>
-
-                        <select
-                            className="form-select"
-                            value={filterEpic}
-                            onChange={(e) => setFilterEpic(e.target.value)}
-                        >
-                            <option value="">All Epics</option>
-                            <option value="none">No Epic</option>
-                            {epics.map(epic => (
-                                <option key={epic.id} value={epic.id}>
-                                    {epic.title}
-                                </option>
-                            ))}
-                        </select>
-
-                        <select
-                            className="form-select"
-                            value={filterSprint}
-                            onChange={(e) => setFilterSprint(e.target.value)}
-                        >
-                            <option value="">All Sprints</option>
-                            <option value="none">No Sprint</option>
-                            {sprints.map(sprint => (
-                                <option key={sprint.id} value={sprint.id}>
-                                    {sprint.name}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                </div>
-
-                <div className="flex flex-between mb-lg" style={{ alignItems: 'center' }}>
-                    <h2>
-                        User Stories
-                        {hasActiveFilters && (
-                            <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-neutral-600)', marginLeft: 'var(--spacing-sm)' }}>
-                                ({filteredStories.length} of {stories.length})
-                            </span>
-                        )}
-                    </h2>
-                    <button
-                        onClick={() => setShowCreateModal(true)}
-                        className="btn btn-primary"
-                    >
-                        + Create Story
-                    </button>
-                </div>
-
-                {/* Bulk Actions Toolbar */}
-                {selectedStories.length > 0 && (
-                    <div className="card mb-md" style={{ backgroundColor: 'var(--color-info-light)', borderLeft: '4px solid var(--color-info)' }}>
-                        <div style={{ marginBottom: 'var(--spacing-sm)' }}>
-                            <strong>{selectedStories.length}</strong> {selectedStories.length === 1 ? 'story' : 'stories'} selected
-                        </div>
-
-                        {/* Bulk Actions Grid */}
-                        <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-                            gap: 'var(--spacing-sm)'
-                        }}>
-                            {/* Assign to User */}
-                            <div className="flex flex-gap-xs">
-                                <select
-                                    className="form-select"
-                                    value={selectedAssignee}
-                                    onChange={(e) => setSelectedAssignee(e.target.value)}
-                                    style={{ flex: 1 }}
-                                >
-                                    <option value="">Assign to...</option>
-                                    <option value="unassigned">Unassigned</option>
-                                    {members.map(member => (
-                                        <option key={member.id} value={member.id}>
-                                            {member.firstName} {member.lastName}
-                                        </option>
-                                    ))}
-                                </select>
-                                <button
-                                    onClick={handleBulkAssign}
-                                    disabled={!selectedAssignee}
-                                    className="btn btn-secondary btn-sm"
-                                >
-                                    Assign
-                                </button>
-                            </div>
-
-                            {/* Change Status */}
-                            <div className="flex flex-gap-xs">
-                                <select
-                                    className="form-select"
-                                    value={selectedStatus}
-                                    onChange={(e) => setSelectedStatus(e.target.value)}
-                                    style={{ flex: 1 }}
-                                >
-                                    <option value="">Change status...</option>
-                                    {STATUS_OPTIONS.map(status => (
-                                        <option key={status.value} value={status.value}>
-                                            {status.label}
-                                        </option>
-                                    ))}
-                                </select>
-                                <button
-                                    onClick={handleBulkStatusChange}
-                                    disabled={!selectedStatus}
-                                    className="btn btn-secondary btn-sm"
-                                >
-                                    Update
-                                </button>
-                            </div>
-
-                            {/* Assign to Epic */}
-                            <div className="flex flex-gap-xs">
-                                <select
-                                    className="form-select"
-                                    value={selectedEpic}
-                                    onChange={(e) => setSelectedEpic(e.target.value)}
-                                    style={{ flex: 1 }}
-                                >
-                                    <option value="">Assign to epic...</option>
-                                    <option value="none">No Epic</option>
-                                    {epics.map(epic => (
-                                        <option key={epic.id} value={epic.id}>
-                                            {epic.title}
-                                        </option>
-                                    ))}
-                                </select>
-                                <button
-                                    onClick={handleBulkEpicAssign}
-                                    disabled={!selectedEpic}
-                                    className="btn btn-secondary btn-sm"
-                                >
-                                    Assign
-                                </button>
-                            </div>
-
-                            {/* Add to Sprint */}
-                            <div className="flex flex-gap-xs">
-                                <select
-                                    className="form-select"
-                                    value={selectedSprint}
-                                    onChange={(e) => setSelectedSprint(e.target.value)}
-                                    disabled={addingToSprint}
-                                    style={{ flex: 1 }}
-                                >
-                                    <option value="">Add to sprint...</option>
-                                    {sprints.map(sprint => (
-                                        <option key={sprint.id} value={sprint.id}>
-                                            {sprint.name} ({sprint.status})
-                                        </option>
-                                    ))}
-                                </select>
-                                <button
-                                    onClick={handleAddToSprint}
-                                    disabled={!selectedSprint || addingToSprint}
-                                    className="btn btn-primary btn-sm"
-                                >
-                                    {addingToSprint ? 'Adding...' : 'Add'}
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="flex flex-gap-sm mt-md" style={{ justifyContent: 'flex-end' }}>
-                            <button
-                                onClick={handleBulkDelete}
-                                className="btn btn-danger btn-sm"
+                        {/* Assign to User */}
+                        <div className="flex flex-gap-xs">
+                            <select
+                                className="form-select"
+                                value={selectedAssignee}
+                                onChange={(e) => setSelectedAssignee(e.target.value)}
+                                style={{ flex: 1 }}
                             >
-                                Delete Selected
-                            </button>
+                                <option value="">Assign to...</option>
+                                <option value="unassigned">Unassigned</option>
+                                {members.map(member => (
+                                    <option key={member.id} value={member.id}>
+                                        {member.firstName} {member.lastName}
+                                    </option>
+                                ))}
+                            </select>
                             <button
-                                onClick={() => setSelectedStories([])}
+                                onClick={handleBulkAssign}
+                                disabled={!selectedAssignee}
                                 className="btn btn-secondary btn-sm"
                             >
-                                Clear Selection
+                                Assign
+                            </button>
+                        </div>
+
+                        {/* Change Status */}
+                        <div className="flex flex-gap-xs">
+                            <select
+                                className="form-select"
+                                value={selectedStatus}
+                                onChange={(e) => setSelectedStatus(e.target.value)}
+                                style={{ flex: 1 }}
+                            >
+                                <option value="">Change status...</option>
+                                {STATUS_OPTIONS.map(status => (
+                                    <option key={status.value} value={status.value}>
+                                        {status.label}
+                                    </option>
+                                ))}
+                            </select>
+                            <button
+                                onClick={handleBulkStatusChange}
+                                disabled={!selectedStatus}
+                                className="btn btn-secondary btn-sm"
+                            >
+                                Update
+                            </button>
+                        </div>
+
+                        {/* Assign to Epic */}
+                        <div className="flex flex-gap-xs">
+                            <select
+                                className="form-select"
+                                value={selectedEpic}
+                                onChange={(e) => setSelectedEpic(e.target.value)}
+                                style={{ flex: 1 }}
+                            >
+                                <option value="">Assign to epic...</option>
+                                <option value="none">No Epic</option>
+                                {epics.map(epic => (
+                                    <option key={epic.id} value={epic.id}>
+                                        {epic.title}
+                                    </option>
+                                ))}
+                            </select>
+                            <button
+                                onClick={handleBulkEpicAssign}
+                                disabled={!selectedEpic}
+                                className="btn btn-secondary btn-sm"
+                            >
+                                Assign
+                            </button>
+                        </div>
+
+                        {/* Add to Sprint */}
+                        <div className="flex flex-gap-xs">
+                            <select
+                                className="form-select"
+                                value={selectedSprint}
+                                onChange={(e) => setSelectedSprint(e.target.value)}
+                                disabled={addingToSprint}
+                                style={{ flex: 1 }}
+                            >
+                                <option value="">Add to sprint...</option>
+                                {sprints.map(sprint => (
+                                    <option key={sprint.id} value={sprint.id}>
+                                        {sprint.name} ({sprint.status})
+                                    </option>
+                                ))}
+                            </select>
+                            <button
+                                onClick={handleAddToSprint}
+                                disabled={!selectedSprint || addingToSprint}
+                                className="btn btn-primary btn-sm"
+                            >
+                                {addingToSprint ? 'Adding...' : 'Add'}
                             </button>
                         </div>
                     </div>
-                )}
 
-                {/* Success/Error Messages */}
-                {successMessage && (
-                    <div className="card mb-md" style={{ backgroundColor: 'var(--color-success-light)', borderLeft: '4px solid var(--color-success)' }}>
-                        {successMessage}
+                    {/* Action Buttons */}
+                    <div className="flex flex-gap-sm mt-md" style={{ justifyContent: 'flex-end' }}>
+                        <button
+                            onClick={handleBulkDelete}
+                            className="btn btn-danger btn-sm"
+                        >
+                            Delete Selected
+                        </button>
+                        <button
+                            onClick={() => setSelectedStories([])}
+                            className="btn btn-secondary btn-sm"
+                        >
+                            Clear Selection
+                        </button>
                     </div>
-                )}
-                {error && (
-                    <div className="form-error mb-md">{error}</div>
-                )}
+                </div>
+            )}
 
-                {loading ? (
-                    <div className="text-center">Loading stories...</div>
-                ) : stories.length === 0 ? (
-                    <div className="card text-center">
-                        <h3>No Stories Yet</h3>
-                        <p className="text-muted mt-md">
-                            Create your first user story to get started
-                        </p>
-                    </div>
-                ) : filteredStories.length === 0 ? (
-                    <div className="card text-center">
-                        <h3>No Matching Stories</h3>
-                        <p className="text-muted mt-md">
-                            No stories match the selected filter
-                        </p>
-                    </div>
-                ) : (
-                    <div className="card">
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead>
-                                <tr style={{ borderBottom: '2px solid var(--color-border)' }}>
-                                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left', width: '40px' }}>
+            {/* Success/Error Messages */}
+            {successMessage && (
+                <div className="card mb-md" style={{ backgroundColor: 'var(--color-success-light)', borderLeft: '4px solid var(--color-success)' }}>
+                    {successMessage}
+                </div>
+            )}
+            {error && (
+                <div className="form-error mb-md">{error}</div>
+            )}
+
+            {loading ? (
+                <div className="text-center">Loading stories...</div>
+            ) : stories.length === 0 ? (
+                <div className="card text-center">
+                    <h3>No Stories Yet</h3>
+                    <p className="text-muted mt-md">
+                        Create your first user story to get started
+                    </p>
+                </div>
+            ) : filteredStories.length === 0 ? (
+                <div className="card text-center">
+                    <h3>No Matching Stories</h3>
+                    <p className="text-muted mt-md">
+                        No stories match the selected filter
+                    </p>
+                </div>
+            ) : (
+                <div className="card">
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr style={{ borderBottom: '2px solid var(--color-border)' }}>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left', width: '40px' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedStories.length === filteredStories.length && filteredStories.length > 0}
+                                        onChange={handleToggleAll}
+                                    />
+                                </th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Type</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>ID</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Title</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Epic</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Status</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Points</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Assignee</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredStories.map((story) => (
+                                <tr
+                                    key={story.id}
+                                    style={{
+                                        borderBottom: '1px solid var(--color-border)',
+                                        backgroundColor: selectedStories.includes(story.id) ? 'var(--color-neutral-100)' : 'transparent'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (!selectedStories.includes(story.id)) {
+                                            e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)';
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (!selectedStories.includes(story.id)) {
+                                            e.currentTarget.style.backgroundColor = 'transparent';
+                                        }
+                                    }}
+                                >
+                                    <td style={{ padding: 'var(--spacing-sm)' }}>
                                         <input
                                             type="checkbox"
-                                            checked={selectedStories.length === filteredStories.length && filteredStories.length > 0}
-                                            onChange={handleToggleAll}
+                                            checked={selectedStories.includes(story.id)}
+                                            onChange={() => handleToggleStory(story.id)}
+                                            onClick={(e) => e.stopPropagation()}
                                         />
-                                    </th>
-                                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>ID</th>
-                                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Type</th>
-                                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Title</th>
-                                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Status</th>
-                                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Points</th>
-                                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Assignee</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredStories.map((story) => (
-                                    <tr
-                                        key={story.id}
-                                        style={{
-                                            borderBottom: '1px solid var(--color-border)',
-                                            backgroundColor: selectedStories.includes(story.id) ? 'var(--color-neutral-100)' : 'transparent'
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            if (!selectedStories.includes(story.id)) {
-                                                e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)';
-                                            }
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            if (!selectedStories.includes(story.id)) {
-                                                e.currentTarget.style.backgroundColor = 'transparent';
-                                            }
-                                        }}
+                                    </td>
+                                    <td
+                                        style={{ padding: 'var(--spacing-sm)', cursor: 'help', position: 'relative' }}
+                                        className="story-type-cell"
+                                        data-tooltip={TYPE_OPTIONS.find(t => t.value === story.type)?.label || story.type}
                                     >
-                                        <td style={{ padding: 'var(--spacing-sm)' }}>
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedStories.includes(story.id)}
-                                                onChange={() => handleToggleStory(story.id)}
-                                                onClick={(e) => e.stopPropagation()}
-                                            />
-                                        </td>
-                                        <td
-                                            style={{ padding: 'var(--spacing-sm)', cursor: 'pointer' }}
-                                            onClick={() => setSelectedStory(story)}
-                                        >
-                                            <strong>{story.storyId}</strong>
-                                        </td>
-                                        <td
-                                            style={{ padding: 'var(--spacing-sm)', cursor: 'pointer' }}
-                                            onClick={() => setSelectedStory(story)}
-                                        >
-                                            <span title={story.type}>
-                                                {getTypeIcon(story.type)}
-                                            </span>
-                                        </td>
-                                        <td
-                                            style={{ padding: 'var(--spacing-sm)', cursor: 'pointer' }}
-                                            onClick={() => setSelectedStory(story)}
-                                        >
-                                            {story.title}
-                                        </td>
-                                        <td style={{ padding: 'var(--spacing-sm)' }}>
-                                            <select
-                                                value={story.status}
-                                                onChange={(e) => {
+                                        {TYPE_OPTIONS.find(t => t.value === story.type)?.icon || story.type}
+                                    </td>
+                                    <td
+                                        style={{ padding: 'var(--spacing-sm)', cursor: 'pointer' }}
+                                        onClick={() => navigate(`/project/${projectId}/story/${story.id}`)}
+                                    >
+                                        <strong>{story.storyId}</strong>
+                                    </td>
+                                    <td
+                                        style={{ padding: 'var(--spacing-sm)', cursor: 'pointer' }}
+                                        onClick={() => navigate(`/project/${projectId}/story/${story.id}`)}
+                                    >
+                                        {story.title}
+                                    </td>
+                                    <td style={{ padding: 'var(--spacing-sm)' }}>
+                                        {story.epicTitle && (
+                                            <span
+                                                onClick={(e) => {
                                                     e.stopPropagation();
-                                                    handleUpdateStoryStatus(story.id, e.target.value);
+                                                    setFilterEpic(story.epicId.toString());
                                                 }}
-                                                className="form-select"
                                                 style={{
-                                                    padding: '4px 8px',
+                                                    padding: '2px 8px',
                                                     fontSize: 'var(--font-size-sm)',
-                                                    borderColor: getStatusBadgeClass(story.status)
+                                                    backgroundColor: epics.find(e => e.id === story.epicId)?.color || '#0052CC',
+                                                    color: 'white',
+                                                    borderRadius: 'var(--radius-sm)',
+                                                    fontWeight: '500',
+                                                    whiteSpace: 'nowrap',
+                                                    display: 'inline-block',
+                                                    cursor: 'pointer',
+                                                    transition: 'opacity 0.2s'
                                                 }}
+                                                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+                                                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                                                title="Click to filter by this epic"
                                             >
-                                                {STATUS_OPTIONS.map(option => (
-                                                    <option key={option.value} value={option.value}>
-                                                        {option.label}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </td>
-                                        <td
-                                            style={{ padding: 'var(--spacing-sm)', cursor: 'pointer' }}
-                                            onClick={() => setSelectedStory(story)}
+                                                {story.epicTitle}
+                                            </span>
+                                        )}
+                                    </td>
+                                    <td style={{ padding: 'var(--spacing-sm)' }}>
+                                        <select
+                                            value={story.status}
+                                            onChange={(e) => {
+                                                e.stopPropagation();
+                                                handleUpdateStoryStatus(story.id, e.target.value);
+                                            }}
+                                            className="form-select"
+                                            style={{
+                                                padding: '4px 8px',
+                                                fontSize: 'var(--font-size-sm)',
+                                                borderColor: getStatusBadgeClass(story.status)
+                                            }}
                                         >
-                                            {story.storyPoints || '-'}
-                                        </td>
-                                        <td
-                                            style={{ padding: 'var(--spacing-sm)', fontSize: 'var(--font-size-sm)', cursor: 'pointer' }}
-                                            onClick={() => setSelectedStory(story)}
-                                        >
-                                            {story.assigneeName || 'Unassigned'}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </div>
+                                            {STATUS_OPTIONS.map(option => (
+                                                <option key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </td>
+                                    <td
+                                        style={{ padding: 'var(--spacing-sm)', cursor: 'pointer' }}
+                                        onClick={() => setSelectedStory(story)}
+                                    >
+                                        {story.storyPoints || '-'}
+                                    </td>
+                                    <td
+                                        style={{ padding: 'var(--spacing-sm)', fontSize: 'var(--font-size-sm)', cursor: 'pointer' }}
+                                        onClick={() => setSelectedStory(story)}
+                                    >
+                                        {story.assigneeName || 'Unassigned'}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
 
             {/* Create Story Modal */}
             {showCreateModal && (
@@ -951,7 +966,7 @@ const Backlog = () => {
                     </div>
                 </div>
             )}
-        </div>
+        </ProjectLayout>
     );
 };
 

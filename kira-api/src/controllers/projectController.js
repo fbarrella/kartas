@@ -252,7 +252,7 @@ export const projectController = {
     async addMember(req, res) {
         try {
             const { projectId } = req.params;
-            const { userId: newMemberId, role } = req.body;
+            const { userId: newMemberId, email, role } = req.body;
             const userId = req.user.userId;
 
             // Check if user is project owner or admin
@@ -266,14 +266,33 @@ export const projectController = {
                 return res.status(403).json({ error: 'Only project owners can add members' });
             }
 
-            // Check if user exists
-            const userCheck = await query(
-                'SELECT id FROM users WHERE id = $1',
-                [newMemberId]
-            );
+            let targetUserId = newMemberId;
 
-            if (userCheck.rows.length === 0) {
-                return res.status(404).json({ error: 'User not found' });
+            // If email provided, look up user
+            if (email) {
+                const emailCheck = await query(
+                    'SELECT id FROM users WHERE email = $1',
+                    [email]
+                );
+
+                if (emailCheck.rows.length === 0) {
+                    return res.status(404).json({ error: 'User with this email not found' });
+                }
+                targetUserId = emailCheck.rows[0].id;
+            } else if (!targetUserId) {
+                return res.status(400).json({ error: 'User ID or Email is required' });
+            }
+
+            // Check if user exists (redundant if found by email, but safe for ID)
+            if (!email) {
+                const userCheck = await query(
+                    'SELECT id FROM users WHERE id = $1',
+                    [targetUserId]
+                );
+
+                if (userCheck.rows.length === 0) {
+                    return res.status(404).json({ error: 'User not found' });
+                }
             }
 
             // Add member
@@ -282,7 +301,7 @@ export const projectController = {
          VALUES ($1, $2, $3)
          ON CONFLICT (project_id, user_id) 
          DO UPDATE SET role = $3`,
-                [projectId, newMemberId, role || 'member']
+                [projectId, targetUserId, role || 'member']
             );
 
             res.json({ message: 'Member added successfully' });
@@ -340,6 +359,45 @@ export const projectController = {
             res.json({ message: 'Member removed successfully' });
         } catch (error) {
             console.error('Error removing member:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
+    // Get project members (for dropdowns)
+    async getProjectMembers(req, res) {
+        try {
+            const { projectId } = req.params;
+            const userId = req.user.userId;
+
+            // Verify user has access to project
+            const accessCheck = await query(
+                'SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2',
+                [projectId, userId]
+            );
+
+            if (accessCheck.rows.length === 0 && req.user.role !== 'admin') {
+                return res.status(403).json({ error: 'Access denied' });
+            }
+
+            // Get project members
+            const result = await query(
+                `SELECT u.id, u.email, u.first_name, u.last_name, pm.role
+         FROM project_members pm
+         JOIN users u ON pm.user_id = u.id
+         WHERE pm.project_id = $1
+         ORDER BY u.first_name, u.last_name`,
+                [projectId]
+            );
+
+            res.json(result.rows.map(member => ({
+                id: member.id,
+                email: member.email,
+                firstName: member.first_name,
+                lastName: member.last_name,
+                role: member.role
+            })));
+        } catch (error) {
+            console.error('Error fetching project members:', error);
             res.status(500).json({ error: 'Server error' });
         }
     }

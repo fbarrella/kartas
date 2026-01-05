@@ -117,7 +117,7 @@ export const inviteController = {
 
             // Create user
             const userResult = await query(
-                `INSERT INTO users (email, password, first_name, last_name, role, must_change_password)
+                `INSERT INTO users (email, password_hash, first_name, last_name, role, first_login)
                  VALUES ($1, $2, $3, $4, $5, false)
                  RETURNING id, email, first_name, last_name, role`,
                 [invite.email, hashedPassword, firstName, lastName, invite.role]
@@ -182,6 +182,31 @@ export const inviteController = {
             })));
         } catch (error) {
             console.error('Error fetching invites:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
+    // Cancel/Delete invite
+    async deleteInvite(req, res) {
+        try {
+            const { inviteId } = req.params;
+
+            if (req.user.role !== 'admin') {
+                return res.status(403).json({ error: 'Only admins can cancel invites' });
+            }
+
+            const result = await query(
+                'DELETE FROM user_invites WHERE id = $1 RETURNING id',
+                [inviteId]
+            );
+
+            if (result.rows.length === 0) {
+                return res.status(404).json({ error: 'Invite not found' });
+            }
+
+            res.json({ message: 'Invite cancelled successfully' });
+        } catch (error) {
+            console.error('Error cancelling invite:', error);
             res.status(500).json({ error: 'Server error' });
         }
     }

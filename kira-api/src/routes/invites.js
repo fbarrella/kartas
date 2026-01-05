@@ -7,7 +7,7 @@ const router = express.Router();
 
 // Validation middleware
 const validateInviteGeneration = [
-    body('email').isEmail().normalizeEmail(),
+    body('email').isEmail().normalizeEmail({ gmail_remove_dots: false }),
     body('role').optional().isIn(['admin', 'project_owner', 'member'])
 ];
 
@@ -18,16 +18,21 @@ const validateInviteRegistration = [
     body('lastName').trim().notEmpty()
 ];
 
-// Generate invite (admin only)
-router.post('/generate', authenticateToken, validateInviteGeneration, inviteController.generateInvite);
-
+// Public routes (no authentication required)
 // Validate invite token (public)
 router.get('/validate/:token', inviteController.validateInvite);
 
 // Register with invite (public)
 router.post('/register', validateInviteRegistration, inviteController.registerWithInvite);
 
+// Protected routes (authentication required)
+// Generate invite (admin only)
+router.post('/generate', authenticateToken, validateInviteGeneration, inviteController.generateInvite);
+
 // Get pending invites (admin only)
 router.get('/pending', authenticateToken, inviteController.getPendingInvites);
+
+// Cancel invite (admin only)
+router.delete('/:inviteId', authenticateToken, inviteController.deleteInvite);
 
 export default router;

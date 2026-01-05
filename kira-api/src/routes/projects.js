@@ -28,6 +28,7 @@ router.use(authenticateToken);
 router.post('/', requireProjectOwner, validateProjectCreation, projectController.createProject);
 router.get('/', projectController.getUserProjects);
 router.get('/:projectId', projectController.getProject);
+router.get('/:projectId/members', projectController.getProjectMembers);
 router.put('/:projectId', validateProjectUpdate, projectController.updateProject);
 router.delete('/:projectId', projectController.deleteProject);
 router.post('/:projectId/members', validateAddMember, projectController.addMember);

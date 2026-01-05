@@ -7,14 +7,14 @@ const router = express.Router();
 
 // Validation middleware
 const validateAdminCreation = [
-    body('email').isEmail().normalizeEmail(),
+    body('email').isEmail().normalizeEmail({ gmail_remove_dots: false }),
     body('password').isLength({ min: 8 }),
     body('firstName').trim().notEmpty(),
     body('lastName').trim().notEmpty()
 ];
 
 const validateLogin = [
-    body('email').isEmail().normalizeEmail(),
+    body('email').isEmail().normalizeEmail({ gmail_remove_dots: false }),
     body('password').notEmpty()
 ];
 

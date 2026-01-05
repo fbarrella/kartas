@@ -12,7 +12,7 @@ router.use(authenticateToken);
 const validateProfileUpdate = [
     body('firstName').optional().trim().notEmpty(),
     body('lastName').optional().trim().notEmpty(),
-    body('email').optional().isEmail().normalizeEmail()
+    body('email').optional().isEmail().normalizeEmail({ gmail_remove_dots: false })
 ];
 
 const validatePasswordChange = [
@@ -21,8 +21,11 @@ const validatePasswordChange = [
 ];
 
 // Routes
+router.get('/', userController.getAllUsers);
+router.get('/search', userController.searchUsers);
 router.get('/profile', userController.getProfile);
 router.put('/profile', validateProfileUpdate, userController.updateProfile);
 router.put('/password', validatePasswordChange, userController.changePassword);
+router.delete('/:id', userController.deleteUser);
 
 export default router;

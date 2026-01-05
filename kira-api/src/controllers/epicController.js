@@ -23,7 +23,7 @@ export const epicController = {
                         u.first_name || ' ' || u.last_name as creator_name,
                         COUNT(s.id) as story_count
                  FROM epics e
-                 LEFT JOIN users u ON e.creator_id = u.id
+                 LEFT JOIN users u ON e.created_by = u.id
                  LEFT JOIN stories s ON e.id = s.epic_id
                  WHERE e.project_id = $1
                  GROUP BY e.id, u.first_name, u.last_name
@@ -49,7 +49,7 @@ export const epicController = {
                         u.first_name || ' ' || u.last_name as creator_name,
                         COUNT(s.id) as story_count
                  FROM epics e
-                 LEFT JOIN users u ON e.creator_id = u.id
+                 LEFT JOIN users u ON e.created_by = u.id
                  LEFT JOIN stories s ON e.id = s.epic_id
                  WHERE e.id = $1
                  GROUP BY e.id, u.first_name, u.last_name`,
@@ -83,7 +83,7 @@ export const epicController = {
     async createEpic(req, res) {
         try {
             const { projectId } = req.params;
-            const { title, description, startDate, endDate } = req.body;
+            const { title, description, startDate, endDate, color } = req.body;
             const userId = req.user.userId;
 
             // Verify user has access to project
@@ -101,11 +101,19 @@ export const epicController = {
                 return res.status(400).json({ error: 'Title is required' });
             }
 
+            // Generate epic_id (EPIC-0001, EPIC-0002, etc.)
+            const countResult = await query(
+                'SELECT COUNT(*) as count FROM epics WHERE project_id = $1',
+                [projectId]
+            );
+            const epicNumber = parseInt(countResult.rows[0].count) + 1;
+            const epicId = `EPIC-${epicNumber.toString().padStart(4, '0')}`;
+
             const result = await query(
-                `INSERT INTO epics (project_id, title, description, start_date, end_date, creator_id)
-                 VALUES ($1, $2, $3, $4, $5, $6)
+                `INSERT INTO epics (epic_id, project_id, title, description, start_date, end_date, color, created_by)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                  RETURNING *`,
-                [projectId, title, description, startDate, endDate, userId]
+                [epicId, projectId, title, description, startDate, endDate, color || '#0052CC', userId]
             );
 
             res.status(201).json(result.rows[0]);
@@ -119,7 +127,7 @@ export const epicController = {
     async updateEpic(req, res) {
         try {
             const { epicId } = req.params;
-            const { title, description, startDate, endDate, status } = req.body;
+            const { title, description, startDate, endDate, status, color } = req.body;
             const userId = req.user.userId;
 
             // Get epic to verify access
@@ -147,10 +155,11 @@ export const epicController = {
                      description = COALESCE($2, description),
                      start_date = COALESCE($3, start_date),
                      end_date = COALESCE($4, end_date),
-                     status = COALESCE($5, status)
-                 WHERE id = $6
+                     status = COALESCE($5, status),
+                     color = COALESCE($6, color)
+                 WHERE id = $7
                  RETURNING *`,
-                [title, description, startDate, endDate, status, epicId]
+                [title, description, startDate, endDate, status, color, epicId]
             );
 
             res.json(result.rows[0]);

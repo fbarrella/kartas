@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
+import UserDropdown from '../components/UserDropdown';
+import '../components/navigation.css';
 
 const Dashboard = () => {
     const navigate = useNavigate();
@@ -54,13 +56,7 @@ const Dashboard = () => {
             }}>
                 <div className="container flex flex-between" style={{ alignItems: 'center' }}>
                     <h1 style={{ color: 'white', margin: 0 }}>Kira</h1>
-                    <div className="flex flex-gap-md" style={{ alignItems: 'center' }}>
-                        <span>{user?.firstName} {user?.lastName}</span>
-                        <span className="badge badge-neutral">{user?.role}</span>
-                        <button onClick={logout} className="btn btn-secondary btn-sm">
-                            Logout
-                        </button>
-                    </div>
+                    <UserDropdown />
                 </div>
             </header>
 
@@ -98,7 +94,7 @@ const Dashboard = () => {
                         {projects.map((project) => (
                             <Link
                                 key={project.id}
-                                to={`/project/${project.id}`}
+                                to={`/project/${project.id}/team`}
                                 style={{ textDecoration: 'none' }}
                             >
                                 <div className="card" style={{

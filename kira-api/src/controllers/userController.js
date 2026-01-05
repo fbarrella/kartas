@@ -2,6 +2,69 @@ import { query } from '../config/database.js';
 import bcrypt from 'bcrypt';
 
 export const userController = {
+    // Get all users (admin only)
+    async getAllUsers(req, res) {
+        try {
+            if (req.user.role !== 'admin') {
+                return res.status(403).json({ error: 'Admin access required' });
+            }
+
+            const result = await query(
+                `SELECT id, email, first_name, last_name, role, created_at
+                 FROM users
+                 ORDER BY created_at DESC`
+            );
+
+            res.json(result.rows.map(user => ({
+                id: user.id,
+                email: user.email,
+                firstName: user.first_name,
+                lastName: user.last_name,
+                role: user.role,
+                createdAt: user.created_at
+            })));
+        } catch (error) {
+            console.error('Error fetching users:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
+    // Search users (authenticated users)
+    async searchUsers(req, res) {
+        try {
+            const { q } = req.query;
+
+            if (!q || q.length < 2) {
+                return res.json([]);
+            }
+
+            const result = await query(
+                `SELECT id, email, first_name, last_name, role, avatar_url
+                 FROM users
+                 WHERE (
+                    LOWER(first_name) LIKE LOWER($1) OR 
+                    LOWER(last_name) LIKE LOWER($1) OR 
+                    LOWER(email) LIKE LOWER($1)
+                 )
+                 ORDER BY first_name ASC
+                 LIMIT 10`,
+                [`%${q}%`]
+            );
+
+            res.json(result.rows.map(user => ({
+                id: user.id,
+                email: user.email,
+                firstName: user.first_name,
+                lastName: user.last_name,
+                role: user.role,
+                avatarUrl: user.avatar_url
+            })));
+        } catch (error) {
+            console.error('Error searching users:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
     // Get current user profile
     async getProfile(req, res) {
         try {
@@ -119,6 +182,33 @@ export const userController = {
             res.json({ message: 'Password changed successfully' });
         } catch (error) {
             console.error('Error changing password:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
+    // Delete user (admin only)
+    async deleteUser(req, res) {
+        try {
+            if (req.user.role !== 'admin') {
+                return res.status(403).json({ error: 'Admin access required' });
+            }
+
+            const { id } = req.params;
+
+            // Prevent deleting self
+            if (parseInt(id) === req.user.userId) {
+                return res.status(400).json({ error: 'Cannot delete your own account' });
+            }
+
+            const result = await query('DELETE FROM users WHERE id = $1 RETURNING id', [id]);
+
+            if (result.rows.length === 0) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+
+            res.json({ message: 'User deleted successfully' });
+        } catch (error) {
+            console.error('Error deleting user:', error);
             res.status(500).json({ error: 'Server error' });
         }
     }

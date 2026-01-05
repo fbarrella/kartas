@@ -128,6 +128,7 @@ export const storyController = {
             // Get tags for each story
             const storyIds = result.rows.map(s => s.id);
             let tagsMap = {};
+            let sprintsMap = {};
 
             if (storyIds.length > 0) {
                 const tagsResult = await query(
@@ -148,6 +149,29 @@ export const storyController = {
                         color: tag.color
                     });
                 });
+
+                // Get sprints for each story
+                const sprintsResult = await query(
+                    `SELECT ss.story_id, s.id, s.name, s.status, s.start_date, s.end_date
+           FROM sprint_stories ss
+           JOIN sprints s ON ss.sprint_id = s.id
+           WHERE ss.story_id = ANY($1)
+           ORDER BY s.start_date DESC`,
+                    [storyIds]
+                );
+
+                sprintsResult.rows.forEach(sprint => {
+                    if (!sprintsMap[sprint.story_id]) {
+                        sprintsMap[sprint.story_id] = [];
+                    }
+                    sprintsMap[sprint.story_id].push({
+                        id: sprint.id,
+                        name: sprint.name,
+                        status: sprint.status,
+                        startDate: sprint.start_date,
+                        endDate: sprint.end_date
+                    });
+                });
             }
 
             res.json(result.rows.map(story => ({
@@ -166,6 +190,7 @@ export const storyController = {
                 creatorId: story.creator_id,
                 creatorName: story.creator_name,
                 tags: tagsMap[story.id] || [],
+                sprints: sprintsMap[story.id] || [],
                 createdAt: story.created_at,
                 updatedAt: story.updated_at
             })));
@@ -255,6 +280,16 @@ export const storyController = {
                 [storyId]
             );
 
+            // Get sprints
+            const sprintsResult = await query(
+                `SELECT s.id, s.name, s.status, s.start_date, s.end_date
+         FROM sprint_stories ss
+         JOIN sprints s ON ss.sprint_id = s.id
+         WHERE ss.story_id = $1
+         ORDER BY s.start_date DESC`,
+                [storyId]
+            );
+
             res.json({
                 id: story.id,
                 storyId: story.story_id,
@@ -272,6 +307,13 @@ export const storyController = {
                 creatorId: story.creator_id,
                 creatorName: story.creator_name,
                 tags: tagsResult.rows,
+                sprints: sprintsResult.rows.map(s => ({
+                    id: s.id,
+                    name: s.name,
+                    status: s.status,
+                    startDate: s.start_date,
+                    endDate: s.end_date
+                })),
                 subTasks: subTasksResult.rows.map(st => ({
                     id: st.id,
                     type: st.type,

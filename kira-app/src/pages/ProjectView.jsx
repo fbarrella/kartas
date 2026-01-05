@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import api from '../services/api';
+import UserSelect from '../components/UserSelect';
+import ProjectLayout from '../components/ProjectLayout';
 
 const ProjectView = () => {
     const { projectId } = useParams();
     const [project, setProject] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+    const [addMemberForm, setAddMemberForm] = useState({ userId: null, email: '', role: 'member' });
+    const [error, setError] = useState('');
 
     useEffect(() => {
         fetchProject();
@@ -19,6 +24,36 @@ const ProjectView = () => {
             console.error('Error fetching project:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleAddMember = async (e) => {
+        e.preventDefault();
+        setError('');
+
+        if (!addMemberForm.userId && !addMemberForm.email) {
+            setError('Please select a user');
+            return;
+        }
+
+        try {
+            await api.post(`/projects/${projectId}/members`, addMemberForm);
+            setShowAddMemberModal(false);
+            setAddMemberForm({ userId: null, email: '', role: 'member' });
+            fetchProject();
+        } catch (error) {
+            setError(error.response?.data?.error || 'Failed to add member');
+        }
+    };
+
+    const handleRemoveMember = async (userId) => {
+        if (!window.confirm('Are you sure you want to remove this member?')) return;
+        try {
+            await api.delete(`/projects/${projectId}/members/${userId}`);
+            fetchProject();
+        } catch (error) {
+            console.error('Error removing member:', error);
+            alert(error.response?.data?.error || 'Failed to remove member');
         }
     };
 
@@ -40,80 +75,112 @@ const ProjectView = () => {
     }
 
     return (
-        <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-background)' }}>
-            {/* Header */}
-            <header style={{
-                backgroundColor: 'var(--color-primary)',
-                color: 'white',
-                padding: 'var(--spacing-md) 0',
-                boxShadow: 'var(--shadow-md)'
-            }}>
-                <div className="container">
-                    <div className="flex flex-gap-md mb-sm" style={{ alignItems: 'center' }}>
-                        <Link to="/" style={{ color: 'white', textDecoration: 'none' }}>
-                            ← Dashboard
-                        </Link>
-                        <h1 style={{ color: 'white', margin: 0 }}>{project.name}</h1>
-                        <span className="badge" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
-                            {project.ticketPrefix}
-                        </span>
-                    </div>
-                    {project.description && (
-                        <p style={{ color: 'rgba(255,255,255,0.9)', margin: 0 }}>
-                            {project.description}
-                        </p>
-                    )}
-                </div>
-            </header>
+        <ProjectLayout projectId={projectId} projectName={project?.name || 'Loading...'}>
+            {/* Page Title and Actions */}
+            <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
+                <h2 style={{ margin: 0 }}>Team Members</h2>
+                <button
+                    onClick={() => setShowAddMemberModal(true)}
+                    className="btn btn-primary"
+                >
+                    + Add Member
+                </button>
+            </div>
 
-            {/* Navigation */}
-            <div style={{
-                backgroundColor: 'var(--color-surface)',
-                borderBottom: '2px solid var(--color-border)',
-                padding: 'var(--spacing-sm) 0'
-            }}>
-                <div className="container flex flex-gap-md">
-                    <Link
-                        to={`/project/${projectId}/backlog`}
-                        className="btn btn-secondary"
-                    >
-                        Backlog
-                    </Link>
-                    <Link
-                        to={`/project/${projectId}/epics`}
-                        className="btn btn-secondary"
-                    >
-                        Epics
-                    </Link>
-                    <Link
-                        to={`/project/${projectId}/sprints`}
-                        className="btn btn-secondary"
-                    >
-                        Sprints
-                    </Link>
-                    <Link
-                        to={`/project/${projectId}/kanban`}
-                        className="btn btn-secondary"
-                    >
-                        Kanban
-                    </Link>
+            {/* Team Members Card */}
+            <div className="card">
+                <div className="mb-md">
+                    <p><strong>{project.members?.length || 0}</strong> Members</p>
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr style={{ borderBottom: '2px solid var(--color-border)' }}>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Name</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Email</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Role</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Joined</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {project.members?.map((member) => (
+                                <tr key={member.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                                    <td style={{ padding: 'var(--spacing-sm)' }}>
+                                        {member.firstName} {member.lastName}
+                                    </td>
+                                    <td style={{ padding: 'var(--spacing-sm)' }}>{member.email}</td>
+                                    <td style={{ padding: 'var(--spacing-sm)' }}>
+                                        <span className={`badge badge-${member.role === 'owner' ? 'primary' : 'neutral'}`}>
+                                            {member.role}
+                                        </span>
+                                    </td>
+                                    <td style={{ padding: 'var(--spacing-sm)' }}>
+                                        {new Date(member.joinedAt).toLocaleDateString()}
+                                    </td>
+                                    <td style={{ padding: 'var(--spacing-sm)' }}>
+                                        {member.role !== 'owner' && (
+                                            <button
+                                                onClick={() => handleRemoveMember(member.id)}
+                                                className="btn btn-danger btn-sm"
+                                                style={{ padding: '4px 8px', fontSize: '0.8rem' }}
+                                            >
+                                                Remove
+                                            </button>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-            {/* Main Content */}
-            <div className="container mt-lg">
-                <div className="card">
-                    <h2>Project Overview</h2>
-                    <div className="mt-md">
-                        <p><strong>Team Members:</strong> {project.members?.length || 0}</p>
-                        <p className="text-muted mt-sm">
-                            Click "Backlog" above to start managing your user stories
-                        </p>
+            {/* Add Member Modal */}
+            {showAddMemberModal && (
+                <div className="modal-overlay" onClick={() => setShowAddMemberModal(false)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>Add Team Member</h2>
+                            <button onClick={() => setShowAddMemberModal(false)} className="btn-close">×</button>
+                        </div>
+                        <form onSubmit={handleAddMember}>
+                            <div className="modal-body">
+                                <div className="form-group">
+                                    <UserSelect
+                                        label="Search User"
+                                        onSelect={(user) => setAddMemberForm({ ...addMemberForm, userId: user.id, email: user.email })}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Role</label>
+                                    <select
+                                        className="form-select"
+                                        value={addMemberForm.role}
+                                        onChange={(e) => setAddMemberForm({ ...addMemberForm, role: e.target.value })}
+                                    >
+                                        <option value="member">Member</option>
+                                        <option value="owner">Project Owner</option>
+                                    </select>
+                                </div>
+                                {error && <div className="form-error">{error}</div>}
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" onClick={() => setShowAddMemberModal(false)} className="btn btn-secondary">
+                                    Cancel
+                                </button>
+                                <button type="submit" className="btn btn-primary">
+                                    Add Member
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
-            </div>
-        </div>
+            )}
+        </ProjectLayout>
     );
 };
 
 export default ProjectView;
+

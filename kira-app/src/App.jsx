@@ -6,12 +6,17 @@ import ProtectedRoute from './components/ProtectedRoute';
 // Pages (we'll create these)
 import AdminSetup from './pages/AdminSetup';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import ProjectView from './pages/ProjectView';
 import Backlog from './pages/Backlog';
+import StoryDetail from './pages/StoryDetail';
 import Sprints from './pages/Sprints';
 import KanbanBoard from './pages/KanbanBoard';
 import Epics from './pages/Epics';
+import UserManagement from './pages/UserManagement';
+import UserProfile from './pages/UserProfile';
+import SprintReports from './pages/SprintReports';
 
 import './index.css';
 
@@ -39,6 +44,7 @@ function AppRoutes() {
     return (
         <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
             <Route
                 path="/"
                 element={
@@ -48,7 +54,7 @@ function AppRoutes() {
                 }
             />
             <Route
-                path="/project/:projectId"
+                path="/project/:projectId/team"
                 element={
                     <ProtectedRoute>
                         <ProjectView />
@@ -60,6 +66,14 @@ function AppRoutes() {
                 element={
                     <ProtectedRoute>
                         <Backlog />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/project/:projectId/story/:storyId"
+                element={
+                    <ProtectedRoute>
+                        <StoryDetail />
                     </ProtectedRoute>
                 }
             />
@@ -80,10 +94,34 @@ function AppRoutes() {
                 }
             />
             <Route
+                path="/project/:projectId/reports"
+                element={
+                    <ProtectedRoute>
+                        <SprintReports />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
                 path="/project/:projectId/epics"
                 element={
                     <ProtectedRoute>
                         <Epics />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/users"
+                element={
+                    <ProtectedRoute>
+                        <UserManagement />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/profile"
+                element={
+                    <ProtectedRoute>
+                        <UserProfile />
                     </ProtectedRoute>
                 }
             />

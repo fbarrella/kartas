@@ -1,11 +1,11 @@
 import express from 'express';
 import { epicController } from '../controllers/epicController.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // All routes require authentication
-router.use(authenticate);
+router.use(authenticateToken);
 
 // Epic routes
 router.get('/project/:projectId/epics', epicController.getEpics);

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import api from '../services/api';
+import ProjectLayout from '../components/ProjectLayout';
 
 const KanbanBoard = () => {
     const { projectId } = useParams();
@@ -12,12 +13,14 @@ const KanbanBoard = () => {
     const [selectedStory, setSelectedStory] = useState(null);
     const [showColumnConfig, setShowColumnConfig] = useState(false);
     const [columnConfig, setColumnConfig] = useState([]);
+    const [epics, setEpics] = useState([]);
     const [filter, setFilter] = useState({ type: '', search: '' });
 
     useEffect(() => {
         fetchProject();
         fetchKanbanBoard();
         fetchColumnConfig();
+        fetchEpics();
     }, [projectId]);
 
     const fetchProject = async () => {
@@ -51,6 +54,15 @@ const KanbanBoard = () => {
             setColumnConfig(response.data);
         } catch (error) {
             console.error('Error fetching column config:', error);
+        }
+    };
+
+    const fetchEpics = async () => {
+        try {
+            const response = await api.get(`/project/${projectId}/epics`);
+            setEpics(response.data);
+        } catch (error) {
+            console.error('Error fetching epics:', error);
         }
     };
 
@@ -141,12 +153,16 @@ const KanbanBoard = () => {
     };
 
     if (loading) {
-        return <div className="container mt-lg">Loading kanban board...</div>;
+        return (
+            <ProjectLayout projectId={projectId} projectName={project?.name || 'Loading...'}>
+                <div className="text-center">Loading kanban board...</div>
+            </ProjectLayout>
+        );
     }
 
     if (!sprint) {
         return (
-            <div className="container mt-lg">
+            <ProjectLayout projectId={projectId} projectName={project?.name || 'Loading...'}>
                 <div className="card text-center">
                     <h2>No Active Sprint</h2>
                     <p className="text-muted mt-md">Start a sprint to use the kanban board</p>
@@ -154,43 +170,28 @@ const KanbanBoard = () => {
                         Go to Sprints
                     </Link>
                 </div>
-            </div>
+            </ProjectLayout>
         );
     }
 
     return (
-        <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-background)' }}>
-            {/* Header */}
-            <header style={{
-                backgroundColor: 'var(--color-primary)',
-                color: 'white',
-                padding: 'var(--spacing-md) 0',
-                boxShadow: 'var(--shadow-md)'
-            }}>
-                <div className="container">
-                    <div className="flex flex-gap-md mb-sm" style={{ alignItems: 'center' }}>
-                        <Link to={`/project/${projectId}`} style={{ color: 'white', textDecoration: 'none' }}>
-                            ← Back
-                        </Link>
-                        <h1 style={{ color: 'white', margin: 0 }}>
-                            {sprint?.name || 'Kanban Board'}
-                        </h1>
-                    </div>
-                    {sprint?.objective && (
-                        <p style={{ color: 'rgba(255,255,255,0.9)', margin: 0 }}>
-                            {sprint.objective}
-                        </p>
-                    )}
-                </div>
-            </header>
+        <ProjectLayout projectId={projectId} projectName={project?.name || 'Loading...'}>
+            <div className="mb-md">
+                <h2 style={{ margin: 0, marginBottom: 'var(--spacing-sm)' }}>{sprint?.name || 'Kanban Board'}</h2>
+                {sprint?.objective && (
+                    <p className="text-muted" style={{ margin: 0 }}>{sprint.objective}</p>
+                )}
+            </div>
 
             {/* Toolbar */}
             <div style={{
                 backgroundColor: 'var(--color-surface)',
                 borderBottom: '1px solid var(--color-border)',
-                padding: 'var(--spacing-sm) 0'
+                padding: 'var(--spacing-sm)',
+                marginBottom: 'var(--spacing-md)',
+                borderRadius: 'var(--radius-md)'
             }}>
-                <div className="container flex flex-between" style={{ alignItems: 'center' }}>
+                <div className="flex flex-between" style={{ alignItems: 'center' }}>
                     <div className="flex flex-gap-sm">
                         <input
                             type="text"
@@ -313,6 +314,34 @@ const KanbanBoard = () => {
                                                                 }}>
                                                                     {story.title}
                                                                 </div>
+                                                                {story.epicTitle && (
+                                                                    <div style={{ marginBottom: 'var(--spacing-xs)' }}>
+                                                                        <Link
+                                                                            to={`/project/${projectId}/backlog?epic=${story.epicId}`}
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                            style={{ textDecoration: 'none' }}
+                                                                        >
+                                                                            <span style={{
+                                                                                padding: '2px 6px',
+                                                                                fontSize: '10px',
+                                                                                backgroundColor: epics.find(e => e.id === story.epicId)?.color || '#0052CC',
+                                                                                color: 'white',
+                                                                                borderRadius: 'var(--radius-sm)',
+                                                                                fontWeight: '600',
+                                                                                whiteSpace: 'nowrap',
+                                                                                display: 'inline-block',
+                                                                                cursor: 'pointer',
+                                                                                transition: 'opacity 0.2s'
+                                                                            }}
+                                                                                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+                                                                                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                                                                                title="Click to filter by this epic"
+                                                                            >
+                                                                                {story.epicTitle}
+                                                                            </span>
+                                                                        </Link>
+                                                                    </div>
+                                                                )}
                                                                 <div className="flex flex-between" style={{
                                                                     fontSize: 'var(--font-size-xs)',
                                                                     color: 'var(--color-neutral-500)'
@@ -502,7 +531,7 @@ const KanbanBoard = () => {
                     </div>
                 </div>
             )}
-        </div>
+        </ProjectLayout>
     );
 };
 

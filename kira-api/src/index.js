@@ -13,6 +13,7 @@ import kanbanRoutes from './routes/kanban.js';
 import epicRoutes from './routes/epics.js';
 import inviteRoutes from './routes/invites.js';
 import userRoutes from './routes/users.js';
+import sprintMetricsRoutes from './routes/sprintMetrics.js';
 
 // Import database
 import pool from './config/database.js';
@@ -43,9 +44,10 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/stories', storyRoutes);
 app.use('/api/sprints', sprintRoutes);
 app.use('/api/kanban', kanbanRoutes);
-app.use('/api', epicRoutes);
 app.use('/api/invites', inviteRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/metrics', sprintMetricsRoutes);
+app.use('/api', epicRoutes);
 
 // 404 handler
 app.use((req, res) => {

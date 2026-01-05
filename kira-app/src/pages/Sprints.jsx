@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import ProjectLayout from '../components/ProjectLayout';
 
 // Sprint with Metrics Component
 const SprintWithMetrics = ({ sprint, projectId, onEnd, navigate }) => {
@@ -308,144 +309,124 @@ const Sprints = () => {
     const completedSprints = sprints.filter(s => s.status === 'completed');
 
     return (
-        <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-background)' }}>
-            {/* Header */}
-            <header style={{
-                backgroundColor: 'var(--color-primary)',
-                color: 'white',
-                padding: 'var(--spacing-md) 0',
-                boxShadow: 'var(--shadow-md)'
-            }}>
-                <div className="container">
-                    <div className="flex flex-gap-md mb-sm" style={{ alignItems: 'center' }}>
-                        <Link to={`/project/${projectId}`} style={{ color: 'white', textDecoration: 'none' }}>
-                            ← Back
-                        </Link>
-                        <h1 style={{ color: 'white', margin: 0 }}>{project?.name} - Sprints</h1>
-                    </div>
-                </div>
-            </header>
+        <ProjectLayout projectId={projectId} projectName={project?.name || 'Loading...'}>
+            <div className="flex flex-between mb-lg" style={{ alignItems: 'center' }}>
+                <h2>Sprint Management</h2>
+                <button onClick={() => setShowCreateModal(true)} className="btn btn-primary">
+                    + Create Sprint
+                </button>
+            </div>
 
-            {/* Main Content */}
-            <div className="container" style={{ marginTop: 'var(--spacing-xl)' }}>
-                <div className="flex flex-between mb-lg" style={{ alignItems: 'center' }}>
-                    <h2>Sprint Management</h2>
-                    <button onClick={() => setShowCreateModal(true)} className="btn btn-primary">
-                        + Create Sprint
-                    </button>
-                </div>
+            {error && (
+                <div className="form-error mb-md">{error}</div>
+            )}
 
-                {error && (
-                    <div className="form-error mb-md">{error}</div>
-                )}
+            {loading ? (
+                <div className="text-center">Loading sprints...</div>
+            ) : (
+                <>
+                    {/* Active Sprint */}
+                    {activeSprints.length > 0 && (
+                        <div className="mb-xl">
+                            <h3 className="mb-md">Active Sprint</h3>
+                            {activeSprints.map(sprint => (
+                                <SprintWithMetrics
+                                    key={sprint.id}
+                                    sprint={sprint}
+                                    projectId={projectId}
+                                    onEnd={() => setShowEndDialog(sprint)}
+                                    navigate={navigate}
+                                />
+                            ))}
+                        </div>
+                    )}
 
-                {loading ? (
-                    <div className="text-center">Loading sprints...</div>
-                ) : (
-                    <>
-                        {/* Active Sprint */}
-                        {activeSprints.length > 0 && (
-                            <div className="mb-xl">
-                                <h3 className="mb-md">Active Sprint</h3>
-                                {activeSprints.map(sprint => (
-                                    <SprintWithMetrics
-                                        key={sprint.id}
-                                        sprint={sprint}
-                                        projectId={projectId}
-                                        onEnd={() => setShowEndDialog(sprint)}
-                                        navigate={navigate}
-                                    />
+                    {/* Planned Sprints */}
+                    {plannedSprints.length > 0 && (
+                        <div className="mb-xl">
+                            <h3 className="mb-md">Planned Sprints</h3>
+                            <div style={{ display: 'grid', gap: 'var(--spacing-md)' }}>
+                                {plannedSprints.map(sprint => (
+                                    <div key={sprint.id} className="card">
+                                        <div className="flex flex-between mb-sm">
+                                            <div>
+                                                <h4 style={{ margin: 0 }}>{sprint.name}</h4>
+                                                <span className={`badge ${getStatusBadge(sprint.status).class} mt-xs`}>
+                                                    {getStatusBadge(sprint.status).label}
+                                                </span>
+                                            </div>
+                                            <div className="flex flex-gap-sm">
+                                                <button
+                                                    onClick={() => setShowStartDialog(sprint)}
+                                                    className="btn btn-primary btn-sm"
+                                                    disabled={sprint.storyCount === 0}
+                                                >
+                                                    Start Sprint
+                                                </button>
+                                                <Link
+                                                    to={`/project/${projectId}/backlog?sprint=${sprint.id}`}
+                                                    className="btn btn-secondary btn-sm"
+                                                >
+                                                    Add Stories
+                                                </Link>
+                                                <button
+                                                    onClick={() => handleDeleteSprint(sprint.id)}
+                                                    className="btn btn-secondary btn-sm"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {sprint.objective && (
+                                            <p className="text-muted text-small mt-sm">{sprint.objective}</p>
+                                        )}
+                                        <div className="mt-sm text-small">
+                                            <strong>{sprint.storyCount}</strong> stories | <strong>{sprint.totalPoints}</strong> points
+                                            {sprint.storyCount === 0 && (
+                                                <span className="text-muted ml-sm">(Add stories to start)</span>
+                                            )}
+                                        </div>
+                                        <div className="mt-xs text-small text-muted">
+                                            {new Date(sprint.startDate).toLocaleDateString()} - {new Date(sprint.endDate).toLocaleDateString()}
+                                        </div>
+                                    </div>
                                 ))}
                             </div>
-                        )}
+                        </div>
+                    )}
 
-                        {/* Planned Sprints */}
-                        {plannedSprints.length > 0 && (
-                            <div className="mb-xl">
-                                <h3 className="mb-md">Planned Sprints</h3>
-                                <div style={{ display: 'grid', gap: 'var(--spacing-md)' }}>
-                                    {plannedSprints.map(sprint => (
-                                        <div key={sprint.id} className="card">
-                                            <div className="flex flex-between mb-sm">
-                                                <div>
-                                                    <h4 style={{ margin: 0 }}>{sprint.name}</h4>
-                                                    <span className={`badge ${getStatusBadge(sprint.status).class} mt-xs`}>
-                                                        {getStatusBadge(sprint.status).label}
-                                                    </span>
-                                                </div>
-                                                <div className="flex flex-gap-sm">
-                                                    <button
-                                                        onClick={() => setShowStartDialog(sprint)}
-                                                        className="btn btn-primary btn-sm"
-                                                        disabled={sprint.storyCount === 0}
-                                                    >
-                                                        Start Sprint
-                                                    </button>
-                                                    <Link
-                                                        to={`/project/${projectId}/backlog?sprint=${sprint.id}`}
-                                                        className="btn btn-secondary btn-sm"
-                                                    >
-                                                        Add Stories
-                                                    </Link>
-                                                    <button
-                                                        onClick={() => handleDeleteSprint(sprint.id)}
-                                                        className="btn btn-secondary btn-sm"
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                </div>
+                    {/* Completed Sprints */}
+                    {completedSprints.length > 0 && (
+                        <div>
+                            <h3 className="mb-md">Completed Sprints</h3>
+                            <div style={{ display: 'grid', gap: 'var(--spacing-md)' }}>
+                                {completedSprints.map(sprint => (
+                                    <div key={sprint.id} className="card" style={{ opacity: 0.8 }}>
+                                        <div className="flex flex-between">
+                                            <div>
+                                                <h4 style={{ margin: 0 }}>{sprint.name}</h4>
+                                                <span className={`badge ${getStatusBadge(sprint.status).class} mt-xs`}>
+                                                    {getStatusBadge(sprint.status).label}
+                                                </span>
                                             </div>
-                                            {sprint.objective && (
-                                                <p className="text-muted text-small mt-sm">{sprint.objective}</p>
-                                            )}
-                                            <div className="mt-sm text-small">
+                                            <div className="text-small text-muted">
                                                 <strong>{sprint.storyCount}</strong> stories | <strong>{sprint.totalPoints}</strong> points
-                                                {sprint.storyCount === 0 && (
-                                                    <span className="text-muted ml-sm">(Add stories to start)</span>
-                                                )}
-                                            </div>
-                                            <div className="mt-xs text-small text-muted">
-                                                {new Date(sprint.startDate).toLocaleDateString()} - {new Date(sprint.endDate).toLocaleDateString()}
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
+                                    </div>
+                                ))}
                             </div>
-                        )}
+                        </div>
+                    )}
 
-                        {/* Completed Sprints */}
-                        {completedSprints.length > 0 && (
-                            <div>
-                                <h3 className="mb-md">Completed Sprints</h3>
-                                <div style={{ display: 'grid', gap: 'var(--spacing-md)' }}>
-                                    {completedSprints.map(sprint => (
-                                        <div key={sprint.id} className="card" style={{ opacity: 0.8 }}>
-                                            <div className="flex flex-between">
-                                                <div>
-                                                    <h4 style={{ margin: 0 }}>{sprint.name}</h4>
-                                                    <span className={`badge ${getStatusBadge(sprint.status).class} mt-xs`}>
-                                                        {getStatusBadge(sprint.status).label}
-                                                    </span>
-                                                </div>
-                                                <div className="text-small text-muted">
-                                                    <strong>{sprint.storyCount}</strong> stories | <strong>{sprint.totalPoints}</strong> points
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {sprints.length === 0 && (
-                            <div className="card text-center">
-                                <h3>No Sprints Yet</h3>
-                                <p className="text-muted mt-md">Create your first sprint to start planning</p>
-                            </div>
-                        )}
-                    </>
-                )}
-            </div>
+                    {sprints.length === 0 && (
+                        <div className="card text-center">
+                            <h3>No Sprints Yet</h3>
+                            <p className="text-muted mt-md">Create your first sprint to start planning</p>
+                        </div>
+                    )}
+                </>
+            )}
 
             {/* Create Sprint Modal */}
             {showCreateModal && (
@@ -633,7 +614,7 @@ const Sprints = () => {
                     </div>
                 </div>
             )}
-        </div>
+        </ProjectLayout>
     );
 };
 
