@@ -15,12 +15,16 @@ const KanbanBoard = () => {
     const [columnConfig, setColumnConfig] = useState([]);
     const [epics, setEpics] = useState([]);
     const [filter, setFilter] = useState({ type: '', search: '' });
+    const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, story: null });
+    const [members, setMembers] = useState([]);
+    const [showMoveSubmenu, setShowMoveSubmenu] = useState(false);
 
     useEffect(() => {
         fetchProject();
         fetchKanbanBoard();
         fetchColumnConfig();
         fetchEpics();
+        fetchMembers();
     }, [projectId]);
 
     const fetchProject = async () => {
@@ -63,6 +67,15 @@ const KanbanBoard = () => {
             setEpics(response.data);
         } catch (error) {
             console.error('Error fetching epics:', error);
+        }
+    };
+
+    const fetchMembers = async () => {
+        try {
+            const response = await api.get(`/projects/${projectId}/members`);
+            setMembers(response.data);
+        } catch (error) {
+            console.error('Error fetching members:', error);
         }
     };
 
@@ -142,6 +155,52 @@ const KanbanBoard = () => {
             bug: 'var(--color-danger)'
         };
         return colors[type] || 'var(--color-neutral-400)';
+    };
+
+    const handleContextMenu = (e, story) => {
+        e.preventDefault();
+        setContextMenu({
+            visible: true,
+            x: e.clientX,
+            y: e.clientY,
+            story: story
+        });
+    };
+
+    const closeContextMenu = () => {
+        setContextMenu({ visible: false, x: 0, y: 0, story: null });
+        setShowMoveSubmenu(false);
+    };
+
+    const handleDeleteStory = async (storyId) => {
+        if (!confirm('Are you sure you want to delete this story?')) return;
+        try {
+            await api.delete(`/stories/${storyId}`);
+            fetchKanbanBoard();
+            closeContextMenu();
+        } catch (error) {
+            console.error('Error deleting story:', error);
+        }
+    };
+
+    const handleAssignStory = async (storyId, assigneeId) => {
+        try {
+            await api.put(`/stories/${storyId}`, { assigneeId });
+            fetchKanbanBoard();
+            closeContextMenu();
+        } catch (error) {
+            console.error('Error assigning story:', error);
+        }
+    };
+
+    const handleMoveToStatus = async (storyId, newStatus) => {
+        try {
+            await api.put(`/kanban/stories/${storyId}/status`, { status: newStatus });
+            fetchKanbanBoard();
+            closeContextMenu();
+        } catch (error) {
+            console.error('Error moving story:', error);
+        }
     };
 
     const filterStories = (stories) => {
@@ -283,6 +342,7 @@ const KanbanBoard = () => {
                                                                 {...provided.draggableProps}
                                                                 {...provided.dragHandleProps}
                                                                 onClick={() => setSelectedStory(story)}
+                                                                onContextMenu={(e) => handleContextMenu(e, story)}
                                                                 style={{
                                                                     ...provided.draggableProps.style,
                                                                     backgroundColor: 'white',
@@ -530,6 +590,185 @@ const KanbanBoard = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Context Menu */}
+            {contextMenu.visible && (
+                <>
+                    {/* Backdrop to close menu */}
+                    <div
+                        style={{
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            zIndex: 999
+                        }}
+                        onClick={closeContextMenu}
+                        onContextMenu={(e) => { e.preventDefault(); closeContextMenu(); }}
+                    />
+                    {/* Context Menu */}
+                    <div
+                        style={{
+                            position: 'fixed',
+                            top: `${contextMenu.y}px`,
+                            left: `${contextMenu.x}px`,
+                            backgroundColor: 'white',
+                            borderRadius: 'var(--radius-md)',
+                            boxShadow: 'var(--shadow-lg)',
+                            padding: 'var(--spacing-xs)',
+                            minWidth: '200px',
+                            zIndex: 1000
+                        }}
+                    >
+                        {/* View Story */}
+                        <div
+                            onClick={() => {
+                                setSelectedStory(contextMenu.story);
+                                closeContextMenu();
+                            }}
+                            style={{
+                                padding: 'var(--spacing-sm)',
+                                cursor: 'pointer',
+                                borderRadius: 'var(--radius-sm)',
+                                transition: 'background-color 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                            👁️ View Story
+                        </div>
+
+                        {/* Edit Story */}
+                        <Link
+                            to={`/project/${projectId}/story/${contextMenu.story?.id}`}
+                            style={{ textDecoration: 'none', color: 'inherit' }}
+                            onClick={closeContextMenu}
+                        >
+                            <div
+                                style={{
+                                    padding: 'var(--spacing-sm)',
+                                    cursor: 'pointer',
+                                    borderRadius: 'var(--radius-sm)',
+                                    transition: 'background-color 0.2s'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                            >
+                                ✏️ Edit Story
+                            </div>
+                        </Link>
+
+                        <div style={{ height: '1px', backgroundColor: 'var(--color-border)', margin: 'var(--spacing-xs) 0' }} />
+
+                        {/* Assign To */}
+                        <div style={{ padding: 'var(--spacing-xs)' }}>
+                            <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-neutral-600)', padding: 'var(--spacing-xs)', fontWeight: 600 }}>
+                                Assign To
+                            </div>
+                            {members.map(member => (
+                                <div
+                                    key={member.id}
+                                    onClick={() => handleAssignStory(contextMenu.story.id, member.id)}
+                                    style={{
+                                        padding: 'var(--spacing-sm)',
+                                        cursor: 'pointer',
+                                        borderRadius: 'var(--radius-sm)',
+                                        transition: 'background-color 0.2s',
+                                        fontSize: 'var(--font-size-sm)'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                >
+                                    👤 {member.firstName} {member.lastName}
+                                </div>
+                            ))}
+                        </div>
+
+                        <div style={{ height: '1px', backgroundColor: 'var(--color-border)', margin: 'var(--spacing-xs) 0' }} />
+
+                        {/* Move To - Expandable Submenu */}
+                        <div
+                            style={{ position: 'relative' }}
+                            onMouseEnter={() => setShowMoveSubmenu(true)}
+                            onMouseLeave={() => setShowMoveSubmenu(false)}
+                        >
+                            <div
+                                style={{
+                                    padding: 'var(--spacing-sm)',
+                                    cursor: 'pointer',
+                                    borderRadius: 'var(--radius-sm)',
+                                    transition: 'background-color 0.2s',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                            >
+                                <span>➡️ Move To</span>
+                                <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                                    <path d="M7.5 15L12.5 10L7.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            </div>
+
+                            {/* Submenu */}
+                            {showMoveSubmenu && (
+                                <div
+                                    style={{
+                                        position: 'absolute',
+                                        left: 'calc(100% - 4px)',
+                                        top: '-4px',
+                                        backgroundColor: 'white',
+                                        borderRadius: 'var(--radius-md)',
+                                        boxShadow: 'var(--shadow-lg)',
+                                        padding: 'var(--spacing-xs)',
+                                        minWidth: '180px',
+                                        marginLeft: 'var(--spacing-xs)',
+                                        paddingLeft: '8px'
+                                    }}
+                                >
+                                    {columns.filter(col => col.status !== contextMenu.story?.status).map(column => (
+                                        <div
+                                            key={column.status}
+                                            onClick={() => handleMoveToStatus(contextMenu.story.id, column.status)}
+                                            style={{
+                                                padding: 'var(--spacing-sm)',
+                                                cursor: 'pointer',
+                                                borderRadius: 'var(--radius-sm)',
+                                                transition: 'background-color 0.2s',
+                                                fontSize: 'var(--font-size-sm)'
+                                            }}
+                                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)'}
+                                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                        >
+                                            {column.displayName}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div style={{ height: '1px', backgroundColor: 'var(--color-border)', margin: 'var(--spacing-xs) 0' }} />
+
+                        {/* Delete */}
+                        <div
+                            onClick={() => handleDeleteStory(contextMenu.story.id)}
+                            style={{
+                                padding: 'var(--spacing-sm)',
+                                cursor: 'pointer',
+                                borderRadius: 'var(--radius-sm)',
+                                transition: 'background-color 0.2s',
+                                color: 'var(--color-danger)'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-danger-light)'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                            🗑️ Delete Story
+                        </div>
+                    </div>
+                </>
             )}
         </ProjectLayout>
     );

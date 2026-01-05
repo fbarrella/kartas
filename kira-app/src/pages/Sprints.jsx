@@ -80,6 +80,45 @@ const SprintWithMetrics = ({ sprint, projectId, onEnd, navigate }) => {
                 </div>
             </div>
 
+            {/* Timeline Progress Bar */}
+            {(() => {
+                const start = new Date(sprint.startDate);
+                const end = new Date(sprint.endDate);
+                const today = new Date();
+                const total = end - start;
+                const elapsed = today - start;
+                const progressPercent = Math.min(Math.max((elapsed / total) * 100, 0), 100);
+
+                return (
+                    <div style={{ marginTop: 'var(--spacing-md)' }}>
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            fontSize: 'var(--font-size-sm)',
+                            color: 'var(--color-neutral-600)',
+                            marginBottom: '4px'
+                        }}>
+                            <span>Sprint Progress</span>
+                            <span>{Math.round(progressPercent)}%</span>
+                        </div>
+                        <div style={{
+                            width: '100%',
+                            height: '8px',
+                            backgroundColor: 'var(--color-neutral-100)',
+                            borderRadius: '4px',
+                            overflow: 'hidden'
+                        }}>
+                            <div style={{
+                                width: `${progressPercent}%`,
+                                height: '100%',
+                                backgroundColor: 'var(--color-success)',
+                                transition: 'width 0.3s ease'
+                            }} />
+                        </div>
+                    </div>
+                );
+            })()}
+
             {/* Metrics Section */}
             {loadingMetrics ? (
                 <div className="mt-lg text-center text-muted">Loading metrics...</div>
