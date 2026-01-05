@@ -2,32 +2,64 @@
 
 ## What is Kira?
 
-Kira is a modern, open-source alternative to Jira for agile team management. Built with React, Node.js, and PostgreSQL, it provides a comprehensive solution for managing backlogs, sprints, and kanban boards.
+Kira is a modern, open-source alternative to Jira for agile team management. Built with React, Node.js, and PostgreSQL, it provides a comprehensive solution for managing backlogs, sprints, and kanban boards with advanced features and polished UI/UX.
 
-## Features (Phase 1 MVP)
+## Current Features (Phase 3 Complete)
 
 ✅ **User Management**
 - Admin-controlled user registration
 - Role-based access control (Admin, Project Owner, Member)
 - Secure JWT authentication with token refresh
+- User invitation system
 
 ✅ **Project Management**
 - Create and manage multiple projects/teams
 - Unique ticket prefixes (auto-generated from project names)
 - Team member management
+- Collapsible sidebar with state persistence
 
 ✅ **Backlog Management**
 - Create user stories, tasks, and bugs
 - Story details: title, description, type, status, story points, assignee
 - 8 status options: Backlog → Refining → Ready → In Development → Review → Test → Done → Cancelled
+- Multi-sprint support per story with interactive chips
+- Dedicated Epic column with clickable badges
+- Advanced filtering and search
 - Change history tracking
 - Comments system
+
+✅ **Epic Management**
+- Color-coded epics (8 predefined colors)
+- Timeline progress bars showing epic duration
+- Clickable epic cards for instant backlog filtering
+- Epic badges on stories with color indicators
+
+✅ **Sprint Management**
+- Create, start, and end sprints
+- Sprint objectives and timelines
+- Visual timeline progress bar on active sprint cards
+- Real-time story completion tracking
+- Story points progress visualization
+- Sprint metrics and burndown charts
+
+✅ **Kanban Board**
+- Drag-and-drop story cards
+- Customizable columns (configure visibility and names)
+- Right-click context menu with quick actions:
+  - View Story
+  - Edit Story
+  - Assign to team member
+  - Move to Status (expandable submenu)
+  - Delete Story
+- Epic badges on cards for easy identification
+- Advanced filtering by type and search
 
 ✅ **Smart Features**
 - Automatic story ID generation (e.g., `GGY-0001`, `GGY-0042`)
 - Unique ticket prefix with conflict resolution
 - First-login password change requirement
-- Responsive design with Jira-inspired UI
+- Responsive design with professional UI
+- Faster tooltips and smooth animations
 
 ## Quick Start
 
@@ -87,11 +119,29 @@ kira/
    - Enter project name (e.g., "Good Guys")
    - Ticket prefix will be auto-generated (e.g., "GGY")
 
-3. **Add User Stories**
+3. **Create an Epic** (Optional)
    - Navigate to your project
-   - Click "Backlog"
+   - Click "Epics"
+   - Click "Create Epic"
+   - Choose a color and set timeline
+
+4. **Add User Stories**
+   - Navigate to "Backlog"
    - Click "Create Story"
    - Fill in story details
+   - Assign to epic (optional)
+   - Set story points
+
+5. **Plan a Sprint**
+   - Navigate to "Sprints"
+   - Click "Create Sprint"
+   - Add stories from backlog
+   - Start the sprint
+
+6. **Use Kanban Board**
+   - Navigate to "Kanban"
+   - Drag stories across columns
+   - Right-click for quick actions
 
 ## User Roles
 
@@ -195,21 +245,26 @@ npm install
 > - Set `NODE_ENV=production`
 > - Enable HTTPS/SSL
 
-## What's Coming in Phase 2
+## Development Roadmap
 
-- 🎯 Sprint management (create, start, end sprints)
-- 📊 Kanban board with drag-and-drop
-- 🎨 Customizable board columns
-- 📈 Sprint metrics and reporting
-- 👥 User invitation system via email
-- 🏷️ Epic management
-- 🔍 Advanced filtering and search
+- **Phase 1**: ✅ Core authentication, project management, and backlog
+- **Phase 2**: ✅ Sprint management and kanban board
+- **Phase 3**: ✅ UI/UX improvements, epic enhancements, and advanced features
+- **Phase 4** (Planned): Advanced metrics, reporting, and team analytics
+
+## Pro Tips
+
+- **Epic Colors**: Use consistent colors for related epics across projects
+- **Sprint Planning**: Aim for 2-week sprints with clear objectives
+- **Story Points**: Use Fibonacci sequence (1, 2, 3, 5, 8, 13)
+- **Kanban Context Menu**: Right-click any card for quick actions
+- **Epic Filtering**: Click epic badges to instantly filter backlog
+- **Multi-Sprint Stories**: Use sprint chips to track cross-sprint work
 
 ## Support & Documentation
 
-- **Full Documentation**: See [README.md](file:///home/fenetto/Documents/Repos/js/kira/README.md)
-- **Implementation Details**: See [walkthrough.md](file:///home/fenetto/.gemini/antigravity/brain/b05a3df8-a86f-4451-b7b7-08d3e8ac5bd0/walkthrough.md)
-- **Database Schema**: See [001_initial_schema.sql](file:///home/fenetto/Documents/Repos/js/kira/kira-api/src/migrations/001_initial_schema.sql)
+- **Full Documentation**: See [README.md](README.md)
+- **Database Schema**: See `kira-api/src/migrations/`
 
 ## License
 
