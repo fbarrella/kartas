@@ -8,8 +8,6 @@ RUN npm install
 
 COPY . .
 
-RUN echo "Ready to go!"
-
 EXPOSE 3000
 
 CMD ["npm", "run", "dev"]

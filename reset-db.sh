@@ -15,10 +15,10 @@ if ! docker-compose ps | grep -q "Up"; then
 fi
 
 echo "📦 Dropping existing database..."
-docker-compose exec -T postgres psql -U kartas_user -d postgres -c "DROP DATABASE IF EXISTS kartas_db;"
+docker-compose exec -T postgres psql -U kartasadmin -d kartasdb -c "DROP DATABASE IF EXISTS kartasdb;"
 
 echo "📦 Creating fresh database..."
-docker-compose exec -T postgres psql -U kartas_user -d postgres -c "CREATE DATABASE kartas_db;"
+docker-compose exec -T postgres psql -U kartasadmin -d kartasdb -c "CREATE DATABASE kartasdb;"
 
 echo "🔄 Running migrations..."
 docker-compose exec -T api npm run migrate
