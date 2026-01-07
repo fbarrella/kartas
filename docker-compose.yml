@@ -3,7 +3,7 @@ version: '3.8'
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: kira-postgres
+    container_name: kartas-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -20,9 +20,9 @@ services:
 
   api:
     build:
-      context: ./kira-api
+      context: ./kartas-api
       dockerfile: Dockerfile
-    container_name: kira-api
+    container_name: kartas-api
     environment:
       DATABASE_URL: ${DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
@@ -37,21 +37,21 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./kira-api:/app
+      - ./kartas-api:/app
       - /app/node_modules
     command: npm run dev
 
   app:
     build:
-      context: ./kira-app
+      context: ./kartas-app
       dockerfile: Dockerfile
-    container_name: kira-app
+    container_name: kartas-app
     environment:
       VITE_API_URL: ${VITE_API_URL}
     ports:
       - "5173:5173"
     volumes:
-      - ./kira-app:/app
+      - ./kartas-app:/app
       - /app/node_modules
     command: npm run dev
     depends_on:

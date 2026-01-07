@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# Kira Setup Script
-# This script helps set up the Kira project management tool
+# Kartas Setup Script
+# This script helps set up the Kartas project management tool
 
 set -e
 
-echo "🚀 Kira Setup Script"
-echo "===================="
+echo "🚀 Kartas Setup Script"
+echo "======================="
 echo ""
 
 # Check if .env exists

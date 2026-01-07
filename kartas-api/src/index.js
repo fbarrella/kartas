@@ -66,7 +66,7 @@ app.use((err, req, res, next) => {
 
 // Start server
 const server = app.listen(PORT, () => {
-    console.log(`🚀 Kira API server running on port ${PORT}`);
+    console.log(`🚀 Kartas API server running on port ${PORT}`);
     console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 

@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import UserDropdown from '../components/UserDropdown';
 import '../components/navigation.css';
+import kartasLogoWhite from '../assets/kartas-logo-white.png';
 
 const Dashboard = () => {
     const navigate = useNavigate();
@@ -55,7 +56,7 @@ const Dashboard = () => {
                 boxShadow: 'var(--shadow-md)'
             }}>
                 <div className="container flex flex-between" style={{ alignItems: 'center' }}>
-                    <h1 style={{ color: 'white', margin: 0 }}>Kira</h1>
+                    <img src={kartasLogoWhite} alt="Kartas" style={{ height: '36px' }} />
                     <UserDropdown />
                 </div>
             </header>

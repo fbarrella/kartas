@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
+import kartasLogo from '../assets/kartas-logo.png';
 
 const Register = () => {
     const navigate = useNavigate();
@@ -97,7 +98,7 @@ const Register = () => {
         <div className="flex flex-center" style={{ minHeight: '100vh', backgroundColor: 'var(--color-background)' }}>
             <div className="card" style={{ maxWidth: '500px', width: '100%' }}>
                 <div className="text-center mb-lg">
-                    <h1 style={{ color: 'var(--color-primary)' }}>Kira</h1>
+                    <img src={kartasLogo} alt="Kartas" style={{ height: '60px', marginBottom: 'var(--spacing-sm)' }} />
                     <h2>Complete Your Registration</h2>
                     {inviteInfo && (
                         <div className="mt-md">

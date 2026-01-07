@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import kartasLogo from '../assets/kartas-logo.png';
 
 const Login = () => {
     const navigate = useNavigate();
@@ -153,10 +154,8 @@ const Login = () => {
     return (
         <div className="flex flex-center" style={{ minHeight: '100vh', backgroundColor: 'var(--color-background)' }}>
             <div className="card" style={{ maxWidth: '450px', width: '100%' }}>
-                <div className="card-header">
-                    <h1 className="card-title" style={{ color: 'var(--color-primary)' }}>
-                        Kira
-                    </h1>
+                <div className="card-header" style={{ textAlign: 'center' }}>
+                    <img src={kartasLogo} alt="Kartas" style={{ height: '60px', marginBottom: 'var(--spacing-sm)' }} />
                     <p className="text-muted mt-sm">
                         Sign in to your account
                     </p>

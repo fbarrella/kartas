@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Database reset script for Kira
+# Database reset script for Kartas
 # This will drop and recreate the database, then run migrations
 
 set -e
 
-echo "🔄 Resetting Kira database..."
+echo "🔄 Resetting Kartas database..."
 
 # Check if docker-compose is running
 if ! docker-compose ps | grep -q "Up"; then
@@ -15,10 +15,10 @@ if ! docker-compose ps | grep -q "Up"; then
 fi
 
 echo "📦 Dropping existing database..."
-docker-compose exec -T postgres psql -U kira_user -d postgres -c "DROP DATABASE IF EXISTS kira_db;"
+docker-compose exec -T postgres psql -U kartas_user -d postgres -c "DROP DATABASE IF EXISTS kartas_db;"
 
 echo "📦 Creating fresh database..."
-docker-compose exec -T postgres psql -U kira_user -d postgres -c "CREATE DATABASE kira_db;"
+docker-compose exec -T postgres psql -U kartas_user -d postgres -c "CREATE DATABASE kartas_db;"
 
 echo "🔄 Running migrations..."
 docker-compose exec -T api npm run migrate

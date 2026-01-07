@@ -1,7 +1,7 @@
 {
-  "name": "kira-api",
+  "name": "kartas-api",
   "version": "1.0.0",
-  "description": "Backend API for Kira project management tool",
+  "description": "Backend API for Kartas project management tool",
   "main": "src/index.js",
   "type": "module",
   "scripts": {
@@ -11,7 +11,12 @@
     "test:watch": "NODE_ENV=test jest --watch",
     "migrate": "node src/migrations/run.js"
   },
-  "keywords": ["project-management", "agile", "scrum", "kanban"],
+  "keywords": [
+    "project-management",
+    "agile",
+    "scrum",
+    "kanban"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {

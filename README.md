@@ -1,4 +1,8 @@
-# Kira - Project Management Tool
+<p align="center">
+  <img src=".gemini/antigravity/brain/beebceda-6498-4e44-a42c-3faea1e19fcf/kartas-logo.png" alt="Kartas Logo" height="120">
+</p>
+
+# Kartas - Project Management Tool
 
 A modern, comprehensive alternative to Jira for agile team management, built with React, Node.js, and PostgreSQL.
 
@@ -68,7 +72,7 @@ A modern, comprehensive alternative to Jira for agile team management, built wit
 1. Clone the repository:
    ```bash
    git clone <repository-url>
-   cd kira
+   cd kartas
    ```
 
 2. Copy environment variables:
@@ -87,18 +91,18 @@ A modern, comprehensive alternative to Jira for agile team management, built wit
 
 ### Local Development
 
-#### Backend (kira-api)
+#### Backend (kartas-api)
 
 ```bash
-cd kira-api
+cd kartas-api
 npm install
 npm run dev
 ```
 
-#### Frontend (kira-app)
+#### Frontend (kartas-app)
 
 ```bash
-cd kira-app
+cd kartas-app
 npm install
 npm run dev
 ```
@@ -106,8 +110,8 @@ npm run dev
 ## Project Structure
 
 ```
-kira/
-├── kira-api/          # Backend API
+kartas/
+├── kartas-api/          # Backend API
 │   ├── src/
 │   │   ├── config/    # Configuration files
 │   │   ├── controllers/  # Business logic
@@ -117,7 +121,7 @@ kira/
 │   │   ├── routes/       # API routes
 │   │   └── utils/        # Utility functions
 │   └── tests/         # Backend tests
-├── kira-app/          # Frontend application
+├── kartas-app/          # Frontend application
 │   └── src/
 │       ├── components/   # React components
 │       ├── contexts/     # React contexts
