@@ -1,5 +1,5 @@
 <p align="center">
-  <img src=".gemini/antigravity/brain/beebceda-6498-4e44-a42c-3faea1e19fcf/kartas-logo.png" alt="Kartas Logo" height="120">
+  <img src="./kartas-app/src/assets/kartas-logo.png" alt="Kartas Logo" height="120">
 </p>
 
 # Kartas - Project Management Tool
