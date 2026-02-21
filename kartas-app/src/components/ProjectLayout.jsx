@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import UserDropdown from './UserDropdown';
 import './navigation.css';
+import kartasLogoWhite from '../assets/kartas-logo-white.png';
 
 const ProjectLayout = ({ projectId, projectName, children }) => {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
@@ -41,7 +42,7 @@ const ProjectLayout = ({ projectId, projectName, children }) => {
             }}>
                 <div className="container flex flex-between" style={{ alignItems: 'center' }}>
                     <div className="flex flex-gap-md" style={{ alignItems: 'center' }}>
-                        <h1 style={{ color: 'white', margin: 0 }}>Kira</h1>
+                        <img src={kartasLogoWhite} alt="Kartas" style={{ height: '36px' }} />
                         <span style={{ color: 'rgba(255,255,255,0.5)' }}>|</span>
                         <h2 style={{ color: 'white', margin: 0, fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-medium)' }}>{projectName}</h2>
                     </div>

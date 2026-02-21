@@ -37,7 +37,7 @@ export const authController = {
             }
 
             // Hash password
-            const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+            const passwordHash = await bcrypt.hash(password, SALT_ROUNDS)
 
             // Create admin user
             const result = await query(

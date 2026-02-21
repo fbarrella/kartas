@@ -1,8 +1,8 @@
-# Kira - Quick Start Guide
+# Kartas - Quick Start Guide
 
-## What is Kira?
+## What is Kartas?
 
-Kira is a modern, open-source alternative to Jira for agile team management. Built with React, Node.js, and PostgreSQL, it provides a comprehensive solution for managing backlogs, sprints, and kanban boards with advanced features and polished UI/UX.
+Kartas is a modern, open-source alternative to Jira for agile team management. Built with React, Node.js, and PostgreSQL, it provides a comprehensive solution for managing backlogs, sprints, and kanban boards with advanced features and polished UI/UX.
 
 ## Current Features (Phase 3 Complete)
 
@@ -94,9 +94,9 @@ docker-compose exec api npm run migrate
 ## Project Structure
 
 ```
-kira/
-├── kira-api/          # Backend (Node.js + Express + PostgreSQL)
-├── kira-app/          # Frontend (React + Vite)
+kartas/
+├── kartas-api/          # Backend (Node.js + Express + PostgreSQL)
+├── kartas-app/          # Frontend (React + Vite)
 ├── docker-compose.yml # Container orchestration
 ├── setup.sh           # Automated setup script
 └── README.md          # Full documentation
@@ -168,20 +168,20 @@ kira/
 
 ## Development Commands
 
-### Backend (kira-api)
+### Backend (kartas-api)
 
 ```bash
-cd kira-api
+cd kartas-api
 npm install          # Install dependencies
 npm run dev          # Start dev server
 npm test             # Run tests
 npm run migrate      # Run database migrations
 ```
 
-### Frontend (kira-app)
+### Frontend (kartas-app)
 
 ```bash
-cd kira-app
+cd kartas-app
 npm install          # Install dependencies
 npm run dev          # Start dev server
 npm run build        # Build for production
@@ -228,7 +228,7 @@ docker-compose exec api npm run migrate
 
 ```bash
 # Clear node_modules and reinstall
-cd kira-app
+cd kartas-app
 rm -rf node_modules
 npm install
 ```
@@ -264,7 +264,7 @@ npm install
 ## Support & Documentation
 
 - **Full Documentation**: See [README.md](README.md)
-- **Database Schema**: See `kira-api/src/migrations/`
+- **Database Schema**: See `kartas-api/src/migrations/`
 
 ## License
 

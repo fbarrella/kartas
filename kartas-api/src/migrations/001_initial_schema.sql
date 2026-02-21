@@ -1,4 +1,4 @@
--- Initial database schema for Kira project management tool
+-- Initial database schema for Kartas project management tool
 
 -- Users table
 CREATE TABLE IF NOT EXISTS users (

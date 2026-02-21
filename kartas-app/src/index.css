@@ -1,10 +1,10 @@
 :root {
-  /* Jira-inspired color palette */
-  --color-primary: #0052CC;
-  --color-primary-dark: #0747A6;
-  --color-primary-light: #4C9AFF;
+  /* Kartas color palette */
+  --color-primary: #7B00FF;
+  --color-primary-dark: #6200CC;
+  --color-primary-light: #9D4EFF;
 
-  --color-secondary: #6554C0;
+  --color-secondary: #00C3FF;
   --color-success: #00875A;
   --color-success-light: #E3FCEF;
   --color-warning: #FF8B00;
@@ -24,7 +24,8 @@
   --color-neutral-800: #253858;
   --color-neutral-900: #172B4D;
 
-  --color-background: #FAFBFC;
+  --color-charcoal: #121212;
+  --color-background: #F8F9FA;
   --color-surface: #FFFFFF;
   --color-border: #DFE1E6;
 
@@ -47,7 +48,7 @@
   --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.16);
 
   /* Typography */
-  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
   --font-size-xs: 11px;
   --font-size-sm: 12px;
   --font-size-base: 14px;

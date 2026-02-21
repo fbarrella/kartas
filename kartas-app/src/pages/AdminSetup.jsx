@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import kartasLogo from '../assets/kartas-logo.png';
 
 const AdminSetup = () => {
     const navigate = useNavigate();
@@ -59,9 +60,10 @@ const AdminSetup = () => {
     return (
         <div className="flex flex-center" style={{ minHeight: '100vh', backgroundColor: 'var(--color-background)' }}>
             <div className="card" style={{ maxWidth: '500px', width: '100%' }}>
-                <div className="card-header">
+                <div className="card-header" style={{ textAlign: 'center' }}>
+                    <img src={kartasLogo} alt="Kartas" style={{ height: '60px', marginBottom: 'var(--spacing-sm)' }} />
                     <h1 className="card-title" style={{ color: 'var(--color-primary)' }}>
-                        Welcome to Kira
+                        Welcome to Kartas
                     </h1>
                     <p className="text-muted mt-sm">
                         Let's set up your admin account to get started

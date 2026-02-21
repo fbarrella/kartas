@@ -1,7 +1,7 @@
 {
-    "name": "kira-app",
+    "name": "kartas-app",
     "version": "1.0.0",
-    "description": "Frontend for Kira project management tool",
+    "description": "Frontend for Kartas project management tool",
     "type": "module",
     "scripts": {
         "dev": "vite --host",
