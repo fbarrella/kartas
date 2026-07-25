@@ -1,9 +1,11 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import ProjectLayout from './components/ProjectLayout';
+import api from './services/api';
 
-// Pages (we'll create these)
+// Pages
 import AdminSetup from './pages/AdminSetup';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -19,6 +21,31 @@ import UserProfile from './pages/UserProfile';
 import SprintReports from './pages/SprintReports';
 
 import './index.css';
+
+// Persistent layout shell — stays mounted during all project route changes.
+// Fetches project name once per projectId and renders the layout + Outlet.
+function ProjectLayoutShell() {
+    const { projectId } = useParams();
+    const [projectName, setProjectName] = useState('Loading...');
+
+    useEffect(() => {
+        let cancelled = false;
+        api.get(`/projects/${projectId}`)
+            .then(res => {
+                if (!cancelled) setProjectName(res.data.name || 'Project');
+            })
+            .catch(() => {
+                if (!cancelled) setProjectName('Project');
+            });
+        return () => { cancelled = true; };
+    }, [projectId]);
+
+    return (
+        <ProjectLayout projectId={projectId} projectName={projectName}>
+            <Outlet />
+        </ProjectLayout>
+    );
+}
 
 function AppRoutes() {
     const { adminExists, loading } = useAuth();
@@ -53,62 +80,25 @@ function AppRoutes() {
                     </ProtectedRoute>
                 }
             />
+
+            {/* All project routes share a single persistent layout shell */}
             <Route
-                path="/project/:projectId/team"
+                path="/project/:projectId"
                 element={
                     <ProtectedRoute>
-                        <ProjectView />
+                        <ProjectLayoutShell />
                     </ProtectedRoute>
                 }
-            />
-            <Route
-                path="/project/:projectId/backlog"
-                element={
-                    <ProtectedRoute>
-                        <Backlog />
-                    </ProtectedRoute>
-                }
-            />
-            <Route
-                path="/project/:projectId/story/:storyId"
-                element={
-                    <ProtectedRoute>
-                        <StoryDetail />
-                    </ProtectedRoute>
-                }
-            />
-            <Route
-                path="/project/:projectId/sprints"
-                element={
-                    <ProtectedRoute>
-                        <Sprints />
-                    </ProtectedRoute>
-                }
-            />
-            <Route
-                path="/project/:projectId/kanban"
-                element={
-                    <ProtectedRoute>
-                        <KanbanBoard />
-                    </ProtectedRoute>
-                }
-            />
-            <Route
-                path="/project/:projectId/reports"
-                element={
-                    <ProtectedRoute>
-                        <SprintReports />
-                    </ProtectedRoute>
-                }
-            />
-            <Route
-                path="/project/:projectId/epics"
-                element={
-                    <ProtectedRoute>
-                        <Epics />
-                    </ProtectedRoute>
-                }
-            />
+            >
+                <Route path="backlog" element={<Backlog />} />
+                <Route path="epics" element={<Epics />} />
+                <Route path="sprints" element={<Sprints />} />
+                <Route path="kanban" element={<KanbanBoard />} />
+                <Route path="reports" element={<SprintReports />} />
+                <Route path="team" element={<ProjectView />} />
+                <Route path="story/:storyId" element={<StoryDetail />} />
+            </Route>
+
             <Route
                 path="/users"
                 element={

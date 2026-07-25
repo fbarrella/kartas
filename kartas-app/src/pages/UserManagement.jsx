@@ -105,12 +105,7 @@ const UserManagement = () => {
             }}>
                 <div className="container">
                     <div className="flex flex-between" style={{ alignItems: 'center' }}>
-                        <div className="flex flex-gap-md" style={{ alignItems: 'center' }}>
-                            <Link to="/" style={{ color: 'white', textDecoration: 'none' }}>
-                                ← Back to Dashboard
-                            </Link>
-                            <h1 style={{ color: 'white', margin: 0 }}>User Management</h1>
-                        </div>
+                        <h1 style={{ color: 'white', margin: 0 }}>User Management</h1>
                         <button
                             onClick={() => setShowInviteModal(true)}
                             className="btn btn-secondary"
@@ -123,6 +118,12 @@ const UserManagement = () => {
 
             {/* Main Content */}
             <div className="container" style={{ marginTop: 'var(--spacing-xl)' }}>
+                {/* Navigation */}
+                <div className="mb-lg">
+                    <Link to="/" className="btn btn-secondary btn-sm">
+                        ← Back to Dashboard
+                    </Link>
+                </div>
                 {/* Pending Invites */}
                 {pendingInvites.length > 0 && (
                     <div className="mb-xl">

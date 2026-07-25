@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import UserDropdown from './UserDropdown';
 import './navigation.css';
@@ -42,7 +43,9 @@ const ProjectLayout = ({ projectId, projectName, children }) => {
             }}>
                 <div className="container flex flex-between" style={{ alignItems: 'center' }}>
                     <div className="flex flex-gap-md" style={{ alignItems: 'center' }}>
-                        <img src={kartasLogoWhite} alt="Kartas" style={{ height: '36px' }} />
+                        <Link to="/" style={{ display: 'flex', alignItems: 'center' }}>
+                            <img src={kartasLogoWhite} alt="Kartas" style={{ height: '36px' }} />
+                        </Link>
                         <span style={{ color: 'rgba(255,255,255,0.5)' }}>|</span>
                         <h2 style={{ color: 'white', margin: 0, fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-medium)' }}>{projectName}</h2>
                     </div>

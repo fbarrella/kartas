@@ -421,6 +421,17 @@ export const sprintController = {
                 [sprintId]
             );
 
+            // Snapshot each story's current status so the report is immutable.
+            // This is the source-of-truth for completed sprint reports.
+            await query(
+                `UPDATE sprint_stories
+                 SET snapshot_status = s.status
+                 FROM stories s
+                 WHERE sprint_stories.sprint_id = $1
+                   AND sprint_stories.story_id = s.id`,
+                [sprintId]
+            );
+
             const updatedSprint = result.rows[0];
 
             res.json({

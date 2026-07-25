@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import api from '../services/api';
-import ProjectLayout from '../components/ProjectLayout';
+
 
 const KanbanBoard = () => {
     const { projectId } = useParams();
@@ -213,28 +213,24 @@ const KanbanBoard = () => {
 
     if (loading) {
         return (
-            <ProjectLayout projectId={projectId} projectName={project?.name || 'Loading...'}>
-                <div className="text-center">Loading kanban board...</div>
-            </ProjectLayout>
+            <div className="text-center">Loading kanban board...</div>
         );
     }
 
     if (!sprint) {
         return (
-            <ProjectLayout projectId={projectId} projectName={project?.name || 'Loading...'}>
-                <div className="card text-center">
-                    <h2>No Active Sprint</h2>
-                    <p className="text-muted mt-md">Start a sprint to use the kanban board</p>
-                    <Link to={`/project/${projectId}/sprints`} className="btn btn-primary mt-md">
-                        Go to Sprints
-                    </Link>
-                </div>
-            </ProjectLayout>
+            <div className="card text-center">
+                <h2>No Active Sprint</h2>
+                <p className="text-muted mt-md">Start a sprint to use the kanban board</p>
+                <Link to={`/project/${projectId}/sprints`} className="btn btn-primary mt-md">
+                    Go to Sprints
+                </Link>
+            </div>
         );
     }
 
     return (
-        <ProjectLayout projectId={projectId} projectName={project?.name || 'Loading...'}>
+        <>
             <div className="mb-md">
                 <h2 style={{ margin: 0, marginBottom: 'var(--spacing-sm)' }}>{sprint?.name || 'Kanban Board'}</h2>
                 {sprint?.objective && (
@@ -770,7 +766,7 @@ const KanbanBoard = () => {
                     </div>
                 </>
             )}
-        </ProjectLayout>
+        </>
     );
 };
 

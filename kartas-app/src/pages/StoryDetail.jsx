@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import ProjectLayout from '../components/ProjectLayout';
+
 
 const STATUS_OPTIONS = [
     { value: 'backlog', label: 'Backlog' },
@@ -163,27 +163,23 @@ const StoryDetail = () => {
 
     if (loading) {
         return (
-            <ProjectLayout projectId={projectId} projectName={project?.name || 'Loading...'}>
-                <div className="text-center">Loading story...</div>
-            </ProjectLayout>
+            <div className="text-center">Loading story...</div>
         );
     }
 
     if (!story) {
         return (
-            <ProjectLayout projectId={projectId} projectName={project?.name || 'Loading...'}>
-                <div className="card text-center">
-                    <h3>Story Not Found</h3>
-                    <button onClick={() => navigate(`/project/${projectId}/backlog`)} className="btn btn-primary mt-md">
-                        Back to Backlog
-                    </button>
-                </div>
-            </ProjectLayout>
+            <div className="card text-center">
+                <h3>Story Not Found</h3>
+                <button onClick={() => navigate(`/project/${projectId}/backlog`)} className="btn btn-primary mt-md">
+                    Back to Backlog
+                </button>
+            </div>
         );
     }
 
     return (
-        <ProjectLayout projectId={projectId} projectName={project?.name || 'Loading...'}>
+        <>
             {/* Breadcrumb */}
             <div className="mb-md">
                 <button
@@ -388,7 +384,7 @@ const StoryDetail = () => {
                     </div>
                 </div>
             </div>
-        </ProjectLayout>
+        </>
     );
 };
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import ProjectLayout from '../components/ProjectLayout';
+
 
 // Sprint with Metrics Component
 const SprintWithMetrics = ({ sprint, projectId, onEnd, navigate }) => {
@@ -33,7 +33,7 @@ const SprintWithMetrics = ({ sprint, projectId, onEnd, navigate }) => {
     };
 
     return (
-        <div className="card" style={{ borderLeft: '4px solid var(--color-success)' }}>
+        <div className="card mb-lg" style={{ borderLeft: '4px solid var(--color-success)' }}>
             <div className="flex flex-between mb-sm">
                 <div>
                     <h3 style={{ margin: 0 }}>{sprint.name}</h3>
@@ -98,7 +98,7 @@ const SprintWithMetrics = ({ sprint, projectId, onEnd, navigate }) => {
                             color: 'var(--color-neutral-600)',
                             marginBottom: '4px'
                         }}>
-                            <span>Sprint Progress</span>
+                            <span>Elapsed Time</span>
                             <span>{Math.round(progressPercent)}%</span>
                         </div>
                         <div style={{
@@ -348,7 +348,7 @@ const Sprints = () => {
     const completedSprints = sprints.filter(s => s.status === 'completed');
 
     return (
-        <ProjectLayout projectId={projectId} projectName={project?.name || 'Loading...'}>
+        <>
             <div className="flex flex-between mb-lg" style={{ alignItems: 'center' }}>
                 <h2>Sprint Management</h2>
                 <button onClick={() => setShowCreateModal(true)} className="btn btn-primary">
@@ -384,7 +384,7 @@ const Sprints = () => {
                     {plannedSprints.length > 0 && (
                         <div className="mb-xl">
                             <h3 className="mb-md">Planned Sprints</h3>
-                            <div style={{ display: 'grid', gap: 'var(--spacing-md)' }}>
+                            <div style={{ display: 'grid', gap: 'var(--spacing-lg)' }}>
                                 {plannedSprints.map(sprint => (
                                     <div key={sprint.id} className="card">
                                         <div className="flex flex-between mb-sm">
@@ -653,7 +653,7 @@ const Sprints = () => {
                     </div>
                 </div>
             )}
-        </ProjectLayout>
+        </>
     );
 };
 
