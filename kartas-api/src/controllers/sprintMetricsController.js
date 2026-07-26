@@ -78,12 +78,13 @@ export const sprintMetricsController = {
                 return res.status(403).json({ error: 'Access denied' });
             }
 
-            // Get completion metrics
+            // Get completion metrics — use snapshot_status for completed sprints
+            // so the report is frozen at sprint-end, not at current story state.
             const completionResult = await query(
                 `SELECT 
-                    COUNT(*) FILTER (WHERE s.status = 'done') as completed_stories,
+                    COUNT(*) FILTER (WHERE COALESCE(ss.snapshot_status, s.status) = 'done') as completed_stories,
                     COUNT(*) as total_stories,
-                    COALESCE(SUM(s.story_points) FILTER (WHERE s.status = 'done'), 0) as completed_points,
+                    COALESCE(SUM(s.story_points) FILTER (WHERE COALESCE(ss.snapshot_status, s.status) = 'done'), 0) as completed_points,
                     COALESCE(SUM(s.story_points), 0) as total_points
                  FROM sprint_stories ss
                  JOIN stories s ON ss.story_id = s.id
@@ -185,15 +186,15 @@ export const sprintMetricsController = {
                 [sprintId]
             );
 
-            // Get team contributions
+            // Get team contributions — use snapshot_status for completed sprints
             const teamResult = await query(
                 `SELECT 
                     u.id,
                     u.first_name,
                     u.last_name,
                     u.email,
-                    COUNT(*) FILTER (WHERE s.status = 'done') as completed_stories,
-                    COALESCE(SUM(s.story_points) FILTER (WHERE s.status = 'done'), 0) as completed_points
+                    COUNT(*) FILTER (WHERE COALESCE(ss.snapshot_status, s.status) = 'done') as completed_stories,
+                    COALESCE(SUM(s.story_points) FILTER (WHERE COALESCE(ss.snapshot_status, s.status) = 'done'), 0) as completed_points
                  FROM sprint_stories ss
                  JOIN stories s ON ss.story_id = s.id
                  LEFT JOIN users u ON s.assignee_id = u.id

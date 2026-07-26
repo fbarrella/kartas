@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import ProjectLayout from '../components/ProjectLayout';
+
 
 const STATUS_OPTIONS = [
     { value: 'backlog', label: 'Backlog', color: 'var(--color-neutral-400)' },
@@ -375,7 +375,7 @@ const Backlog = () => {
     const hasActiveFilters = !!(searchQuery || filterAssignee || filterType || filterStatus || filterEpic || filterSprint);
 
     return (
-        <ProjectLayout projectId={projectId} projectName={project?.name || 'Loading...'}>
+        <>
             {/* Page Title */}
             <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
                 <h2>
@@ -515,14 +515,13 @@ const Backlog = () => {
                         <strong>{selectedStories.length}</strong> {selectedStories.length === 1 ? 'story' : 'stories'} selected
                     </div>
 
-                    {/* Bulk Actions Grid */}
                     <div style={{
                         display: 'grid',
                         gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-                        gap: 'var(--spacing-sm)'
+                        gap: 'var(--spacing-md)'
                     }}>
                         {/* Assign to User */}
-                        <div className="flex flex-gap-xs">
+                        <div className="flex flex-gap-sm">
                             <select
                                 className="form-select"
                                 value={selectedAssignee}
@@ -547,7 +546,7 @@ const Backlog = () => {
                         </div>
 
                         {/* Change Status */}
-                        <div className="flex flex-gap-xs">
+                        <div className="flex flex-gap-sm">
                             <select
                                 className="form-select"
                                 value={selectedStatus}
@@ -571,7 +570,7 @@ const Backlog = () => {
                         </div>
 
                         {/* Assign to Epic */}
-                        <div className="flex flex-gap-xs">
+                        <div className="flex flex-gap-sm">
                             <select
                                 className="form-select"
                                 value={selectedEpic}
@@ -596,7 +595,7 @@ const Backlog = () => {
                         </div>
 
                         {/* Add to Sprint */}
-                        <div className="flex flex-gap-xs">
+                        <div className="flex flex-gap-sm">
                             <select
                                 className="form-select"
                                 value={selectedSprint}
@@ -966,7 +965,7 @@ const Backlog = () => {
                     </div>
                 </div>
             )}
-        </ProjectLayout>
+        </>
     );
 };
 

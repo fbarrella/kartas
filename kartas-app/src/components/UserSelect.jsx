@@ -78,7 +78,7 @@ const UserSelect = ({ onSelect, label = "Search User" }) => {
                                     {user.firstName[0]}{user.lastName[0]}
                                 </div>
                                 <div className="user-info">
-                                    <span className="user-name">
+                                    <span className="user-display-name">
                                         {user.firstName} {user.lastName}
                                     </span>
                                     <span className="user-email">

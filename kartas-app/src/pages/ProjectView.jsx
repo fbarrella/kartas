@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../services/api';
 import UserSelect from '../components/UserSelect';
-import ProjectLayout from '../components/ProjectLayout';
+
 
 const ProjectView = () => {
     const { projectId } = useParams();
@@ -75,7 +75,7 @@ const ProjectView = () => {
     }
 
     return (
-        <ProjectLayout projectId={projectId} projectName={project?.name || 'Loading...'}>
+        <>
             {/* Page Title and Actions */}
             <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
                 <h2 style={{ margin: 0 }}>Team Members</h2>
@@ -178,7 +178,7 @@ const ProjectView = () => {
                     </div>
                 </div>
             )}
-        </ProjectLayout>
+        </>
     );
 };
 

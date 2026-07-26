@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../services/api';
 import BurndownChart from '../components/BurndownChart';
 import TimeInStatusChart from '../components/TimeInStatusChart';
-import ProjectLayout from '../components/ProjectLayout';
+
 
 const SprintReports = () => {
     const { projectId } = useParams();
@@ -54,30 +54,26 @@ const SprintReports = () => {
 
     if (loading && !report) {
         return (
-            <ProjectLayout projectId={projectId} projectName="Loading...">
-                <div className="text-center">Loading...</div>
-            </ProjectLayout>
+            <div className="text-center">Loading...</div>
         );
     }
 
     if (sprints.length === 0) {
         return (
-            <ProjectLayout projectId={projectId} projectName="Loading...">
-                <div className="card text-center">
-                    <h2>No Completed Sprints</h2>
-                    <p className="text-muted mt-md">
-                        Complete a sprint to view metrics and reports.
-                    </p>
-                    <Link to={`/project/${projectId}/sprints`} className="btn btn-primary mt-md">
-                        Go to Sprints
-                    </Link>
-                </div>
-            </ProjectLayout>
+            <div className="card text-center">
+                <h2>No Completed Sprints</h2>
+                <p className="text-muted mt-md">
+                    Complete a sprint to view metrics and reports.
+                </p>
+                <Link to={`/project/${projectId}/sprints`} className="btn btn-primary mt-md">
+                    Go to Sprints
+                </Link>
+            </div>
         );
     }
 
     return (
-        <ProjectLayout projectId={projectId} projectName="Sprint Reports">
+        <>
             {/* Sprint Selector */}
             <div style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 'var(--spacing-md)', marginBottom: 'var(--spacing-lg)' }}>
                 <div className="flex flex-gap-md" style={{ alignItems: 'center' }}>
@@ -199,7 +195,7 @@ const SprintReports = () => {
                     </div>
                 </>
             )}
-        </ProjectLayout>
+        </>
     );
 };
 

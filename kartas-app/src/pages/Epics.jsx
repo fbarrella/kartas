@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../services/api';
-import ProjectLayout from '../components/ProjectLayout';
+
 
 const Epics = () => {
     const { projectId } = useParams();
@@ -144,7 +144,7 @@ const Epics = () => {
     }
 
     return (
-        <ProjectLayout projectId={projectId} projectName={project?.name || 'Loading...'}>
+        <>
             <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
                 <h2 style={{ margin: 0 }}>Epics</h2>
                 <button onClick={() => handleOpenModal()} className="btn btn-primary">
@@ -442,7 +442,7 @@ const Epics = () => {
                     </div>
                 </div>
             )}
-        </ProjectLayout >
+        </>
     );
 };
 
