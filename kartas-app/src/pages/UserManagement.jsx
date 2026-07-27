@@ -16,6 +16,17 @@ const UserManagement = () => {
         role: 'member'
     });
     const [inviteLink, setInviteLink] = useState('');
+    const [inviteEmailSent, setInviteEmailSent] = useState(false);
+    const [inviteEmailReason, setInviteEmailReason] = useState(null);
+    const [inviteEmailDetail, setInviteEmailDetail] = useState(null);
+    const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+    const [createUserForm, setCreateUserForm] = useState({
+        email: '',
+        password: '',
+        firstName: '',
+        lastName: '',
+        role: 'member'
+    });
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
 
@@ -52,6 +63,9 @@ const UserManagement = () => {
         try {
             const response = await api.post('/invites/generate', inviteForm);
             setInviteLink(response.data.inviteLink);
+            setInviteEmailSent(response.data.emailSent);
+            setInviteEmailReason(response.data.emailReason);
+            setInviteEmailDetail(response.data.emailDetail);
             setSuccessMessage('Invite generated successfully!');
             fetchPendingInvites();
         } catch (error) {
@@ -69,6 +83,31 @@ const UserManagement = () => {
         setShowInviteModal(false);
         setInviteForm({ email: '', role: 'member' });
         setInviteLink('');
+        setInviteEmailSent(false);
+        setInviteEmailReason(null);
+        setInviteEmailDetail(null);
+        setError('');
+    };
+
+    const handleCreateUser = async (e) => {
+        e.preventDefault();
+        setError('');
+        setSuccessMessage('');
+
+        try {
+            await api.post('/users', createUserForm);
+            setSuccessMessage('User created successfully');
+            closeCreateUserModal();
+            fetchUsers();
+            setTimeout(() => setSuccessMessage(''), 3000);
+        } catch (error) {
+            setError(error.response?.data?.error || 'Failed to create user');
+        }
+    };
+
+    const closeCreateUserModal = () => {
+        setShowCreateUserModal(false);
+        setCreateUserForm({ email: '', password: '', firstName: '', lastName: '', role: 'member' });
         setError('');
     };
 
@@ -121,12 +160,20 @@ const UserManagement = () => {
                 <div className="container">
                     <div className="flex flex-between" style={{ alignItems: 'center' }}>
                         <h1 style={{ color: 'white', margin: 0 }}>User Management</h1>
-                        <button
-                            onClick={() => setShowInviteModal(true)}
-                            className="btn btn-secondary"
-                        >
-                            + Invite User
-                        </button>
+                        <div className="flex flex-gap-sm">
+                            <button
+                                onClick={() => setShowCreateUserModal(true)}
+                                className="btn btn-secondary"
+                            >
+                                + Create User
+                            </button>
+                            <button
+                                onClick={() => setShowInviteModal(true)}
+                                className="btn btn-secondary"
+                            >
+                                + Invite User
+                            </button>
+                        </div>
                     </div>
                 </div>
             </header>
@@ -313,6 +360,28 @@ const UserManagement = () => {
                         ) : (
                             <div>
                                 <div className="modal-body">
+                                    {inviteEmailSent ? (
+                                        <div
+                                            className="card mb-md"
+                                            style={{ backgroundColor: 'var(--color-success-light)', borderLeft: '4px solid var(--color-success)' }}
+                                        >
+                                            ✓ Invitation email sent to {inviteForm.email}. You can also share the link below directly.
+                                        </div>
+                                    ) : inviteEmailReason === 'not_configured' ? (
+                                        <div
+                                            className="card mb-md"
+                                            style={{ borderLeft: '4px solid var(--color-warning)' }}
+                                        >
+                                            Email sending is not configured on the server{inviteEmailDetail ? ` (${inviteEmailDetail})` : ''}. Share this link with {inviteForm.email} directly:
+                                        </div>
+                                    ) : (
+                                        <div
+                                            className="card mb-md"
+                                            style={{ backgroundColor: 'var(--color-danger-light)', borderLeft: '4px solid var(--color-danger)' }}
+                                        >
+                                            Failed to send the invitation email to {inviteForm.email}{inviteEmailDetail ? `: ${inviteEmailDetail}` : ''}. Share this link directly instead:
+                                        </div>
+                                    )}
                                     <div className="form-group">
                                         <label className="form-label">Invite Link</label>
                                         <div className="flex flex-gap-sm">
@@ -341,6 +410,91 @@ const UserManagement = () => {
                                 </div>
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* Create User Modal */}
+            {showCreateUserModal && (
+                <div className="modal-overlay" onClick={closeCreateUserModal}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>Create User</h2>
+                            <button onClick={closeCreateUserModal} className="btn-close">×</button>
+                        </div>
+                        <form onSubmit={handleCreateUser}>
+                            <div className="modal-body">
+                                <div className="form-group">
+                                    <label className="form-label">Email Address</label>
+                                    <input
+                                        type="email"
+                                        className="form-input"
+                                        value={createUserForm.email}
+                                        onChange={(e) => setCreateUserForm({ ...createUserForm, email: e.target.value })}
+                                        required
+                                    />
+                                </div>
+
+                                <div className="form-group">
+                                    <label className="form-label">First Name</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        value={createUserForm.firstName}
+                                        onChange={(e) => setCreateUserForm({ ...createUserForm, firstName: e.target.value })}
+                                        required
+                                    />
+                                </div>
+
+                                <div className="form-group">
+                                    <label className="form-label">Last Name</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        value={createUserForm.lastName}
+                                        onChange={(e) => setCreateUserForm({ ...createUserForm, lastName: e.target.value })}
+                                        required
+                                    />
+                                </div>
+
+                                <div className="form-group">
+                                    <label className="form-label">Temporary Password</label>
+                                    <input
+                                        type="password"
+                                        className="form-input"
+                                        value={createUserForm.password}
+                                        onChange={(e) => setCreateUserForm({ ...createUserForm, password: e.target.value })}
+                                        minLength={8}
+                                        required
+                                    />
+                                    <small className="text-muted">User will be required to change this on first login.</small>
+                                </div>
+
+                                <div className="form-group">
+                                    <label className="form-label">Role</label>
+                                    <select
+                                        className="form-select"
+                                        value={createUserForm.role}
+                                        onChange={(e) => setCreateUserForm({ ...createUserForm, role: e.target.value })}
+                                    >
+                                        <option value="member">Member</option>
+                                        <option value="project_owner">Project Owner</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                </div>
+
+                                {error && <div className="form-error">{error}</div>}
+                            </div>
+
+                            <div className="modal-footer">
+                                <button type="button" onClick={closeCreateUserModal} className="btn btn-secondary">
+                                    Cancel
+                                </button>
+                                <button type="submit" className="btn btn-primary">
+                                    Create User
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
