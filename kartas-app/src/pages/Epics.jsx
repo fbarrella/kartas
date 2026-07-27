@@ -19,6 +19,7 @@ const Epics = () => {
         color: '#0052CC'
     });
     const [error, setError] = useState('');
+    const [showCompleted, setShowCompleted] = useState(false);
 
     const EPIC_COLORS = [
         { value: '#0052CC', label: 'Blue' },
@@ -143,13 +144,27 @@ const Epics = () => {
         return <div className="container mt-lg">Loading epics...</div>;
     }
 
+    const visibleEpics = epics.filter(epic =>
+        showCompleted || (epic.status !== 'completed' && epic.status !== 'cancelled')
+    );
+
     return (
         <>
             <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
                 <h2 style={{ margin: 0 }}>Epics</h2>
-                <button onClick={() => handleOpenModal()} className="btn btn-primary">
-                    + Create Epic
-                </button>
+                <div className="flex flex-gap-md" style={{ alignItems: 'center' }}>
+                    <label className="flex flex-gap-sm" style={{ alignItems: 'center', fontSize: 'var(--font-size-sm)', cursor: 'pointer' }}>
+                        <input
+                            type="checkbox"
+                            checked={showCompleted}
+                            onChange={(e) => setShowCompleted(e.target.checked)}
+                        />
+                        Show completed epics
+                    </label>
+                    <button onClick={() => handleOpenModal()} className="btn btn-primary">
+                        + Create Epic
+                    </button>
+                </div>
             </div>
             {error && (
                 <div className="card mb-md" style={{ backgroundColor: 'var(--color-danger-light)', borderLeft: '4px solid var(--color-danger)' }}>
@@ -165,13 +180,18 @@ const Epics = () => {
                         Create Epic
                     </button>
                 </div>
+            ) : visibleEpics.length === 0 ? (
+                <div className="card text-center">
+                    <h3>No Epics to Show</h3>
+                    <p className="text-muted mt-sm">All epics are completed or cancelled. Check "Show completed epics" to see them.</p>
+                </div>
             ) : (
                 <div style={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
                     gap: 'var(--spacing-md)'
                 }}>
-                    {epics.map((epic) => (
+                    {visibleEpics.map((epic) => (
                         <Link
                             key={epic.id}
                             to={`/project/${projectId}/backlog?epic=${epic.id}`}
@@ -209,44 +229,33 @@ const Epics = () => {
                                         </span>
                                     </div>
 
-                                    {/* Progress Bar */}
-                                    {epic.start_date && epic.end_date && (() => {
-                                        const start = new Date(epic.start_date);
-                                        const end = new Date(epic.end_date);
-                                        const today = new Date();
-                                        const total = end - start;
-                                        const elapsed = today - start;
-                                        const progressPercent = Math.min(Math.max((elapsed / total) * 100, 0), 100);
-
-                                        return (
-                                            <div style={{ marginTop: 'var(--spacing-sm)' }}>
-                                                <div style={{
-                                                    display: 'flex',
-                                                    justifyContent: 'space-between',
-                                                    fontSize: 'var(--font-size-sm)',
-                                                    color: 'var(--color-neutral-600)',
-                                                    marginBottom: '4px'
-                                                }}>
-                                                    <span>Progress</span>
-                                                    <span>{Math.round(progressPercent)}%</span>
-                                                </div>
-                                                <div style={{
-                                                    width: '100%',
-                                                    height: '6px',
-                                                    backgroundColor: 'var(--color-neutral-100)',
-                                                    borderRadius: '3px',
-                                                    overflow: 'hidden'
-                                                }}>
-                                                    <div style={{
-                                                        width: `${progressPercent}%`,
-                                                        height: '100%',
-                                                        backgroundColor: epic.color || '#0052CC',
-                                                        transition: 'width 0.3s ease'
-                                                    }} />
-                                                </div>
-                                            </div>
-                                        );
-                                    })()}
+                                    {/* Progress Bar — based on completed vs. total stories */}
+                                    <div style={{ marginTop: 'var(--spacing-sm)' }}>
+                                        <div style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            fontSize: 'var(--font-size-sm)',
+                                            color: 'var(--color-neutral-600)',
+                                            marginBottom: '4px'
+                                        }}>
+                                            <span>Progress</span>
+                                            <span>{epic.progress_percent ?? 0}%</span>
+                                        </div>
+                                        <div style={{
+                                            width: '100%',
+                                            height: '6px',
+                                            backgroundColor: 'var(--color-neutral-100)',
+                                            borderRadius: '3px',
+                                            overflow: 'hidden'
+                                        }}>
+                                            <div style={{
+                                                width: `${epic.progress_percent ?? 0}%`,
+                                                height: '100%',
+                                                backgroundColor: epic.color || '#0052CC',
+                                                transition: 'width 0.3s ease'
+                                            }} />
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {epic.description && (

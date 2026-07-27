@@ -95,6 +95,16 @@ describe('Story Endpoints', () => {
             expect(res.body).toHaveProperty('title', 'Updated Story Title');
             expect(res.body).toHaveProperty('status', 'in_development');
         });
+
+        it('should toggle isBlocked', async () => {
+            const res = await request(app)
+                .put(`/api/stories/${testStoryId}`)
+                .set('Authorization', `Bearer ${adminToken}`)
+                .send({ isBlocked: true });
+
+            expect(res.status).toBe(200);
+            expect(res.body).toHaveProperty('isBlocked', true);
+        });
     });
 
     describe('DELETE /api/stories/:storyId', () => {

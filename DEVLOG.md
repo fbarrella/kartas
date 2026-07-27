@@ -4,6 +4,75 @@ Development log for all Phase 4 changes. Each entry records what was done, which
 
 ---
 
+## [2026-07-26] — BL-01 — Hide Completed/Cancelled Stories by Default
+
+- **Author**: Claude
+- **PRD Requirement**: BL-01
+- **Summary**: Backlog stories with status `done` or `cancelled` cluttered the default view. Added a `showCompleted` local state flag (default `false`) that excludes `done`/`cancelled` stories from `filteredStories` unless enabled. Added a "Show completed stories" checkbox in the Filter Bar's quick-filters row. The toggle is independent of `hasActiveFilters`/`clearAllFilters` — it's a display preference, not a filter criterion, so "Clear All" doesn't silently re-hide stories the user chose to reveal.
+- **Files Changed**:
+  - `kartas-app/src/pages/Backlog.jsx` — Added `showCompleted` state, filter exclusion, and checkbox UI
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-26] — BL-02 — Blocked Task Indicator
+
+- **Author**: Claude
+- **PRD Requirement**: BL-02
+- **Summary**: Added a boolean `is_blocked` column to `stories` (migration 007). Exposed as `isBlocked` in the stories API (`getProjectStories`, `getStory`, `updateStory` — with change-history tracking) and in the kanban board API (`getKanbanBoard`). Backlog table rows, the Backlog/Kanban story-details modals, the Kanban card footer, and the Story Detail page header now render a "🚫 Blocked" badge (`.badge-danger`) when set. Users can toggle the flag from a checkbox on the Story Detail form or from a new "Mark as Blocked"/"Unblock" item in the Kanban card's right-click context menu (reuses the existing `PUT /api/stories/:id` endpoint, no new route needed).
+- **Files Changed**:
+  - `kartas-api/src/migrations/007_add_story_blocked.sql` — New migration adding `stories.is_blocked`
+  - `kartas-api/src/controllers/storyController.js` — `isBlocked` in create/list/get/update responses, change tracking, and UPDATE statement
+  - `kartas-api/src/controllers/kanbanController.js` — `isBlocked` added to kanban board story mapping
+  - `kartas-api/src/routes/stories.js` — `isBlocked` validation on `validateStoryUpdate`
+  - `kartas-app/src/pages/Backlog.jsx` — Blocked badge on table row and details modal
+  - `kartas-app/src/pages/KanbanBoard.jsx` — Blocked badge on cards and details modal, `handleToggleBlocked`, context menu item
+  - `kartas-app/src/pages/StoryDetail.jsx` — Blocked checkbox in form, blocked badge in page title
+  - `kartas-api/tests/stories.test.js` — Test asserting `isBlocked` round-trips through `PUT /api/stories/:storyId`
+- **Migration**: `007_add_story_blocked.sql`
+- **Status**: Done
+
+---
+
+## [2026-07-26] — EP-01 — Story-Based Epic Progress
+
+- **Author**: Claude
+- **PRD Requirement**: EP-01
+- **Summary**: The epic progress bar previously computed elapsed time between `start_date`/`end_date`, unrelated to actual completion. Replaced with `(done stories / total stories) × 100`, computed server-side. `epicController.getEpics`/`getEpic` now count done stories via `COUNT(s.id) FILTER (WHERE s.status = 'done')` alongside the existing story-count join, and return `progress_percent` (0 when there are no stories). The frontend progress bar now always renders (previously gated on both dates being set) and reads `epic.progress_percent` directly instead of computing time elapsed.
+- **Files Changed**:
+  - `kartas-api/src/controllers/epicController.js` — `done_story_count` + `progress_percent` computation in `getEpics` and `getEpic`
+  - `kartas-app/src/pages/Epics.jsx` — Replaced time-based progress IIFE with `progress_percent`-driven bar
+  - `kartas-api/tests/epics.test.js` — New test file covering 0-story (0%) and partial-completion (50%) cases
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-26] — Fix epic_id global collision on creation
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (pre-existing bug found while verifying EP-01/EP-02)
+- **Summary**: `epics.epic_id` (e.g. `EPIC-0001`) has a global `UNIQUE` constraint across all projects, but `createEpic` generated the next number by counting epics scoped to the current project only. Any project other than the very first one ever created would collide on `EPIC-0001` and fail with a 500 on its first epic. A correctly-designed `generateNextEpicId()` utility (global `MAX`-based lookup) already existed in `ticketPrefix.js` but was never wired up — `createEpic` had its own broken inline logic instead. Fixed by replacing the inline per-project `COUNT(*)` logic with a call to the existing `generateNextEpicId()` utility, matching the pattern already used for story IDs via `generateNextStoryId()`.
+- **Files Changed**:
+  - `kartas-api/src/controllers/epicController.js` — `createEpic` now calls `generateNextEpicId()` instead of computing `epic_id` inline
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-26] — EP-02 — Hide Completed/Cancelled Epics by Default
+
+- **Author**: Claude
+- **PRD Requirement**: EP-02
+- **Summary**: Epics with status `completed` or `cancelled` cluttered the Epics management page. Added a `showCompleted` local state flag (default `false`) and a `visibleEpics` derived list that excludes concluded epics unless the "Show completed epics" checkbox (placed next to "+ Create Epic") is checked. The genuine "No Epics Yet" empty state remains keyed off the full `epics` list; a separate "No Epics to Show" message appears when all epics are hidden by the filter.
+- **Files Changed**:
+  - `kartas-app/src/pages/Epics.jsx` — Added `showCompleted` state, `visibleEpics` filter, checkbox UI, and distinct empty states
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
 ## [2026-07-25] — UI-03 — Fix page blink on navigation
 
 - **Author**: Antigravity AI

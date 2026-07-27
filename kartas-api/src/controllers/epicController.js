@@ -1,4 +1,5 @@
 import { query } from '../config/database.js';
+import { generateNextEpicId } from '../utils/ticketPrefix.js';
 
 export const epicController = {
     // Get all epics for a project
@@ -17,11 +18,12 @@ export const epicController = {
                 return res.status(403).json({ error: 'Access denied' });
             }
 
-            // Get epics with story count
+            // Get epics with story count and done-story count
             const result = await query(
-                `SELECT e.*, 
+                `SELECT e.*,
                         u.first_name || ' ' || u.last_name as creator_name,
-                        COUNT(s.id) as story_count
+                        COUNT(s.id) as story_count,
+                        COUNT(s.id) FILTER (WHERE s.status = 'done') as done_story_count
                  FROM epics e
                  LEFT JOIN users u ON e.created_by = u.id
                  LEFT JOIN stories s ON e.id = s.epic_id
@@ -31,7 +33,16 @@ export const epicController = {
                 [projectId]
             );
 
-            res.json(result.rows);
+            res.json(result.rows.map(epic => {
+                const total = parseInt(epic.story_count);
+                const done = parseInt(epic.done_story_count);
+                return {
+                    ...epic,
+                    story_count: total,
+                    done_story_count: done,
+                    progress_percent: total > 0 ? Math.round((done / total) * 100) : 0
+                };
+            }));
         } catch (error) {
             console.error('Error fetching epics:', error);
             res.status(500).json({ error: 'Server error' });
@@ -45,9 +56,10 @@ export const epicController = {
             const userId = req.user.userId;
 
             const result = await query(
-                `SELECT e.*, 
+                `SELECT e.*,
                         u.first_name || ' ' || u.last_name as creator_name,
-                        COUNT(s.id) as story_count
+                        COUNT(s.id) as story_count,
+                        COUNT(s.id) FILTER (WHERE s.status = 'done') as done_story_count
                  FROM epics e
                  LEFT JOIN users u ON e.created_by = u.id
                  LEFT JOIN stories s ON e.id = s.epic_id
@@ -61,6 +73,11 @@ export const epicController = {
             }
 
             const epic = result.rows[0];
+            const totalStories = parseInt(epic.story_count);
+            const doneStories = parseInt(epic.done_story_count);
+            epic.story_count = totalStories;
+            epic.done_story_count = doneStories;
+            epic.progress_percent = totalStories > 0 ? Math.round((doneStories / totalStories) * 100) : 0;
 
             // Verify user has access to project
             const accessCheck = await query(
@@ -101,13 +118,9 @@ export const epicController = {
                 return res.status(400).json({ error: 'Title is required' });
             }
 
-            // Generate epic_id (EPIC-0001, EPIC-0002, etc.)
-            const countResult = await query(
-                'SELECT COUNT(*) as count FROM epics WHERE project_id = $1',
-                [projectId]
-            );
-            const epicNumber = parseInt(countResult.rows[0].count) + 1;
-            const epicId = `EPIC-${epicNumber.toString().padStart(4, '0')}`;
+            // Generate epic_id (EPIC-0001, EPIC-0002, etc.) — globally unique, since epics.epic_id
+            // has a global UNIQUE constraint spanning all projects, not just this one
+            const epicId = await generateNextEpicId();
 
             const result = await query(
                 `INSERT INTO epics (epic_id, project_id, title, description, start_date, end_date, color, created_by)

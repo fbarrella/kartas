@@ -45,6 +45,7 @@ const Backlog = () => {
     const [filterEpic, setFilterEpic] = useState('');
     const [filterSprint, setFilterSprint] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
+    const [showCompleted, setShowCompleted] = useState(false);
     const [addingToSprint, setAddingToSprint] = useState(false);
     const [epics, setEpics] = useState([]);
     const [newStory, setNewStory] = useState({
@@ -300,6 +301,9 @@ const Backlog = () => {
 
     // Enhanced filtering with multiple criteria
     const filteredStories = stories.filter(story => {
+        // Hide completed/cancelled stories unless "Show completed stories" is checked
+        if (!showCompleted && (story.status === 'done' || story.status === 'cancelled')) return false;
+
         // Search query (title or ID)
         if (searchQuery) {
             const query = searchQuery.toLowerCase();
@@ -430,6 +434,14 @@ const Backlog = () => {
                             Ready
                         </button>
                     </div>
+                    <label className="flex flex-gap-sm" style={{ alignItems: 'center', fontSize: 'var(--font-size-sm)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        <input
+                            type="checkbox"
+                            checked={showCompleted}
+                            onChange={(e) => setShowCompleted(e.target.checked)}
+                        />
+                        Show completed stories
+                    </label>
                 </div>
 
                 {/* Advanced Filters */}
@@ -730,6 +742,11 @@ const Backlog = () => {
                                         onClick={() => navigate(`/project/${projectId}/story/${story.id}`)}
                                     >
                                         {story.title}
+                                        {story.isBlocked && (
+                                            <span className="badge badge-danger" style={{ marginLeft: '6px', fontSize: '10px', padding: '2px 6px' }}>
+                                                🚫 Blocked
+                                            </span>
+                                        )}
                                     </td>
                                     <td style={{ padding: 'var(--spacing-sm)' }}>
                                         {story.epicTitle && (
@@ -937,6 +954,14 @@ const Backlog = () => {
                                     <strong>Status:</strong>
                                     <p className="mt-xs">
                                         {STATUS_OPTIONS.find(s => s.value === selectedStory.status)?.label}
+                                    </p>
+                                </div>
+                                <div>
+                                    <strong>Blocked:</strong>
+                                    <p className="mt-xs">
+                                        {selectedStory.isBlocked ? (
+                                            <span className="badge badge-danger" style={{ fontSize: '10px', padding: '2px 6px' }}>🚫 Blocked</span>
+                                        ) : 'No'}
                                     </p>
                                 </div>
                                 <div>
