@@ -8,6 +8,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import projectRoutes from './routes/projects.js';
 import storyRoutes from './routes/stories.js';
+import subTaskRoutes from './routes/subTasks.js';
 import sprintRoutes from './routes/sprints.js';
 import kanbanRoutes from './routes/kanban.js';
 import epicRoutes from './routes/epics.js';
@@ -42,6 +43,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/stories', storyRoutes);
+app.use('/api/sub-tasks', subTaskRoutes);
 app.use('/api/sprints', sprintRoutes);
 app.use('/api/kanban', kanbanRoutes);
 app.use('/api/invites', inviteRoutes);

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 
 const Epics = () => {
     const { projectId } = useParams();
+    const { user } = useAuth();
     const [project, setProject] = useState(null);
     const [epics, setEpics] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -148,6 +150,9 @@ const Epics = () => {
         showCompleted || (epic.status !== 'completed' && epic.status !== 'cancelled')
     );
 
+    const myRole = project?.members?.find(m => m.id === user?.id)?.role;
+    const canManageEpics = myRole === 'owner' || user?.role === 'admin';
+
     return (
         <>
             <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
@@ -161,9 +166,11 @@ const Epics = () => {
                         />
                         Show completed epics
                     </label>
-                    <button onClick={() => handleOpenModal()} className="btn btn-primary">
-                        + Create Epic
-                    </button>
+                    {canManageEpics && (
+                        <button onClick={() => handleOpenModal()} className="btn btn-primary">
+                            + Create Epic
+                        </button>
+                    )}
                 </div>
             </div>
             {error && (
@@ -175,10 +182,14 @@ const Epics = () => {
             {epics.length === 0 ? (
                 <div className="card text-center">
                     <h3>No Epics Yet</h3>
-                    <p className="text-muted mt-sm">Create your first epic to organize your stories</p>
-                    <button onClick={() => handleOpenModal()} className="btn btn-primary mt-md">
-                        Create Epic
-                    </button>
+                    <p className="text-muted mt-sm">
+                        {canManageEpics ? 'Create your first epic to organize your stories' : 'No epics have been created for this project yet'}
+                    </p>
+                    {canManageEpics && (
+                        <button onClick={() => handleOpenModal()} className="btn btn-primary mt-md">
+                            Create Epic
+                        </button>
+                    )}
                 </div>
             ) : visibleEpics.length === 0 ? (
                 <div className="card text-center">
@@ -292,23 +303,25 @@ const Epics = () => {
                                     </div>
                                 </div>
 
-                                <div className="flex flex-gap-sm mt-md">
-                                    <button
-                                        onClick={() => handleOpenModal(epic)}
-                                        className="btn btn-secondary btn-sm"
-                                        style={{ flex: 1 }}
-                                    >
-                                        Edit
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(epic.id)}
-                                        className="btn btn-danger btn-sm"
-                                        disabled={parseInt(epic.story_count) > 0}
-                                        title={parseInt(epic.story_count) > 0 ? 'Cannot delete epic with stories' : 'Delete epic'}
-                                    >
-                                        Delete
-                                    </button>
-                                </div>
+                                {canManageEpics && (
+                                    <div className="flex flex-gap-sm mt-md">
+                                        <button
+                                            onClick={() => handleOpenModal(epic)}
+                                            className="btn btn-secondary btn-sm"
+                                            style={{ flex: 1 }}
+                                        >
+                                            Edit
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(epic.id)}
+                                            className="btn btn-danger btn-sm"
+                                            disabled={parseInt(epic.story_count) > 0}
+                                            title={parseInt(epic.story_count) > 0 ? 'Cannot delete epic with stories' : 'Delete epic'}
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </Link>
                     ))}

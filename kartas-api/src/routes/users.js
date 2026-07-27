@@ -20,12 +20,17 @@ const validatePasswordChange = [
     body('newPassword').isLength({ min: 8 })
 ];
 
+const validateRoleUpdate = [
+    body('role').isIn(['admin', 'project_owner', 'member'])
+];
+
 // Routes
 router.get('/', userController.getAllUsers);
 router.get('/search', userController.searchUsers);
 router.get('/profile', userController.getProfile);
 router.put('/profile', validateProfileUpdate, userController.updateProfile);
 router.put('/password', validatePasswordChange, userController.changePassword);
+router.put('/:id/role', validateRoleUpdate, userController.updateUserRole);
 router.delete('/:id', userController.deleteUser);
 
 export default router;

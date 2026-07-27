@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import SubItemEditModal, { SUBITEM_TYPE_OPTIONS, SUBITEM_STATUS_OPTIONS } from '../components/SubItemEditModal';
 
 
 const STATUS_OPTIONS = [
@@ -33,6 +34,8 @@ const StoryDetail = () => {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
+    const [showSubItemModal, setShowSubItemModal] = useState(false);
+    const [editingSubItem, setEditingSubItem] = useState(null); // null = create mode
 
     const [formData, setFormData] = useState({
         title: '',
@@ -160,6 +163,26 @@ const StoryDetail = () => {
             setTimeout(() => setSuccessMessage(''), 3000);
         } catch (error) {
             setError(error.response?.data?.error || 'Failed to remove story from sprint');
+        }
+    };
+
+    const openCreateSubItem = () => {
+        setEditingSubItem(null);
+        setShowSubItemModal(true);
+    };
+
+    const openEditSubItem = (item) => {
+        setEditingSubItem(item);
+        setShowSubItemModal(true);
+    };
+
+    const handleDeleteSubItem = async (id) => {
+        if (!confirm('Delete this sub-item?')) return;
+        try {
+            await api.delete(`/sub-tasks/${id}`);
+            await fetchStory();
+        } catch (error) {
+            console.error('Error deleting sub-item:', error);
         }
     };
 
@@ -402,6 +425,71 @@ const StoryDetail = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Sub-items Section */}
+            <div className="card mt-md">
+                <div className="card-header flex flex-between" style={{ alignItems: 'center' }}>
+                    <h3 className="card-title">Sub-items</h3>
+                    <button onClick={openCreateSubItem} className="btn btn-primary btn-sm">
+                        + Add Sub-item
+                    </button>
+                </div>
+
+                {story.subTasks && story.subTasks.length > 0 ? (
+                    story.subTasks.map(item => {
+                        const typeOpt = SUBITEM_TYPE_OPTIONS.find(t => t.value === item.type);
+                        const statusOpt = SUBITEM_STATUS_OPTIONS.find(s => s.value === item.status);
+                        return (
+                            <div key={item.id} className="flex flex-between mb-sm" style={{
+                                padding: 'var(--spacing-sm)',
+                                backgroundColor: 'var(--color-background)',
+                                borderRadius: 'var(--radius-sm)',
+                                alignItems: 'center'
+                            }}>
+                                <div className="flex flex-gap-sm" style={{ alignItems: 'center', flex: 1 }}>
+                                    <span title={item.type}>{typeOpt?.icon}</span>
+                                    <span>{item.title}</span>
+                                    <span className="badge" style={{
+                                        fontSize: '10px', padding: '2px 6px',
+                                        backgroundColor: statusOpt?.color, color: 'white'
+                                    }}>
+                                        {statusOpt?.label}
+                                    </span>
+                                    {item.storyPoints != null && (
+                                        <span className="badge badge-neutral" style={{ fontSize: '10px', padding: '2px 6px' }}>
+                                            {item.storyPoints}
+                                        </span>
+                                    )}
+                                    <span className="text-small text-muted">
+                                        {item.assigneeName ? `@${item.assigneeName.split(' ')[0]}` : 'Unassigned'}
+                                    </span>
+                                </div>
+                                <div className="flex flex-gap-xs">
+                                    <button onClick={() => openEditSubItem(item)} className="btn btn-secondary btn-sm">
+                                        Edit
+                                    </button>
+                                    <button onClick={() => handleDeleteSubItem(item.id)} className="btn btn-danger btn-sm">
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })
+                ) : (
+                    <div className="text-small text-muted">No sub-items yet</div>
+                )}
+            </div>
+
+            {showSubItemModal && (
+                <SubItemEditModal
+                    mode={editingSubItem ? 'edit' : 'create'}
+                    storyId={storyId}
+                    subItem={editingSubItem}
+                    members={members}
+                    onClose={() => setShowSubItemModal(false)}
+                    onSaved={fetchStory}
+                />
+            )}
         </>
     );
 };

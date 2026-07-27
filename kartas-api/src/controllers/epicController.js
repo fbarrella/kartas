@@ -103,14 +103,15 @@ export const epicController = {
             const { title, description, startDate, endDate, color } = req.body;
             const userId = req.user.userId;
 
-            // Verify user has access to project
+            // Verify user is a project owner (or global admin)
             const accessCheck = await query(
-                'SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2',
+                `SELECT pm.role FROM project_members pm
+                 WHERE pm.project_id = $1 AND pm.user_id = $2 AND pm.role = 'owner'`,
                 [projectId, userId]
             );
 
             if (accessCheck.rows.length === 0 && req.user.role !== 'admin') {
-                return res.status(403).json({ error: 'Access denied' });
+                return res.status(403).json({ error: 'Only project owners can create epics' });
             }
 
             // Validate required fields
@@ -152,18 +153,19 @@ export const epicController = {
 
             const epic = epicResult.rows[0];
 
-            // Verify user has access to project
+            // Verify user is a project owner (or global admin)
             const accessCheck = await query(
-                'SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2',
+                `SELECT pm.role FROM project_members pm
+                 WHERE pm.project_id = $1 AND pm.user_id = $2 AND pm.role = 'owner'`,
                 [epic.project_id, userId]
             );
 
             if (accessCheck.rows.length === 0 && req.user.role !== 'admin') {
-                return res.status(403).json({ error: 'Access denied' });
+                return res.status(403).json({ error: 'Only project owners can update epics' });
             }
 
             const result = await query(
-                `UPDATE epics 
+                `UPDATE epics
                  SET title = COALESCE($1, title),
                      description = COALESCE($2, description),
                      start_date = COALESCE($3, start_date),
@@ -197,14 +199,15 @@ export const epicController = {
 
             const epic = epicResult.rows[0];
 
-            // Verify user has access to project
+            // Verify user is a project owner (or global admin)
             const accessCheck = await query(
-                'SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2',
+                `SELECT pm.role FROM project_members pm
+                 WHERE pm.project_id = $1 AND pm.user_id = $2 AND pm.role = 'owner'`,
                 [epic.project_id, userId]
             );
 
             if (accessCheck.rows.length === 0 && req.user.role !== 'admin') {
-                return res.status(403).json({ error: 'Access denied' });
+                return res.status(403).json({ error: 'Only project owners can delete epics' });
             }
 
             // Check if epic has stories
