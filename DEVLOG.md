@@ -4,6 +4,89 @@ Development log for all Phase 4 changes. Each entry records what was done, which
 
 ---
 
+## [2026-07-27] — Fix setup.sh not reliably applying .env changes
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (infrastructure fix, follow-up to UM-02)
+- **Root Cause**: The user set `EMAIL_PROVIDER=gmail` (plus Gmail credentials) in the root `.env` but the frontend still reported `smtp`. `setup.sh` never explicitly recreates containers to apply `.env` changes — it just calls plain `docker-compose up -d`, which usually (but isn't guaranteed to) detect config drift and recreate affected containers. More concretely misleading: the script's own "Useful commands" output at the end suggested `docker-compose restart` for restarting services — `restart` does **not** re-read `.env` or recreate containers at all; it only restarts the existing container process with whatever environment was already baked in at creation time. Confirmed the underlying container-recreation behavior (root-caused in the prior session's fix) is what actually applies `.env` changes, by explicitly force-recreating and checking `docker exec kartas-api printenv`.
+- **Fix**: `setup.sh` now runs `docker-compose up -d --force-recreate` instead of plain `docker-compose up -d`, guaranteeing every run picks up the current `.env` values regardless of prior container state (safe — `postgres`'s data lives in the named `postgres_data` volume, not in the container itself, so recreating it doesn't lose data). The "Useful commands" section no longer presents `docker-compose restart` as a generic restart instruction without qualification — it's now labeled "Restart (no .env)" alongside a new "Apply .env changes" line pointing at `docker-compose up -d --force-recreate` (or re-running the script), plus an explicit warning that `restart` doesn't re-read `.env`.
+- **Verification**: Set `EMAIL_PROVIDER=gmail` with test credentials in `.env`, ran `docker-compose up -d --force-recreate` (what `setup.sh` now does), confirmed via `docker exec kartas-api printenv` that the container picked up `EMAIL_PROVIDER=gmail`, and confirmed end-to-end via a temp admin test user that `POST /api/invites/generate` correctly used the Gmail transport (`emailReason: "send_failed"` with the real Gmail auth-rejection message, as expected for test credentials). Reverted `.env` back to blank afterward and cleaned up all temp test data.
+- **Files Changed**:
+  - `setup.sh` — `docker-compose up -d --force-recreate`; corrected "Useful commands" guidance around `.env` changes vs. `restart`
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-27] — Specific invite-email failure reasons (follow-up to UM-02)
+
+- **Author**: Claude
+- **PRD Requirement**: UM-02 (follow-up)
+- **Summary**: After configuring real SMTP/Gmail credentials, the invite modal still only showed a generic "either not configured or send failed" message, giving no way to tell which case actually occurred or why. `sendInviteEmail()` now returns a `reason` (`not_configured` | `send_failed`) plus a `detail` string in both cases: for `not_configured`, `config/email.js` now computes exactly which required env vars are missing for the active provider (e.g. `"EMAIL_PROVIDER=smtp but missing: SMTP_HOST, SMTP_USER, SMTP_PASSWORD"`); for `send_failed`, `detail` is the underlying nodemailer error message (e.g. an SMTP auth rejection), surfaced since this endpoint is already admin-only. `generateInvite`'s response now includes `emailReason`/`emailDetail` alongside the existing `emailSent`, and `UserManagement.jsx`'s invite modal renders one of three distinct banners (sent / not configured, with detail / send failed, with detail) instead of the previous single ambiguous fallback message. Verified via a temp admin test user against the current (still-blank) env: response correctly returns `emailReason: "not_configured"`, `emailDetail: "EMAIL_PROVIDER=smtp but missing: SMTP_HOST, SMTP_USER, SMTP_PASSWORD"`.
+- **Separately flagged (not a code bug)**: the user reported email still not sending after filling in real credentials in the root `.env`. Confirmed via `docker exec kartas-api printenv` that the running `api` container's env still showed the old blank values — Docker Compose only bakes `environment:` values into a container at creation time, so editing `.env` while the container is already running has no effect until it's recreated (`docker-compose up -d api`). This is expected Docker Compose behavior, not an application defect; flagged to the user as the likely explanation.
+- **Files Changed**:
+  - `kartas-api/src/config/email.js` — Computes and exports `emailConfigStatus` (missing-vars detail) alongside `isEmailConfigured`
+  - `kartas-api/src/utils/mailer.js` — `sendInviteEmail` returns `detail` for both `not_configured` and `send_failed`
+  - `kartas-api/src/controllers/inviteController.js` — `generateInvite` response includes `emailReason`/`emailDetail`
+  - `kartas-app/src/pages/UserManagement.jsx` — Invite modal shows a distinct banner per case with the specific detail message
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-27] — Fix broken first-run/session-recovery flow (stale session shown as "logged in"; fresh DB stuck on Login instead of Admin Setup)
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (regression introduced/uncovered while implementing UM-02)
+- **Root Cause (primary, acute)**: Installing `nodemailer` for UM-02 via `docker-compose exec -T api npm install nodemailer` only wrote it into the running `api` container's anonymous `node_modules` Docker volume, not into the image itself. Recreating that container afterward (done to pick up the new `docker-compose.yml` env vars) attached a **stale pre-existing anonymous volume** from an earlier container instance (Docker does not refresh anonymous volumes with new image content once they already have data), losing the `nodemailer` install and crash-looping the `api` container (`ERR_MODULE_NOT_FOUND: Cannot find package 'nodemailer'`) from that point on — silently, since nothing polls container health after the fact. With the API entirely unreachable, `check-admin` and every other request failed outright.
+- **Root Cause (contributing, in application code)**: Two real defects in `AuthContext.jsx` made the API-down symptom far more confusing than a normal "can't reach server" error, and independently are latent bugs regardless of what triggers them:
+  1. `checkExistingAuth()` restored `user` from `localStorage` purely by parsing cached JSON, with no server-side validation. Any stale/invalid token (API down, or a token surviving a DB reset) rendered the app as fully "logged in" with a stale cached identity while every real data call failed — exactly the "logged in but empty, no users showing" symptom.
+  2. The mount effect fired `checkAdminExists()` (real network call) and `checkExistingAuth()` (purely synchronous `localStorage` reads, no real `await`) without waiting for both — `loading` cleared as soon as the synchronous one finished, guaranteed to be before the network one resolved. `AppRoutes` only special-cases `adminExists === false`; while it sat at its unresolved default, the app fell through to the normal Login/Dashboard routes instead of Admin Setup. Combined with no retry on a failed `check-admin` call, a single failed attempt (e.g. the API being down) left `adminExists` stuck at its default forever, permanently stranding first-run setup on the Login page with no in-app recovery.
+- **Fix (infrastructure)**: Rebuilt the `api` image (`docker-compose up -d --build api`) so `nodemailer` installs at build time via the Dockerfile's `RUN npm install`, then removed the stale anonymous `node_modules` volume and let a fresh one populate from the rebuilt image (`docker rm -f kartas-api && docker volume rm <anon-volume-id> && docker-compose up -d api`) — confirms healthy against a genuinely fresh, empty DB (`GET /health` → `200`, `GET /api/auth/check-admin` → `{"adminExists":false}`).
+- **Fix (application code)**:
+  - `checkExistingAuth()` now validates any cached session against `GET /users/profile` before trusting it. A server-confirmed-invalid session (has a response, e.g. 401) clears all three `localStorage` keys instead of rendering a broken "logged in" shell. A pure network failure (no response) still falls back to the cached session optimistically, so a brief connectivity blip doesn't force a logout.
+  - The mount effect now `Promise.all`s both `checkAdminExists()` and `checkExistingAuth()` before clearing `loading`, closing the race where routing decisions were made against `adminExists`'s unresolved default.
+  - `checkAdminExists()` now retries up to 2 additional times (1s apart) before giving up, so a transient backend hiccup during app boot no longer permanently blocks reaching `/admin/setup`.
+  - `api.js`'s response interceptor now also clears the cached `'user'` key on refresh failure (previously only cleared the two token keys), for consistency with the above.
+- **Files Changed**:
+  - `kartas-app/src/contexts/AuthContext.jsx` — Combined loading gate, server-validated session restore, retry on `checkAdminExists`
+  - `kartas-app/src/services/api.js` — Response interceptor also clears cached `user` on refresh failure
+- **Migration**: N/A
+- **Status**: Done
+
+## [2026-07-27] — UM-02 — Email-Based Invitations
+
+- **Author**: Claude
+- **PRD Requirement**: UM-02
+- **Summary**: `POST /api/invites/generate` now attempts to send the invite link via email, on top of the existing link-only behavior. Added a dual-provider email backend selectable via a new `EMAIL_PROVIDER` env var (`smtp`, the default, or `gmail`) — an admin picks generic SMTP or a Gmail account (via nodemailer's `service: 'gmail'`, requiring a Google App Password rather than the account's real login password) without code changes. Email sending is best-effort and never fails the request: if the selected provider's credentials aren't set, or the send throws, the response still returns the invite link with a new `emailSent: false` field. `UserManagement.jsx`'s invite-success modal now shows "Invitation email sent to X" when `emailSent` is true, or a "share this link manually" fallback banner when false — the copyable invite-link input is shown unconditionally in both cases. Also fixed a pre-existing gap found while wiring this up: `FRONTEND_URL` (used by `inviteController.js` to build the invite link, and by `index.js` for CORS) was referenced in code but never actually passed through `docker-compose.yml`'s `api.environment` block, so it silently fell back to the hardcoded `localhost:5173` default even if set in `.env` — added it there alongside the new `EMAIL_PROVIDER`/`SMTP_*`/`GMAIL_*`/`EMAIL_FROM` vars, since without that fix the new email vars would have had the same silent no-op problem under the normal `docker-compose up` dev setup. Verified with SMTP/Gmail both unconfigured: `POST /api/invites/generate` returns `200` with `emailSent: false` and a working link, via a temp DB-seeded admin test user, cleaned up afterward.
+- **Files Changed**:
+  - `kartas-api/package.json` — Added `nodemailer` dependency
+  - `kartas-api/src/config/email.js` — New: `emailConfig`, `isEmailConfigured`, `transporter`, branching on `EMAIL_PROVIDER` (`smtp` default / `gmail`)
+  - `kartas-api/src/utils/mailer.js` — New `sendInviteEmail()` best-effort sender
+  - `kartas-api/src/controllers/inviteController.js` — `generateInvite` calls `sendInviteEmail` and returns `emailSent`
+  - `.env.example` / `.env` — Documented `FRONTEND_URL` (previously undocumented) and new `EMAIL_PROVIDER`/`SMTP_*`/`GMAIL_*`/`EMAIL_FROM` vars
+  - `docker-compose.yml` — `api.environment` now passes through `FRONTEND_URL` and all new email vars (previously missing, so `.env` values never reached the container)
+  - `kartas-app/src/pages/UserManagement.jsx` — `inviteEmailSent` state, conditional success/fallback banner in the invite modal
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-27] — UM-03 — Admin Direct User Registration
+
+- **Author**: Claude
+- **PRD Requirement**: UM-03
+- **Summary**: Admins can now create user accounts directly (email, first/last name, role, temporary password) without going through the invite-link flow. New `POST /api/users` (admin-only, inline role check matching the rest of `userController.js`) pre-checks for a duplicate email, hashes the temp password with bcrypt, and inserts with `first_login = true` — reusing the existing `first_login` boolean that's already wired into the real force-password-change flow (`authController.changePassword` clears it to `false`; `Login.jsx` checks it after login to show the in-page password-change screen instead of navigating away). New users appear immediately in `UserManagement.jsx` since `getAllUsers` already orders by `created_at DESC` and the create handler re-fetches the list on success. Verified end-to-end: 201 on create, 400 on duplicate email, 403 for a non-admin caller, and a real login as the created user confirming `firstLogin: true` in the response — all via temp DB-seeded test users, cleaned up afterward.
+- **Files Changed**:
+  - `kartas-api/src/controllers/userController.js` — New `createUser` method
+  - `kartas-api/src/routes/users.js` — New `POST /` route + `validateUserCreation` validator
+  - `kartas-app/src/pages/UserManagement.jsx` — New "+ Create User" button, `showCreateUserModal`/`createUserForm` state, `handleCreateUser`/`closeCreateUserModal`, single-phase create-user modal
+- **Migration**: N/A
+- **Status**: Done
+- **Note**: While researching this, found a separate, unused `userController.changePassword` method (wired to the dead route `PUT /users/password`, never called by the frontend) that references a `must_change_password` column which does not exist anywhere in the schema — pre-existing bug, left unfixed as out of scope for UM-03.
+
+---
+
 ## [2026-07-26] — BL-01 — Hide Completed/Cancelled Stories by Default
 
 - **Author**: Claude

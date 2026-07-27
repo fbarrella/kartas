@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { query } from '../config/database.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { sendInviteEmail } from '../utils/mailer.js';
 
 export const inviteController = {
     // Generate invite token
@@ -41,11 +42,22 @@ export const inviteController = {
             // Generate invite link
             const inviteLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/register?token=${token}`;
 
+            // Best-effort email send; never blocks the response on failure
+            const emailResult = await sendInviteEmail({
+                to: email,
+                inviteLink,
+                role: role || 'member',
+                expiresAt
+            });
+
             res.json({
                 message: 'Invite generated successfully',
                 inviteLink,
                 token,
-                expiresAt
+                expiresAt,
+                emailSent: emailResult.sent,
+                emailReason: emailResult.reason || null,
+                emailDetail: emailResult.detail || null
             });
         } catch (error) {
             console.error('Error generating invite:', error);

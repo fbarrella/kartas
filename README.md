@@ -13,7 +13,7 @@ A modern, comprehensive alternative to Jira for agile team management, built wit
 - **Sprint Planning**: Plan and manage sprints with objectives, timelines, and progress tracking
 - **Kanban Board**: Visualize work with customizable columns, drag-and-drop, and context menus
 - **Epic Management**: Group related stories under epics with color coding and progress visualization
-- **User Management**: Role-based access control — global admin/project owner/member roles, plus project-scoped owner/member permissions gating team and epic management
+- **User Management**: Role-based access control — global admin/project owner/member roles, plus project-scoped owner/member permissions gating team and epic management. Admins can invite users by email (with an always-available fallback link) or create accounts directly with a temporary password
 - **Metrics & Reporting**: Track team velocity, sprint performance, and burndown charts
 
 ### Advanced Features (Phase 3)
@@ -57,6 +57,8 @@ A modern, comprehensive alternative to Jira for agile team management, built wit
 - **Decluttered Views**: Completed/cancelled stories and epics are hidden by default, with an opt-in "Show completed" toggle
 - **Frozen Sprint Reports**: Ended sprints snapshot their metrics at the moment of completion, so later changes to shared stories no longer retroactively alter historical reports
 - **Access Control**: Team and epic management are restricted to project owners/admins — members get view-only access; admins can change any other user's role from User Management (with a self-demotion safeguard)
+- **Email Invitations**: Admins can send invites by email — SMTP by default, or Gmail via an app password, selected with `EMAIL_PROVIDER` — with specific delivery feedback (sent / not configured / send failed, each with the exact reason) and the invite link always shown as a manual fallback
+- **Admin-Created Users**: Admins can create a user account directly from User Management with a temporary password, bypassing the invite flow entirely; the new user is required to change their password on first login
 
 ### Additional Features
 - **Story Detail Page**: Full-page view with all story information
@@ -99,6 +101,21 @@ A modern, comprehensive alternative to Jira for agile team management, built wit
 4. Access the application:
    - Frontend: http://localhost:5173
    - Backend API: http://localhost:3000
+
+### Email Configuration (optional)
+
+Invitations work with a copyable link out of the box — no email setup required. To also send invites by email, set these in `.env` before starting the stack:
+
+- `EMAIL_PROVIDER` — `smtp` (default) or `gmail`
+- For `smtp`: `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`
+- For `gmail`: `GMAIL_USER` and `GMAIL_APP_PASSWORD` (a [Google App Password](https://myaccount.google.com/apppasswords) — requires 2-Step Verification, **not** your regular account password)
+- `EMAIL_FROM` — optional sender display name/address
+
+**Important**: Docker Compose only applies `.env` changes to a container at creation time. After editing `.env`, apply it with:
+```bash
+docker-compose up -d --force-recreate
+```
+Plain `docker-compose restart` does **not** re-read `.env` and will not pick up changes.
 
 ### Local Development
 
@@ -152,7 +169,7 @@ This project is being developed in phases:
 - **Phase 1**: ✅ Core authentication, project management, and backlog
 - **Phase 2**: ✅ Sprint management and kanban board
 - **Phase 3**: ✅ UI/UX improvements, epic enhancements, and advanced features
-- **Phase 4** (In Progress): ✅ Critical fixes & UI polish · ✅ Backlog/epic hardening · ✅ Kanban header context · ✅ Sub-tasks system · ✅ Access control refinements · 🔜 Email invitations & admin-created users · 🔜 "For You" personal dashboard
+- **Phase 4** (In Progress): ✅ Critical fixes & UI polish · ✅ Backlog/epic hardening · ✅ Kanban header context · ✅ Sub-tasks system · ✅ Access control refinements · ✅ Email invitations & admin-created users · 🔜 "For You" personal dashboard
 
 See [`DEVLOG.md`](./DEVLOG.md) for the detailed, dated changelog of every Phase 4 change.
 

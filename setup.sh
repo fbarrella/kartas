@@ -46,8 +46,12 @@ echo ""
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "🐳 Starting Docker services..."
 
-    # Start services — capture exit code explicitly instead of using set -e
-    if ! docker-compose up -d; then
+    # Start services — capture exit code explicitly instead of using set -e.
+    # --force-recreate guarantees any .env changes are picked up even if this
+    # isn't the first run — plain `up -d` relies on docker-compose's config-drift
+    # detection, and `docker-compose restart` (suggested below) never re-reads
+    # .env at all, so re-running this script is the reliable way to apply changes.
+    if ! docker-compose up -d --force-recreate; then
         echo ""
         echo "❌ Failed to start Docker services."
         echo "   Common causes:"
@@ -104,9 +108,14 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "   3. Start creating projects!"
     echo ""
     echo "📋 Useful commands:"
-    echo "   View logs:        docker-compose logs -f"
-    echo "   Stop services:    docker-compose down"
-    echo "   Restart services: docker-compose restart"
+    echo "   View logs:            docker-compose logs -f"
+    echo "   Stop services:        docker-compose down"
+    echo "   Restart (no .env):    docker-compose restart"
+    echo "   Apply .env changes:   docker-compose up -d --force-recreate   (or re-run this script)"
+    echo ""
+    echo "⚠️  'docker-compose restart' does NOT re-read .env — it just restarts the"
+    echo "   existing containers with whatever environment was baked in at creation."
+    echo "   After editing .env, use 'docker-compose up -d --force-recreate' instead."
     echo ""
 else
     echo ""

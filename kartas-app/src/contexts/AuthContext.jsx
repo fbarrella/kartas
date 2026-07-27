@@ -16,35 +16,71 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [adminExists, setAdminExists] = useState(null);
 
-    // Check if admin exists on mount
+    // Check if admin exists and validate any existing session on mount.
+    // Both checks must finish before `loading` clears — otherwise routing
+    // decisions get made against a still-default `adminExists` value.
     useEffect(() => {
-        checkAdminExists();
-        checkExistingAuth();
+        const initialize = async () => {
+            await Promise.all([checkAdminExists(), checkExistingAuth()]);
+            setLoading(false);
+        };
+        initialize();
     }, []);
 
-    const checkAdminExists = async () => {
+    const checkAdminExists = async (attempt = 0) => {
         try {
             const response = await api.get('/auth/check-admin');
             setAdminExists(response.data.adminExists);
         } catch (error) {
             console.error('Error checking admin:', error);
+            // The app can only ever reach /admin/setup when this resolves to
+            // `false` — a single failed attempt (e.g. the API still starting
+            // up) would otherwise permanently strand first-run setup on the
+            // login page with no way to recover short of a hard refresh.
+            if (attempt < 2) {
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+                return checkAdminExists(attempt + 1);
+            }
         }
     };
 
     const checkExistingAuth = async () => {
         const token = localStorage.getItem('accessToken');
-        const userData = localStorage.getItem('user');
+        const cachedUser = localStorage.getItem('user');
 
-        if (token && userData) {
-            try {
-                setUser(JSON.parse(userData));
-            } catch (error) {
-                console.error('Error parsing user data:', error);
-                localStorage.removeItem('user');
-            }
+        if (!token || !cachedUser) {
+            return;
         }
 
-        setLoading(false);
+        try {
+            // Validate the cached session against the server instead of trusting
+            // localStorage blindly — a token/user left over from a reset or
+            // recreated database must not be rendered as a valid logged-in
+            // session (the app would otherwise show a "logged in" shell with
+            // every subsequent data call quietly failing).
+            const response = await api.get('/users/profile');
+            const parsedCachedUser = JSON.parse(cachedUser);
+            const validatedUser = { ...parsedCachedUser, ...response.data };
+            localStorage.setItem('user', JSON.stringify(validatedUser));
+            setUser(validatedUser);
+        } catch (error) {
+            if (error.response) {
+                // Server confirmed the session is invalid — clear it so the
+                // app falls through to login/admin-setup instead of a broken
+                // "logged in" state.
+                localStorage.removeItem('accessToken');
+                localStorage.removeItem('refreshToken');
+                localStorage.removeItem('user');
+            } else {
+                // Couldn't reach the server at all — fall back to the cached
+                // session optimistically rather than logging out on a blip.
+                try {
+                    setUser(JSON.parse(cachedUser));
+                } catch {
+                    localStorage.removeItem('user');
+                }
+            }
+        }
     };
 
     const createAdmin = async (email, password, firstName, lastName) => {

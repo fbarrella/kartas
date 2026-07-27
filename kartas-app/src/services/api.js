@@ -58,6 +58,7 @@ api.interceptors.response.use(
                 // Refresh failed, clear tokens and redirect to login
                 localStorage.removeItem('accessToken');
                 localStorage.removeItem('refreshToken');
+                localStorage.removeItem('user');
                 window.location.href = '/login';
                 return Promise.reject(refreshError);
             }

@@ -24,8 +24,17 @@ const validateRoleUpdate = [
     body('role').isIn(['admin', 'project_owner', 'member'])
 ];
 
+const validateUserCreation = [
+    body('email').isEmail().normalizeEmail({ gmail_remove_dots: false }),
+    body('password').isLength({ min: 8 }),
+    body('firstName').trim().notEmpty(),
+    body('lastName').trim().notEmpty(),
+    body('role').optional().isIn(['admin', 'project_owner', 'member'])
+];
+
 // Routes
 router.get('/', userController.getAllUsers);
+router.post('/', validateUserCreation, userController.createUser);
 router.get('/search', userController.searchUsers);
 router.get('/profile', userController.getProfile);
 router.put('/profile', validateProfileUpdate, userController.updateProfile);
