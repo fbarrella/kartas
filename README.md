@@ -13,7 +13,7 @@ A modern, comprehensive alternative to Jira for agile team management, built wit
 - **Sprint Planning**: Plan and manage sprints with objectives, timelines, and progress tracking
 - **Kanban Board**: Visualize work with customizable columns, drag-and-drop, and context menus
 - **Epic Management**: Group related stories under epics with color coding and progress visualization
-- **User Management**: Role-based access control with admin and project owner roles
+- **User Management**: Role-based access control — global admin/project owner/member roles, plus project-scoped owner/member permissions gating team and epic management
 - **Metrics & Reporting**: Track team velocity, sprint performance, and burndown charts
 
 ### Advanced Features (Phase 3)
@@ -46,8 +46,19 @@ A modern, comprehensive alternative to Jira for agile team management, built wit
   - Responsive design with proper spacing
   - Professional styling and animations
 
+### Phase 4 Additions
+- **Sub-tasks & Sub-tests**:
+  - Full CRUD for sub-items from the Story Detail page's "Sub-items" section
+  - Lightweight create/edit modal (title, description, type, status, story points, assignee)
+  - Sub-tasks of stories in the active sprint appear as their own kanban cards — smaller, indented, dashed border, with a parent-story badge — and can be dragged between columns independently
+- **Kanban Header Context**: Active sprint name, objective, formatted start/end dates, and a compact "Elapsed Time" progress bar
+- **Blocked Task Indicator**: Mark stories as blocked from the Story Detail page or the Kanban context menu; a 🚫 badge surfaces in the backlog, kanban cards, and story detail
+- **Story-Based Epic Progress**: Epic progress bars reflect `(done stories / total stories) × 100` instead of elapsed time
+- **Decluttered Views**: Completed/cancelled stories and epics are hidden by default, with an opt-in "Show completed" toggle
+- **Frozen Sprint Reports**: Ended sprints snapshot their metrics at the moment of completion, so later changes to shared stories no longer retroactively alter historical reports
+- **Access Control**: Team and epic management are restricted to project owners/admins — members get view-only access; admins can change any other user's role from User Management (with a self-demotion safeguard)
+
 ### Additional Features
-- **Sub-tasks & Sub-tests**: Break down stories into manageable pieces
 - **Story Detail Page**: Full-page view with all story information
 - **Team Collaboration**: Assign stories to team members
 - **Custom Kanban Columns**: Configure column visibility and names
@@ -141,7 +152,9 @@ This project is being developed in phases:
 - **Phase 1**: ✅ Core authentication, project management, and backlog
 - **Phase 2**: ✅ Sprint management and kanban board
 - **Phase 3**: ✅ UI/UX improvements, epic enhancements, and advanced features
-- **Phase 4** (Planned): Advanced metrics, reporting, and team analytics
+- **Phase 4** (In Progress): ✅ Critical fixes & UI polish · ✅ Backlog/epic hardening · ✅ Kanban header context · ✅ Sub-tasks system · ✅ Access control refinements · 🔜 Email invitations & admin-created users · 🔜 "For You" personal dashboard
+
+See [`DEVLOG.md`](./DEVLOG.md) for the detailed, dated changelog of every Phase 4 change.
 
 ## Key Workflows
 

@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+
+const USER_ROLE_OPTIONS = ['admin', 'project_owner', 'member'];
 
 const UserManagement = () => {
+    const { user: currentUser } = useAuth();
     const [users, setUsers] = useState([]);
     const [pendingInvites, setPendingInvites] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -78,6 +82,17 @@ const UserManagement = () => {
             setTimeout(() => setSuccessMessage(''), 3000);
         } catch (error) {
             setError(error.response?.data?.error || 'Failed to cancel invite');
+        }
+    };
+
+    const handleChangeRole = async (userId, newRole) => {
+        try {
+            await api.put(`/users/${userId}/role`, { role: newRole });
+            setSuccessMessage('Role updated successfully');
+            fetchUsers();
+            setTimeout(() => setSuccessMessage(''), 3000);
+        } catch (error) {
+            setError(error.response?.data?.error || 'Failed to update role');
         }
     };
 
@@ -170,6 +185,16 @@ const UserManagement = () => {
                 {/* Active Users */}
                 <div>
                     <h2>Active Users</h2>
+                    {error && (
+                        <div className="card mb-md" style={{ backgroundColor: 'var(--color-danger-light)', borderLeft: '4px solid var(--color-danger)' }}>
+                            {error}
+                        </div>
+                    )}
+                    {successMessage && (
+                        <div className="card mb-md" style={{ backgroundColor: 'var(--color-success-light)', borderLeft: '4px solid var(--color-success)' }}>
+                            {successMessage}
+                        </div>
+                    )}
                     {loading ? (
                         <div className="text-center">Loading users...</div>
                     ) : users.length === 0 ? (
@@ -197,9 +222,22 @@ const UserManagement = () => {
                                             </td>
                                             <td style={{ padding: 'var(--spacing-sm)' }}>{user.email}</td>
                                             <td style={{ padding: 'var(--spacing-sm)' }}>
-                                                <span className={`badge badge-${user.role === 'admin' ? 'danger' : 'info'}`}>
-                                                    {user.role}
-                                                </span>
+                                                {user.id === currentUser?.id ? (
+                                                    <span className={`badge badge-${user.role === 'admin' ? 'danger' : 'info'}`} title="You cannot change your own role">
+                                                        {user.role}
+                                                    </span>
+                                                ) : (
+                                                    <select
+                                                        className="form-select"
+                                                        style={{ padding: '4px 8px', fontSize: '0.8rem', width: 'auto' }}
+                                                        value={user.role}
+                                                        onChange={(e) => handleChangeRole(user.id, e.target.value)}
+                                                    >
+                                                        {USER_ROLE_OPTIONS.map(role => (
+                                                            <option key={role} value={role}>{role}</option>
+                                                        ))}
+                                                    </select>
+                                                )}
                                             </td>
                                             <td style={{ padding: 'var(--spacing-sm)' }}>
                                                 {new Date(user.createdAt).toLocaleDateString()}

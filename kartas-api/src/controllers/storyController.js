@@ -322,6 +322,7 @@ export const storyController = {
                     title: st.title,
                     description: st.description,
                     status: st.status,
+                    storyPoints: st.story_points,
                     assigneeId: st.assignee_id,
                     assigneeName: st.assignee_name,
                     createdAt: st.created_at,

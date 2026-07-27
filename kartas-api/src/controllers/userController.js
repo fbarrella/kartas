@@ -186,6 +186,45 @@ export const userController = {
         }
     },
 
+    // Update a user's role (admin only)
+    async updateUserRole(req, res) {
+        try {
+            if (req.user.role !== 'admin') {
+                return res.status(403).json({ error: 'Admin access required' });
+            }
+
+            const { id } = req.params;
+            const { role } = req.body;
+
+            // Prevent self-demotion
+            if (parseInt(id) === req.user.userId) {
+                return res.status(400).json({ error: 'Cannot change your own role' });
+            }
+
+            const result = await query(
+                'UPDATE users SET role = $1 WHERE id = $2 RETURNING id, email, first_name, last_name, role',
+                [role, id]
+            );
+
+            if (result.rows.length === 0) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+
+            const user = result.rows[0];
+
+            res.json({
+                id: user.id,
+                email: user.email,
+                firstName: user.first_name,
+                lastName: user.last_name,
+                role: user.role
+            });
+        } catch (error) {
+            console.error('Error updating user role:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
     // Delete user (admin only)
     async deleteUser(req, res) {
         try {

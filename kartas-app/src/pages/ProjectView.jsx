@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../services/api';
 import UserSelect from '../components/UserSelect';
+import { useAuth } from '../contexts/AuthContext';
 
 
 const ProjectView = () => {
     const { projectId } = useParams();
+    const { user } = useAuth();
     const [project, setProject] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showAddMemberModal, setShowAddMemberModal] = useState(false);
@@ -74,17 +76,22 @@ const ProjectView = () => {
         );
     }
 
+    const myRole = project.members?.find(m => m.id === user?.id)?.role;
+    const canManageMembers = myRole === 'owner' || user?.role === 'admin';
+
     return (
         <>
             {/* Page Title and Actions */}
             <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
                 <h2 style={{ margin: 0 }}>Team Members</h2>
-                <button
-                    onClick={() => setShowAddMemberModal(true)}
-                    className="btn btn-primary"
-                >
-                    + Add Member
-                </button>
+                {canManageMembers && (
+                    <button
+                        onClick={() => setShowAddMemberModal(true)}
+                        className="btn btn-primary"
+                    >
+                        + Add Member
+                    </button>
+                )}
             </div>
 
             {/* Team Members Card */}
@@ -101,7 +108,9 @@ const ProjectView = () => {
                                 <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Email</th>
                                 <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Role</th>
                                 <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Joined</th>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Actions</th>
+                                {canManageMembers && (
+                                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Actions</th>
+                                )}
                             </tr>
                         </thead>
                         <tbody>
@@ -119,17 +128,19 @@ const ProjectView = () => {
                                     <td style={{ padding: 'var(--spacing-sm)' }}>
                                         {new Date(member.joinedAt).toLocaleDateString()}
                                     </td>
-                                    <td style={{ padding: 'var(--spacing-sm)' }}>
-                                        {member.role !== 'owner' && (
-                                            <button
-                                                onClick={() => handleRemoveMember(member.id)}
-                                                className="btn btn-danger btn-sm"
-                                                style={{ padding: '4px 8px', fontSize: '0.8rem' }}
-                                            >
-                                                Remove
-                                            </button>
-                                        )}
-                                    </td>
+                                    {canManageMembers && (
+                                        <td style={{ padding: 'var(--spacing-sm)' }}>
+                                            {member.role !== 'owner' && (
+                                                <button
+                                                    onClick={() => handleRemoveMember(member.id)}
+                                                    className="btn btn-danger btn-sm"
+                                                    style={{ padding: '4px 8px', fontSize: '0.8rem' }}
+                                                >
+                                                    Remove
+                                                </button>
+                                            )}
+                                        </td>
+                                    )}
                                 </tr>
                             ))}
                         </tbody>

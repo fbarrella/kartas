@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import api from '../services/api';
+import SubItemEditModal from '../components/SubItemEditModal';
 
 const formatDate = (d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
@@ -19,6 +20,9 @@ const KanbanBoard = () => {
     const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, story: null });
     const [members, setMembers] = useState([]);
     const [showMoveSubmenu, setShowMoveSubmenu] = useState(false);
+    const [selectedSubtask, setSelectedSubtask] = useState(null);
+    const [subtaskContextMenu, setSubtaskContextMenu] = useState({ visible: false, x: 0, y: 0, subtask: null });
+    const [showSubtaskMoveSubmenu, setShowSubtaskMoveSubmenu] = useState(false);
 
     useEffect(() => {
         fetchProject();
@@ -91,7 +95,8 @@ const KanbanBoard = () => {
             return;
         }
 
-        const storyId = parseInt(draggableId.replace('story-', ''));
+        const isSubtask = draggableId.startsWith('subtask-');
+        const itemId = parseInt(draggableId.replace(isSubtask ? 'subtask-' : 'story-', ''));
         const sourceColumnId = source.droppableId;
         const destColumnId = destination.droppableId;
 
@@ -101,16 +106,16 @@ const KanbanBoard = () => {
         const destColumn = newColumns.find(col => col.status === destColumnId);
 
         // Remove from source
-        const [movedStory] = sourceColumn.stories.splice(source.index, 1);
+        const [movedItem] = sourceColumn.stories.splice(source.index, 1);
 
         // Add to destination
         if (sourceColumnId === destColumnId) {
             // Same column, just reorder
-            sourceColumn.stories.splice(destination.index, 0, movedStory);
+            sourceColumn.stories.splice(destination.index, 0, movedItem);
         } else {
             // Different column, update status
-            movedStory.status = destColumnId;
-            destColumn.stories.splice(destination.index, 0, movedStory);
+            movedItem.status = destColumnId;
+            destColumn.stories.splice(destination.index, 0, movedItem);
         }
 
         // Optimistically update UI
@@ -119,9 +124,12 @@ const KanbanBoard = () => {
         // Update backend
         if (sourceColumnId !== destColumnId) {
             try {
-                await api.put(`/kanban/stories/${storyId}/status`, { status: destColumnId });
+                const endpoint = isSubtask
+                    ? `/kanban/subtasks/${itemId}/status`
+                    : `/kanban/stories/${itemId}/status`;
+                await api.put(endpoint, { status: destColumnId });
             } catch (error) {
-                console.error('Error updating story status:', error);
+                console.error('Error updating status:', error);
                 // Revert on error
                 fetchKanbanBoard();
             }
@@ -158,6 +166,11 @@ const KanbanBoard = () => {
         return colors[type] || 'var(--color-neutral-400)';
     };
 
+    const getSubtaskTypeIcon = (type) => {
+        const icons = { sub_task: '🔧', sub_test: '🧪' };
+        return icons[type] || '📌';
+    };
+
     const handleContextMenu = (e, story) => {
         e.preventDefault();
         setContextMenu({
@@ -171,6 +184,37 @@ const KanbanBoard = () => {
     const closeContextMenu = () => {
         setContextMenu({ visible: false, x: 0, y: 0, story: null });
         setShowMoveSubmenu(false);
+    };
+
+    const handleSubtaskContextMenu = (e, subtask) => {
+        e.preventDefault();
+        setSubtaskContextMenu({ visible: true, x: e.clientX, y: e.clientY, subtask });
+    };
+
+    const closeSubtaskContextMenu = () => {
+        setSubtaskContextMenu({ visible: false, x: 0, y: 0, subtask: null });
+        setShowSubtaskMoveSubmenu(false);
+    };
+
+    const handleDeleteSubtask = async (id) => {
+        if (!confirm('Delete this sub-item?')) return;
+        try {
+            await api.delete(`/sub-tasks/${id}`);
+            fetchKanbanBoard();
+            closeSubtaskContextMenu();
+        } catch (error) {
+            console.error('Error deleting sub-item:', error);
+        }
+    };
+
+    const handleMoveSubtaskToStatus = async (id, newStatus) => {
+        try {
+            await api.put(`/kanban/subtasks/${id}/status`, { status: newStatus });
+            fetchKanbanBoard();
+            closeSubtaskContextMenu();
+        } catch (error) {
+            console.error('Error moving sub-item:', error);
+        }
     };
 
     const handleDeleteStory = async (storyId) => {
@@ -374,10 +418,12 @@ const KanbanBoard = () => {
                                                     transition: 'background-color 0.2s ease'
                                                 }}
                                             >
-                                                {filteredStories.map((story, index) => (
+                                                {filteredStories.map((item, index) => {
+                                                    const isSubtask = item.itemType === 'subtask';
+                                                    return (
                                                     <Draggable
-                                                        key={`story-${story.id}`}
-                                                        draggableId={`story-${story.id}`}
+                                                        key={isSubtask ? `subtask-${item.id}` : `story-${item.id}`}
+                                                        draggableId={isSubtask ? `subtask-${item.id}` : `story-${item.id}`}
                                                         index={index}
                                                     >
                                                         {(provided, snapshot) => (
@@ -385,29 +431,55 @@ const KanbanBoard = () => {
                                                                 ref={provided.innerRef}
                                                                 {...provided.draggableProps}
                                                                 {...provided.dragHandleProps}
-                                                                onClick={() => setSelectedStory(story)}
-                                                                onContextMenu={(e) => handleContextMenu(e, story)}
+                                                                onClick={() => isSubtask ? setSelectedSubtask(item) : setSelectedStory(item)}
+                                                                onContextMenu={(e) => isSubtask ? handleSubtaskContextMenu(e, item) : handleContextMenu(e, item)}
                                                                 style={{
                                                                     ...provided.draggableProps.style,
                                                                     backgroundColor: 'white',
                                                                     borderRadius: 'var(--radius-sm)',
-                                                                    padding: 'var(--spacing-sm)',
+                                                                    padding: isSubtask ? '6px var(--spacing-sm)' : 'var(--spacing-sm)',
+                                                                    marginLeft: isSubtask ? '16px' : 0,
                                                                     marginBottom: 'var(--spacing-sm)',
                                                                     boxShadow: snapshot.isDragging
                                                                         ? 'var(--shadow-lg)'
                                                                         : 'var(--shadow-sm)',
                                                                     cursor: 'grab',
-                                                                    borderLeft: `4px solid ${getTypeColor(story.type)}`,
+                                                                    borderLeft: isSubtask
+                                                                        ? '3px dashed var(--color-neutral-400)'
+                                                                        : `4px solid ${getTypeColor(item.type)}`,
+                                                                    fontSize: isSubtask ? 'var(--font-size-xs)' : undefined,
                                                                     userSelect: 'none'
                                                                 }}
                                                             >
+                                                                {isSubtask ? (
+                                                                    <>
+                                                                        <div className="flex flex-between mb-xs" style={{ alignItems: 'center' }}>
+                                                                            <span className="badge badge-neutral" style={{ fontSize: '9px', padding: '1px 4px' }}>
+                                                                                {item.parentStoryCode}
+                                                                            </span>
+                                                                            <span title={item.type}>{getSubtaskTypeIcon(item.type)}</span>
+                                                                        </div>
+                                                                        <div style={{ fontSize: 'var(--font-size-xs)', marginBottom: '2px', color: 'var(--color-neutral-900)' }}>
+                                                                            {item.title}
+                                                                        </div>
+                                                                        <div className="flex flex-between" style={{ fontSize: '10px', color: 'var(--color-neutral-500)' }}>
+                                                                            <span>{item.assigneeName ? `@${item.assigneeName.split(' ')[0]}` : 'Unassigned'}</span>
+                                                                            {item.storyPoints != null && (
+                                                                                <span className="badge badge-neutral" style={{ fontSize: '9px', padding: '1px 4px' }}>
+                                                                                    {item.storyPoints}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    </>
+                                                                ) : (
+                                                                <>
                                                                 {/* Story Card Content */}
                                                                 <div className="flex flex-between mb-xs">
                                                                     <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600, color: 'var(--color-neutral-700)' }}>
-                                                                        {story.storyId}
+                                                                        {item.storyId}
                                                                     </span>
-                                                                    <span title={story.type}>
-                                                                        {getTypeIcon(story.type)}
+                                                                    <span title={item.type}>
+                                                                        {getTypeIcon(item.type)}
                                                                     </span>
                                                                 </div>
                                                                 <div style={{
@@ -416,19 +488,19 @@ const KanbanBoard = () => {
                                                                     lineHeight: '1.4',
                                                                     color: 'var(--color-neutral-900)'
                                                                 }}>
-                                                                    {story.title}
+                                                                    {item.title}
                                                                 </div>
-                                                                {story.epicTitle && (
+                                                                {item.epicTitle && (
                                                                     <div style={{ marginBottom: 'var(--spacing-xs)' }}>
                                                                         <Link
-                                                                            to={`/project/${projectId}/backlog?epic=${story.epicId}`}
+                                                                            to={`/project/${projectId}/backlog?epic=${item.epicId}`}
                                                                             onClick={(e) => e.stopPropagation()}
                                                                             style={{ textDecoration: 'none' }}
                                                                         >
                                                                             <span style={{
                                                                                 padding: '2px 6px',
                                                                                 fontSize: '10px',
-                                                                                backgroundColor: epics.find(e => e.id === story.epicId)?.color || '#0052CC',
+                                                                                backgroundColor: epics.find(e => e.id === item.epicId)?.color || '#0052CC',
                                                                                 color: 'white',
                                                                                 borderRadius: 'var(--radius-sm)',
                                                                                 fontWeight: '600',
@@ -441,7 +513,7 @@ const KanbanBoard = () => {
                                                                                 onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
                                                                                 title="Click to filter by this epic"
                                                                             >
-                                                                                {story.epicTitle}
+                                                                                {item.epicTitle}
                                                                             </span>
                                                                         </Link>
                                                                     </div>
@@ -451,30 +523,33 @@ const KanbanBoard = () => {
                                                                     color: 'var(--color-neutral-500)'
                                                                 }}>
                                                                     <span>
-                                                                        {story.assigneeName ? `@${story.assigneeName.split(' ')[0]}` : 'Unassigned'}
+                                                                        {item.assigneeName ? `@${item.assigneeName.split(' ')[0]}` : 'Unassigned'}
                                                                     </span>
                                                                     <div className="flex flex-gap-xs">
-                                                                        {story.isBlocked && (
+                                                                        {item.isBlocked && (
                                                                             <span className="badge badge-danger" style={{ fontSize: '10px', padding: '2px 6px' }}>
                                                                                 🚫 Blocked
                                                                             </span>
                                                                         )}
-                                                                        {story.storyPoints && (
+                                                                        {item.storyPoints && (
                                                                             <span className="badge badge-neutral" style={{ fontSize: '10px', padding: '2px 6px' }}>
-                                                                                {story.storyPoints}
+                                                                                {item.storyPoints}
                                                                             </span>
                                                                         )}
-                                                                        {story.totalSubtasks > 0 && (
+                                                                        {item.totalSubtasks > 0 && (
                                                                             <span className="badge badge-neutral" style={{ fontSize: '10px', padding: '2px 6px' }}>
-                                                                                ✓ {story.completedSubtasks}/{story.totalSubtasks}
+                                                                                ✓ {item.completedSubtasks}/{item.totalSubtasks}
                                                                             </span>
                                                                         )}
                                                                     </div>
                                                                 </div>
+                                                                </>
+                                                                )}
                                                             </div>
                                                         )}
                                                     </Draggable>
-                                                ))}
+                                                    );
+                                                })}
                                                 {provided.placeholder}
                                                 {filteredStories.length === 0 && (
                                                     <div style={{
@@ -576,6 +651,17 @@ const KanbanBoard = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Sub-item Edit Modal */}
+            {selectedSubtask && (
+                <SubItemEditModal
+                    mode="edit"
+                    subItem={selectedSubtask}
+                    members={members}
+                    onClose={() => setSelectedSubtask(null)}
+                    onSaved={fetchKanbanBoard}
+                />
             )}
 
             {/* Column Configuration Modal */}
@@ -838,6 +924,131 @@ const KanbanBoard = () => {
                             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                         >
                             🗑️ Delete Story
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {/* Sub-task Context Menu */}
+            {subtaskContextMenu.visible && (
+                <>
+                    <div
+                        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }}
+                        onClick={closeSubtaskContextMenu}
+                        onContextMenu={(e) => { e.preventDefault(); closeSubtaskContextMenu(); }}
+                    />
+                    <div
+                        style={{
+                            position: 'fixed',
+                            top: `${subtaskContextMenu.y}px`,
+                            left: `${subtaskContextMenu.x}px`,
+                            backgroundColor: 'white',
+                            borderRadius: 'var(--radius-md)',
+                            boxShadow: 'var(--shadow-lg)',
+                            padding: 'var(--spacing-xs)',
+                            minWidth: '200px',
+                            zIndex: 1000
+                        }}
+                    >
+                        {/* View Parent Story */}
+                        <Link
+                            to={`/project/${projectId}/story/${subtaskContextMenu.subtask?.parentStoryId}`}
+                            style={{ textDecoration: 'none', color: 'inherit' }}
+                            onClick={closeSubtaskContextMenu}
+                        >
+                            <div
+                                style={{
+                                    padding: 'var(--spacing-sm)',
+                                    cursor: 'pointer',
+                                    borderRadius: 'var(--radius-sm)',
+                                    transition: 'background-color 0.2s'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                            >
+                                📖 View Parent Story
+                            </div>
+                        </Link>
+
+                        <div style={{ height: '1px', backgroundColor: 'var(--color-border)', margin: 'var(--spacing-xs) 0' }} />
+
+                        {/* Move To - Expandable Submenu */}
+                        <div
+                            style={{ position: 'relative' }}
+                            onMouseEnter={() => setShowSubtaskMoveSubmenu(true)}
+                            onMouseLeave={() => setShowSubtaskMoveSubmenu(false)}
+                        >
+                            <div
+                                style={{
+                                    padding: 'var(--spacing-sm)',
+                                    cursor: 'pointer',
+                                    borderRadius: 'var(--radius-sm)',
+                                    transition: 'background-color 0.2s',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                            >
+                                <span>➡️ Move To</span>
+                                <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                                    <path d="M7.5 15L12.5 10L7.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            </div>
+
+                            {showSubtaskMoveSubmenu && (
+                                <div
+                                    style={{
+                                        position: 'absolute',
+                                        left: 'calc(100% - 4px)',
+                                        top: '-4px',
+                                        backgroundColor: 'white',
+                                        borderRadius: 'var(--radius-md)',
+                                        boxShadow: 'var(--shadow-lg)',
+                                        padding: 'var(--spacing-xs)',
+                                        minWidth: '180px',
+                                        marginLeft: 'var(--spacing-xs)',
+                                        paddingLeft: '8px'
+                                    }}
+                                >
+                                    {columns.filter(col => col.status !== subtaskContextMenu.subtask?.status).map(column => (
+                                        <div
+                                            key={column.status}
+                                            onClick={() => handleMoveSubtaskToStatus(subtaskContextMenu.subtask.id, column.status)}
+                                            style={{
+                                                padding: 'var(--spacing-sm)',
+                                                cursor: 'pointer',
+                                                borderRadius: 'var(--radius-sm)',
+                                                transition: 'background-color 0.2s',
+                                                fontSize: 'var(--font-size-sm)'
+                                            }}
+                                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)'}
+                                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                        >
+                                            {column.displayName}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div style={{ height: '1px', backgroundColor: 'var(--color-border)', margin: 'var(--spacing-xs) 0' }} />
+
+                        {/* Delete */}
+                        <div
+                            onClick={() => handleDeleteSubtask(subtaskContextMenu.subtask.id)}
+                            style={{
+                                padding: 'var(--spacing-sm)',
+                                cursor: 'pointer',
+                                borderRadius: 'var(--radius-sm)',
+                                transition: 'background-color 0.2s',
+                                color: 'var(--color-danger)'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-danger-light)'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                            🗑️ Delete Sub-Item
                         </div>
                     </div>
                 </>

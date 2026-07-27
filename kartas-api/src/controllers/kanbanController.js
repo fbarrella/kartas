@@ -58,6 +58,20 @@ export const kanbanController = {
                 [sprint.id]
             );
 
+            // Get individual sub-tasks for stories in the active sprint
+            const subTasksResult = await query(
+                `SELECT st.*,
+                u.first_name || ' ' || u.last_name as assignee_name,
+                s.story_id as parent_story_code
+         FROM sub_tasks st
+         JOIN stories s ON st.story_id = s.id
+         JOIN sprint_stories ss ON ss.story_id = s.id
+         LEFT JOIN users u ON st.assignee_id = u.id
+         WHERE ss.sprint_id = $1
+         ORDER BY st.created_at`,
+                [sprint.id]
+            );
+
             // Group stories by status
             const storiesByStatus = {};
             storiesResult.rows.forEach(story => {
@@ -65,6 +79,7 @@ export const kanbanController = {
                     storiesByStatus[story.status] = [];
                 }
                 storiesByStatus[story.status].push({
+                    itemType: 'story',
                     id: story.id,
                     storyId: story.story_id,
                     type: story.type,
@@ -80,6 +95,26 @@ export const kanbanController = {
                     isBlocked: story.is_blocked,
                     completedSubtasks: parseInt(story.completed_subtasks),
                     totalSubtasks: parseInt(story.total_subtasks)
+                });
+            });
+
+            // Append sub-tasks after stories in their own status column
+            subTasksResult.rows.forEach(st => {
+                if (!storiesByStatus[st.status]) {
+                    storiesByStatus[st.status] = [];
+                }
+                storiesByStatus[st.status].push({
+                    itemType: 'subtask',
+                    id: st.id,
+                    type: st.type,
+                    status: st.status,
+                    title: st.title,
+                    description: st.description,
+                    storyPoints: st.story_points,
+                    assigneeId: st.assignee_id,
+                    assigneeName: st.assignee_name,
+                    parentStoryId: st.story_id,
+                    parentStoryCode: st.parent_story_code
                 });
             });
 
@@ -166,6 +201,51 @@ export const kanbanController = {
             });
         } catch (error) {
             console.error('Error updating story status:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
+    // Update sub-task status (for drag-and-drop)
+    async updateSubTaskStatus(req, res) {
+        try {
+            const { id } = req.params;
+            const { status } = req.body;
+            const userId = req.user.userId;
+
+            const subTaskResult = await query(
+                `SELECT s.project_id
+         FROM sub_tasks st
+         JOIN stories s ON st.story_id = s.id
+         WHERE st.id = $1`,
+                [id]
+            );
+
+            if (subTaskResult.rows.length === 0) {
+                return res.status(404).json({ error: 'Sub-task not found' });
+            }
+
+            const accessCheck = await query(
+                'SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2',
+                [subTaskResult.rows[0].project_id, userId]
+            );
+
+            if (accessCheck.rows.length === 0 && req.user.role !== 'admin') {
+                return res.status(403).json({ error: 'Access denied' });
+            }
+
+            const validStatuses = ['backlog', 'refining', 'ready', 'in_development', 'review', 'test', 'done', 'cancelled'];
+            if (!validStatuses.includes(status)) {
+                return res.status(400).json({ error: 'Invalid status' });
+            }
+
+            const result = await query(
+                'UPDATE sub_tasks SET status = $1 WHERE id = $2 RETURNING *',
+                [status, id]
+            );
+
+            res.json({ id: result.rows[0].id, status: result.rows[0].status });
+        } catch (error) {
+            console.error('Error updating sub-task status:', error);
             res.status(500).json({ error: 'Server error' });
         }
     },

@@ -24,6 +24,7 @@ router.use(authenticateToken);
 // Kanban board
 router.get('/project/:projectId', kanbanController.getKanbanBoard);
 router.put('/stories/:storyId/status', validateStatusUpdate, kanbanController.updateStoryStatus);
+router.put('/subtasks/:id/status', validateStatusUpdate, kanbanController.updateSubTaskStatus);
 
 // Column configuration
 router.get('/project/:projectId/columns', kanbanController.getColumnConfig);
