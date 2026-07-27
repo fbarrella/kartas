@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import api from '../services/api';
 
+const formatDate = (d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
 const KanbanBoard = () => {
     const { projectId } = useParams();
@@ -239,12 +240,49 @@ const KanbanBoard = () => {
         );
     }
 
+    const elapsedPercent = sprint?.startDate && sprint?.endDate
+        ? Math.min(Math.max(((new Date() - new Date(sprint.startDate)) / (new Date(sprint.endDate) - new Date(sprint.startDate))) * 100, 0), 100)
+        : 0;
+
     return (
         <>
             <div className="mb-md">
                 <h2 style={{ margin: 0, marginBottom: 'var(--spacing-sm)' }}>{sprint?.name || 'Kanban Board'}</h2>
                 {sprint?.objective && (
                     <p className="text-muted" style={{ margin: 0 }}>{sprint.objective}</p>
+                )}
+                {sprint?.startDate && sprint?.endDate && (
+                    <p className="text-muted" style={{ margin: 0, marginTop: 'var(--spacing-xs)', fontSize: 'var(--font-size-sm)' }}>
+                        {formatDate(sprint.startDate)} – {formatDate(sprint.endDate)}
+                    </p>
+                )}
+                {sprint?.startDate && sprint?.endDate && (
+                    <div style={{ marginTop: 'var(--spacing-sm)', maxWidth: '280px' }}>
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            fontSize: 'var(--font-size-xs)',
+                            color: 'var(--color-neutral-600)',
+                            marginBottom: '2px'
+                        }}>
+                            <span>Elapsed Time</span>
+                            <span>{Math.round(elapsedPercent)}%</span>
+                        </div>
+                        <div style={{
+                            width: '100%',
+                            height: '4px',
+                            backgroundColor: 'var(--color-neutral-100)',
+                            borderRadius: '4px',
+                            overflow: 'hidden'
+                        }}>
+                            <div style={{
+                                width: `${elapsedPercent}%`,
+                                height: '100%',
+                                backgroundColor: 'var(--color-success)',
+                                transition: 'width 0.3s ease'
+                            }} />
+                        </div>
+                    </div>
                 )}
             </div>
 
