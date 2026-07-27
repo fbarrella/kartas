@@ -203,6 +203,16 @@ const KanbanBoard = () => {
         }
     };
 
+    const handleToggleBlocked = async (storyId, currentValue) => {
+        try {
+            await api.put(`/stories/${storyId}`, { isBlocked: !currentValue });
+            fetchKanbanBoard();
+            closeContextMenu();
+        } catch (error) {
+            console.error('Error toggling blocked status:', error);
+        }
+    };
+
     const filterStories = (stories) => {
         return stories.filter(story => {
             if (filter.type && story.type !== filter.type) return false;
@@ -406,6 +416,11 @@ const KanbanBoard = () => {
                                                                         {story.assigneeName ? `@${story.assigneeName.split(' ')[0]}` : 'Unassigned'}
                                                                     </span>
                                                                     <div className="flex flex-gap-xs">
+                                                                        {story.isBlocked && (
+                                                                            <span className="badge badge-danger" style={{ fontSize: '10px', padding: '2px 6px' }}>
+                                                                                🚫 Blocked
+                                                                            </span>
+                                                                        )}
                                                                         {story.storyPoints && (
                                                                             <span className="badge badge-neutral" style={{ fontSize: '10px', padding: '2px 6px' }}>
                                                                                 {story.storyPoints}
@@ -487,6 +502,14 @@ const KanbanBoard = () => {
                                 <div>
                                     <strong>Status:</strong>
                                     <p className="mt-xs">{selectedStory.status}</p>
+                                </div>
+                                <div>
+                                    <strong>Blocked:</strong>
+                                    <p className="mt-xs">
+                                        {selectedStory.isBlocked ? (
+                                            <span className="badge badge-danger" style={{ fontSize: '10px', padding: '2px 6px' }}>🚫 Blocked</span>
+                                        ) : 'No'}
+                                    </p>
                                 </div>
                                 <div>
                                     <strong>Story Points:</strong>
@@ -655,6 +678,21 @@ const KanbanBoard = () => {
                                 ✏️ Edit Story
                             </div>
                         </Link>
+
+                        {/* Toggle Blocked */}
+                        <div
+                            onClick={() => handleToggleBlocked(contextMenu.story.id, contextMenu.story.isBlocked)}
+                            style={{
+                                padding: 'var(--spacing-sm)',
+                                cursor: 'pointer',
+                                borderRadius: 'var(--radius-sm)',
+                                transition: 'background-color 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                            {contextMenu.story?.isBlocked ? '✅ Unblock' : '🚫 Mark as Blocked'}
+                        </div>
 
                         <div style={{ height: '1px', backgroundColor: 'var(--color-border)', margin: 'var(--spacing-xs) 0' }} />
 

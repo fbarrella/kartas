@@ -41,7 +41,8 @@ const StoryDetail = () => {
         status: 'backlog',
         points: '',
         assigneeId: null,
-        epicId: null
+        epicId: null,
+        isBlocked: false
     });
 
     useEffect(() => {
@@ -72,7 +73,8 @@ const StoryDetail = () => {
                 status: response.data.status || 'backlog',
                 points: response.data.storyPoints || '',
                 assigneeId: response.data.assigneeId || null,
-                epicId: response.data.epicId || null
+                epicId: response.data.epicId || null,
+                isBlocked: response.data.isBlocked || false
             });
         } catch (error) {
             console.error('Error fetching story:', error);
@@ -195,6 +197,11 @@ const StoryDetail = () => {
             <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
                 <h2 style={{ margin: 0 }}>
                     {TYPE_OPTIONS.find(t => t.value === story.type)?.icon || ''} {story.storyId}
+                    {story.isBlocked && (
+                        <span className="badge badge-danger" style={{ marginLeft: 'var(--spacing-sm)', fontSize: '10px', padding: '2px 6px', verticalAlign: 'middle' }}>
+                            🚫 Blocked
+                        </span>
+                    )}
                 </h2>
                 <div className="flex" style={{ gap: 'var(--spacing-sm)' }}>
                     <button
@@ -273,6 +280,17 @@ const StoryDetail = () => {
                                     </option>
                                 ))}
                             </select>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label flex flex-gap-sm" style={{ alignItems: 'center' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={formData.isBlocked}
+                                    onChange={(e) => handleChange('isBlocked', e.target.checked)}
+                                />
+                                Blocked
+                            </label>
                         </div>
                     </div>
 

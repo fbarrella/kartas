@@ -189,6 +189,7 @@ export const storyController = {
                 assigneeName: story.assignee_name,
                 creatorId: story.creator_id,
                 creatorName: story.creator_name,
+                isBlocked: story.is_blocked,
                 tags: tagsMap[story.id] || [],
                 sprints: sprintsMap[story.id] || [],
                 createdAt: story.created_at,
@@ -306,6 +307,7 @@ export const storyController = {
                 assigneeName: story.assignee_name,
                 creatorId: story.creator_id,
                 creatorName: story.creator_name,
+                isBlocked: story.is_blocked,
                 tags: tagsResult.rows,
                 sprints: sprintsResult.rows.map(s => ({
                     id: s.id,
@@ -362,7 +364,8 @@ export const storyController = {
                 title,
                 description,
                 storyPoints,
-                assigneeId
+                assigneeId,
+                isBlocked
             } = req.body;
             const userId = req.user.userId;
 
@@ -412,6 +415,9 @@ export const storyController = {
             if (assigneeId !== undefined && assigneeId !== story.assignee_id) {
                 changes.push({ field: 'assignee_id', oldValue: story.assignee_id, newValue: assigneeId });
             }
+            if (isBlocked !== undefined && isBlocked !== story.is_blocked) {
+                changes.push({ field: 'is_blocked', oldValue: story.is_blocked, newValue: isBlocked });
+            }
 
             // Update story
             const result = await query(
@@ -422,10 +428,11 @@ export const storyController = {
              title = COALESCE($4, title),
              description = COALESCE($5, description),
              story_points = COALESCE($6, story_points),
-             assignee_id = COALESCE($7, assignee_id)
-         WHERE id = $8
+             assignee_id = COALESCE($7, assignee_id),
+             is_blocked = COALESCE($8, is_blocked)
+         WHERE id = $9
          RETURNING *`,
-                [epicId, type, status, title, description, storyPoints, assigneeId, storyId]
+                [epicId, type, status, title, description, storyPoints, assigneeId, isBlocked, storyId]
             );
 
             // Record changes in history
@@ -451,6 +458,7 @@ export const storyController = {
                 storyPoints: updatedStory.story_points,
                 assigneeId: updatedStory.assignee_id,
                 creatorId: updatedStory.creator_id,
+                isBlocked: updatedStory.is_blocked,
                 createdAt: updatedStory.created_at,
                 updatedAt: updatedStory.updated_at
             });

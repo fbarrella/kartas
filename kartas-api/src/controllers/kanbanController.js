@@ -77,6 +77,7 @@ export const kanbanController = {
                     creatorName: story.creator_name,
                     epicId: story.epic_id,
                     epicTitle: story.epic_title,
+                    isBlocked: story.is_blocked,
                     completedSubtasks: parseInt(story.completed_subtasks),
                     totalSubtasks: parseInt(story.total_subtasks)
                 });
