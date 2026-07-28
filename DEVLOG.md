@@ -4,6 +4,160 @@ Development log for all Phase 4 changes. Each entry records what was done, which
 
 ---
 
+## [2026-07-28] — Phase 4 Complete — All PRD Requirements Delivered
+
+- **Author**: Claude
+- **PRD Requirement**: All (UI-01 through FY-01b)
+- **Summary**: Confirmed every requirement in `.planning/PRD.md` is implemented, verified, and logged in this file, across all 8 suggested implementation phases:
+  - **4.1 Critical Fixes** — `UI-03`, `UI-06`, `UI-07`, `UI-08`, `SR-01`
+  - **4.2 UI Polish** — `UI-01`, `UI-02`, `UI-04` (N/A, no matching code existed), `UI-05`, `UI-09`, `SP-01`
+  - **4.3 Backlog & Epic Improvements** — `BL-01`, `BL-02`, `EP-01`, `EP-02`
+  - **4.4 Kanban Enhancements** — `KN-01`, `KN-02`
+  - **4.5 Sub-Tasks System** — `ST-01`–`ST-04`
+  - **4.6 Access Control** — `RB-01`, `RB-02`, `UM-01` (design decision), `UM-04`
+  - **4.7 User Management** — `UM-02`, `UM-03`
+  - **4.8 "For You" Page** — `FY-01a`, `FY-01b`
+  
+  Beyond the PRD's original scope, several follow-up rounds — all driven directly by user feedback after browser-testing the delivered features, and already individually logged above — extended the work: reworking "For You" from a cross-project dashboard into a per-project page; a new per-project, per-user Settings page (default landing-page preference); email-invitation failure-reason specificity; several infrastructure fixes (`setup.sh` `.env` application, first-run session-recovery bugs); and a round of navigation/UX polish (sticky header, Kanban board width, heading hierarchy consistency). Phase 4 is complete.
+- **Files Changed**: None (summary entry)
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-28] — Fix sticky header, Kanban column regression, User Management heading hierarchy
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (follow-up UX fixes from browser testing)
+- **Summary**: Three fixes after browser-testing the prior session's UX polish work:
+  1. **Sticky header**: `ProjectLayout.jsx`'s header used `position: 'relative'`, so it scrolled away with the page — but `.sidebar` (`navigation.css`) is `position: fixed; top: 64px`, a hardcoded assumption that the header always occupies the viewport's top 64px. Once the header scrolled off, the sidebar stayed pinned at `top: 64px` regardless, leaving a blank gap above it. Changed the header to genuinely `position: fixed; top/left/right: 0`, making the sidebar's existing assumption true again, and added `padding-top: 64px` to `.page-content` to compensate for the header no longer occupying space in normal document flow (matches the same `64px` figure already baked into the sidebar's own offset, rather than introducing a new one).
+  2. **Kanban columns regressed**: the previous session's width fix changed columns from a fixed `minWidth: 300px, maxWidth: 350px` (a hard floor, never shrinks) to `flex: '1 1 320px', maxWidth: 420px` — the `flex-shrink: 1` let columns shrink *below* 320px to fit the default 5 visible columns inside the container, making them smaller than before rather than bigger. Reverted columns to the original fixed `minWidth`/`maxWidth` (no flex-shrink), and instead addressed the actual ask — "make the board occupy more of the screen" — by trimming the board's own lateral padding (`padding: '0 var(--spacing-sm)'`, down from the `.container-fluid` class's default `var(--spacing-md)`), scoped to `KanbanBoard.jsx` only via an inline override, not the shared class.
+  3. **User Management heading hierarchy**: the page title ("User Management") and its two section headings ("Pending Invites", "Active Users") were all plain `<h2>` — visually identical weight. Demoted both section headings to `<h3>` (confirmed via `index.css`: `h2` = `--font-size-xl`, `h3` = `--font-size-lg`, one tier down), so they now read as clearly subordinate to the page title.
+- **Files Changed**:
+  - `kartas-app/src/components/ProjectLayout.jsx` — Header `position: fixed`
+  - `kartas-app/src/components/navigation.css` — `.page-content` gains `padding-top: 64px`
+  - `kartas-app/src/pages/KanbanBoard.jsx` — Columns reverted to fixed `minWidth`/`maxWidth`; board wrapper padding reduced
+  - `kartas-app/src/pages/UserManagement.jsx` — "Pending Invites"/"Active Users" demoted to `<h3>`
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-27] — Project UX polish: settings page, title/header consistency, Kanban width
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (post-Phase-4 UX polish, user-requested)
+- **Summary**: Four independent UX improvements:
+  1. **Per-project, per-user Settings page**: new `project_user_settings` table (composite `PRIMARY KEY (project_id, user_id)`, both FKs `ON DELETE CASCADE`, mirroring `project_members`'s key shape but kept as its own dedicated table rather than bolting a UI-preference column onto a membership/role table — deliberately future-proof for more per-user-per-project settings later) stores `default_landing_page` (default `'backlog'`). New `GET/PUT /api/projects/:projectId/settings` (plain membership access check — any role, since this is a personal preference, not an owner-gated setting), upserted via the same `ON CONFLICT` idiom already used by `addMember`. `getUserProjects` now `LEFT JOIN`s this table so the Dashboard gets each project's `defaultLandingPage` in the same response (no extra round-trip) and its project-card links now route to `` `/project/${id}/${defaultLandingPage}` `` instead of the previously hardcoded `/team`. New `ProjectSettings.jsx` page (plain project-scoped content, matching `Backlog.jsx`'s shape) with a single `<select>` + Save button; new "Settings" sidebar entry (gear icon, placed last) at `/project/:projectId/settings`. Verified per-user isolation with two temp test users in the same project: each independently defaults to `backlog`, one user's update to `kanban` persisted and did not affect the other's setting.
+  2. **Reports page title**: `SprintReports.jsx` had no page-level heading at all (confirmed by reading the full file) — added `<h2>Reports</h2>` in the same `flex flex-between mb-md` wrapper used by `Epics.jsx`/`ProjectView.jsx`, across all three of its render branches (loading, empty, and main) so the title doesn't disappear depending on state.
+  3. **Header consistency — My Profile & User Management**: both previously had bespoke top bars (title and, for User Management, action buttons baked into the header). Replaced both with the standard app header (`Dashboard.jsx`'s exact pattern: logo linking to `/`, `UserDropdown`, nothing else). Title/back-button/actions moved into the content area following the same rhythm already established by `StoryDetail.jsx`: back button first (own wrapper), then a title row with any action buttons on the right. `UserProfile.jsx`'s previous back button (`navigate(-1)`, unstyled, in the header) is now a standard `.btn .btn-secondary .btn-sm` "← Go back to My Projects" link in the content area; `UserManagement.jsx`'s existing back link (previously "← Back to Dashboard", added in a past `UI-09` fix) was relabeled and moved to be the first content element, with "+ Create User"/"+ Invite User" now living in the title row instead of the header.
+  4. **Kanban board width**: root cause was the board's own `.container` wrapper nested inside `ProjectLayout`'s `.container` — both capped at 1200px, so Kanban was doubly constrained to the same width as every other page, while its columns (`minWidth: 300px, maxWidth: 350px`, no `flex` grow) didn't stretch to fill whatever space they did get. Swapped the board's wrapper to the existing `.container-fluid` utility (full width, no cap) and changed columns to `flex: '1 1 320px', maxWidth: '420px'` so they grow to fill available width instead of leaving blank space — both changes scoped to `KanbanBoard.jsx` only, no shared CSS class touched.
+- **Files Changed**:
+  - `kartas-api/src/migrations/010_project_user_settings.sql` — New table
+  - `kartas-api/src/controllers/projectController.js` — New `getProjectSettings`/`updateProjectSettings`; `getUserProjects` now joins settings
+  - `kartas-api/src/routes/projects.js` — New settings routes + validator
+  - `kartas-app/src/pages/ProjectSettings.jsx` — New page
+  - `kartas-app/src/App.jsx` — New `settings` route
+  - `kartas-app/src/components/Sidebar.jsx` — New "Settings" nav item
+  - `kartas-app/src/pages/Dashboard.jsx` — Project card link uses `defaultLandingPage`
+  - `kartas-app/src/pages/SprintReports.jsx` — Added title to all render branches
+  - `kartas-app/src/pages/UserProfile.jsx` — Standard header; back button + title moved to content
+  - `kartas-app/src/pages/UserManagement.jsx` — Standard header; back button + title + actions moved to content
+  - `kartas-app/src/pages/KanbanBoard.jsx` — `.container-fluid` + flexible column widths
+- **Migration**: `010_project_user_settings.sql`
+- **Status**: Done
+
+---
+
+## [2026-07-27] — Rework FY-01: "For You" becomes project-scoped
+
+- **Author**: Claude
+- **PRD Requirement**: FY-01a/FY-01b (rework, per user feedback)
+- **Summary**: The user tested the cross-project "For You" page and found the "all projects at once" model confusing to navigate. Reworked it into a per-project feature — exactly like Backlog/Epics/Sprints/Kanban/Reports/Team — instead of a standalone cross-project dashboard. This is an explicit, authorized rollback of several pieces added in the prior two sessions:
+  - **Backend**: `forYouController.getMyTasks`/`getMyActivity` now take `projectId` from the route (`GET /api/for-you/project/:projectId/tasks`, `/activity`) instead of aggregating across every project the user belongs to. Added the standard `project_members` access check (403 for non-members) matching every other project-scoped controller, and simplified both queries from a `JOIN project_members` cross-project shape down to a plain `WHERE project_id = $1 AND assignee_id = $2` — the access check now does the membership gating, so the query itself no longer needs to. Dropped `projectName` from both responses (redundant once every row is implicitly the current project). No migration needed — `change_history.project_id` already existed from `009_activity_log.sql`.
+  - **Routing**: `ForYou.jsx` moved from a top-level `/for-you` route to a nested `for-you` route under `/project/:projectId`, alongside the other project pages.
+  - **`ForYou.jsx`**: rewritten from a `Dashboard.jsx`-style standalone page (own header, own sidebar render, own `page-content` wrapping) into a plain project-scoped content component (`Backlog.jsx`-style) that reads `projectId` via `useParams()`. Removed the project-filter dropdown and the "Project" column/"in {project}" text from the tasks table and activity feed (both redundant now that the page is inherently scoped to one project).
+  - **`Sidebar.jsx`**: reverted the "global nav" branch added last session solely to support standalone `ForYou.jsx` (My Projects / User Management / conditional Exit Project) — back to a single, always-project-scoped `navItems` list, with "For You" added as the first item. "Exit Project" is unconditional again.
+  - **`navigation.css`**: removed the now-unused `.sidebar-divider` rule.
+  - **`ProjectLayout.jsx`**: logo now links to `` `/project/${projectId}/for-you` `` (the current project's For You page) instead of the old global `/for-you`.
+  - **`Dashboard.jsx`**: logo reverted from `/for-you` back to `/` (self-link) — there's no project context on the dashboard to send it into anymore. `UserDropdown.jsx`'s "My Projects" item (added last session) needed no change.
+- **Verification**: As a temp test user in two separate temp projects (each with an assigned story), confirmed `GET /api/for-you/project/:projectId/tasks` and `/activity` for project A returned only project A's data and vice versa (no cross-contamination), and confirmed a 403 for a project the user doesn't belong to (tested against the real admin's own project). `npm run build` clean. All temp test data cleaned up.
+- **Files Changed**:
+  - `kartas-api/src/routes/forYou.js` — Routes now take `:projectId`
+  - `kartas-api/src/controllers/forYouController.js` — Project-scoped access check + simplified queries
+  - `kartas-app/src/App.jsx` — `for-you` route moved under `/project/:projectId`
+  - `kartas-app/src/pages/ForYou.jsx` — Rewritten as a project-scoped content component
+  - `kartas-app/src/components/Sidebar.jsx` — Reverted to project-only; "For You" added as first nav item
+  - `kartas-app/src/components/navigation.css` — Removed unused `.sidebar-divider`
+  - `kartas-app/src/components/ProjectLayout.jsx` — Logo links to the project-specific For You page
+  - `kartas-app/src/pages/Dashboard.jsx` — Logo reverted to self-link (`/`)
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-27] — Post-FY-01 fixes: activity feed null bug, sidebar navigation, dropdown, spacing
+
+- **Author**: Claude
+- **PRD Requirement**: FY-01a/FY-01b (follow-up fixes from user testing)
+- **Summary**: Four issues reported after testing the "For You" page:
+  1. **Null old_value bug**: `kanbanController.updateStoryStatus` (the drag-and-drop status endpoint) selected only `project_id` from the story before logging the change, never `status` — so `story.status` was `undefined` when used as `old_value`, stored as SQL `NULL`, and rendered as the literal string "null" in the activity feed (e.g. "Moved RES-0001 from null to in_development"). Fixed the `SELECT` to also fetch `status`. Also hardened `ForYou.jsx`'s `describeActivity` so both "moved" branches (story and sub-task) gracefully omit the "from X" clause if `oldValue` is ever null/undefined for any other reason, and switched both branches to render human-readable status labels (e.g. "Ready" instead of "ready") instead of raw enum values.
+  2. **Sidebar navigation**: `ForYou.jsx` had no left sidebar at all (it copied `Dashboard.jsx`'s minimal header-only shell), and the per-project `Sidebar.jsx` had no way back to "For You" except the logo click. Rather than building a second divergent sidebar, generalized `Sidebar.jsx` to work with or without a `projectId`: within a project, it now shows one new "For You" link above the existing 6 project items (a divider separates the two groups); outside a project (currently only `ForYou.jsx`), it shows "My Projects", "For You", and — admin-only, mirroring `UserDropdown.jsx`'s existing gate — "User Management" instead, since there's no other nav affordance there and "Exit Project" (which already covers "back to projects" within a project) doesn't apply. The "Exit Project" footer button is now conditional on `projectId` being present. Extracted the sidebar-collapsed-state localStorage-polling logic (previously inlined in `ProjectLayout.jsx`, and documented as a gotcha in `CLAUDE.md`) into a shared `useSidebarCollapsed` hook, used by both `ProjectLayout.jsx` (no behavior change) and the new usage in `ForYou.jsx`, which now replicates `ProjectLayout`'s sidebar + `page-content` DOM structure.
+  3. **"My Projects" in the user dropdown**: Added a new top item in `UserDropdown.jsx`'s menu (above "My Profile") linking to `/`, with a 16×16 filled folder icon matching that component's existing icon convention.
+  4. **Activity section spacing**: `ForYou.jsx` used `className="mt-xl"`/`className="mb-xl"`-shaped spacing, but `index.css` only ever defined `.mt-lg`/`.mb-lg` and smaller — `.mt-xl`/`.mb-xl` didn't exist, so the class silently resolved to zero margin, causing the "glued together" look between the tasks table and the "Activity" heading. Added both missing utility classes (32px, matching the existing `--spacing-xl` variable) to `index.css`'s existing spacing-utility block — no `ForYou.jsx` change needed, since it already referenced the (now real) class name.
+- **Verification**: Reproduced the exact reported scenario (Ready → In Development via the kanban drag endpoint) with a temp test user; confirmed the activity feed now shows `oldValue: "ready"` instead of `null`. `npm run build` clean. Cleaned up all temp test data.
+- **Files Changed**:
+  - `kartas-api/src/controllers/kanbanController.js` — `updateStoryStatus`'s `SELECT` now includes `status`
+  - `kartas-app/src/pages/ForYou.jsx` — Null-safe `describeActivity` "moved" branches with human-readable status labels; wired in `Sidebar`/`page-content` layout via the new hook
+  - `kartas-app/src/components/Sidebar.jsx` — Generalized to accept an optional `projectId`; new global nav section (For You / My Projects / User Management) with new icons; "Exit Project" footer now conditional
+  - `kartas-app/src/components/ProjectLayout.jsx` — Switched to the new shared `useSidebarCollapsed` hook (no behavior change)
+  - `kartas-app/src/hooks/useSidebarCollapsed.js` — New shared hook
+  - `kartas-app/src/components/navigation.css` — New `.sidebar-divider` rule
+  - `kartas-app/src/components/UserDropdown.jsx` — New "My Projects" menu item
+  - `kartas-app/src/index.css` — New `.mt-xl`/`.mb-xl` utility classes
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-27] — FY-01b — Activity History ("For You" Page, Part 2)
+
+- **Author**: Claude
+- **PRD Requirement**: FY-01b
+- **Summary**: Added a paginated, cross-project activity feed to the "For You" page. `change_history` (previously a story-only field-diff log with exactly 2 write sites in the whole codebase) is generalized via migration `009_activity_log.sql`, adding nullable `entity_type`, `entity_id`, `project_id`, and `action_type` columns — purely additive, no backfill needed, since the read query (`getMyActivity`) `COALESCE`s sensible defaults for pre-migration rows (`entity_type` → `'story'`, `action_type` → `'moved'`/`'edited'` based on `field_changed`). Per the user's explicit direction (full scope, not a reduced subset), added new logging call sites everywhere the PRD's acceptance criteria requires: story creation and comments (`storyController.createStory`/`addComment`), sub-task creation/edits/moves (`subTaskController.js`, `kanbanController.updateSubTaskStatus`), and epic/sprint creation and updates (`epicController.js`, `sprintController.js` — `createSprint`/`updateSprint`/`startSprint`/`endSprint`), on top of extending the two pre-existing story-edit/status-change sites. New `GET /api/for-you/activity?limit=&offset=` returns `{ items, hasMore }`, fetching `limit+1` rows to compute `hasMore` without a second `COUNT` query — this establishes the first pagination convention in the codebase (none existed before, frontend or backend). `ForYou.jsx` gained an "Activity" section below "My Tasks": a human-readable description per action/entity-type combination, relative timestamps, and a "Load More" button (no infinite-scroll observer — no precedent existed, and the PRD explicitly allows either). Verified end-to-end via a temp test user: exercised all 13 instrumented action/entity combinations (story create/edit/move/comment, epic create/update, sub-task create/update/move, sprint create/start/update/end), confirmed every entry logged with correct shape and latest-first ordering, and confirmed pagination boundaries across 3 pages (`limit=5`) with no gaps or overlaps and correct `hasMore` transitions. Cleaned up afterward — cascade deletes via both `story_id` and the new `project_id` FK correctly removed all activity rows, including entity types (epic/sprint) that have no `story_id` to cascade through.
+- **Files Changed**:
+  - `kartas-api/src/migrations/009_activity_log.sql` — New: adds `entity_type`/`entity_id`/`project_id`/`action_type` to `change_history` + supporting indexes
+  - `kartas-api/src/controllers/storyController.js` — Logging added to `createStory`, `addComment`; existing `updateStory` diff-loop extended with the new columns
+  - `kartas-api/src/controllers/kanbanController.js` — Existing `updateStoryStatus` insert extended; new logging added to `updateSubTaskStatus`
+  - `kartas-api/src/controllers/epicController.js` — Logging added to `createEpic`, `updateEpic`
+  - `kartas-api/src/controllers/sprintController.js` — Logging added to `createSprint`, `updateSprint`, `startSprint`, `endSprint`
+  - `kartas-api/src/controllers/subTaskController.js` — Logging added to `createSubTask`, `updateSubTask`
+  - `kartas-api/src/controllers/forYouController.js` — New `getMyActivity` method
+  - `kartas-api/src/routes/forYou.js` — New `GET /activity`
+  - `kartas-app/src/pages/ForYou.jsx` — New "Activity" section: `describeActivity`/`activityLink`/`formatRelativeTime` helpers, paginated state, "Load More" button
+- **Migration**: `009_activity_log.sql`
+- **Status**: Done
+
+---
+
+## [2026-07-27] — FY-01a — Assigned Tasks List ("For You" Page, Part 1)
+
+- **Author**: Claude
+- **PRD Requirement**: FY-01a
+- **Summary**: New personal, cross-project "For You" page listing every story/sub-task assigned to the logged-in user across all projects they belong to. New `GET /api/for-you/tasks` (optionally `?projectId=` filtered) runs two queries — stories and sub-tasks, each joined through `project_members` for authorization/`project_name` and `LEFT JOIN epics` for epic context — then batch-resolves each story's "current" sprint via `SELECT DISTINCT ON (story_id) ... ORDER BY (status = 'active') DESC, start_date DESC` (no `is_current` flag exists in the schema, so this is the tie-break for stories that have been added to more than one sprint over time). Results are merged in JS and sorted by an explicit status rank (`in_development` → `review` → `test` → `ready` → `refining` → `backlog` → `done` → `cancelled`) then `updatedAt` descending, per "in-progress first, then by updated date." Sub-task rows carry their parent story's code/id so the frontend can link to the parent's detail page (sub-tasks have no detail page of their own, per `ST-02`/`ST-04`). New `ForYou.jsx` mirrors `Dashboard.jsx`'s non-`ProjectLayout` page shell (own header, no sidebar), with a project-filter `<select>` and a task table (epic/sprint/status badges, story points). Also completes `UI-05`'s deferred follow-up: the Kartas logo in `ProjectLayout.jsx` now links to `/for-you` instead of `/` (its "until FY-01 is implemented" placeholder), and `Dashboard.jsx`'s own header logo — previously not a link at all — now does too, for consistency. Verified end-to-end via a temp test user with two temp projects, an epic, an active sprint, and a sub-task: confirmed cross-project aggregation, correct epic/sprint resolution, correct sort order, and the `?projectId=` filter, all via the running API; cleaned up afterward.
+- **Files Changed**:
+  - `kartas-api/src/controllers/forYouController.js` — New: `getMyTasks`
+  - `kartas-api/src/routes/forYou.js` — New: `GET /tasks`, mounted at `/api/for-you`
+  - `kartas-api/src/index.js` — Mounted `forYouRoutes`
+  - `kartas-app/src/pages/ForYou.jsx` — New page
+  - `kartas-app/src/App.jsx` — New top-level `/for-you` route
+  - `kartas-app/src/components/ProjectLayout.jsx` — Logo link `/` → `/for-you`
+  - `kartas-app/src/pages/Dashboard.jsx` — Logo now wrapped in a `/for-you` link
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
 ## [2026-07-27] — Fix setup.sh not reliably applying .env changes
 
 - **Author**: Claude

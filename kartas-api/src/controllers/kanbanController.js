@@ -153,7 +153,7 @@ export const kanbanController = {
 
             // Get story
             const storyResult = await query(
-                'SELECT project_id FROM stories WHERE id = $1',
+                'SELECT project_id, status FROM stories WHERE id = $1',
                 [storyId]
             );
 
@@ -189,9 +189,9 @@ export const kanbanController = {
 
             // Record change in history
             await query(
-                `INSERT INTO change_history (story_id, user_id, field_changed, old_value, new_value)
-         VALUES ($1, $2, 'status', $3, $4)`,
-                [storyId, userId, story.status, status]
+                `INSERT INTO change_history (story_id, user_id, field_changed, old_value, new_value, entity_type, entity_id, project_id, action_type)
+         VALUES ($1, $2, 'status', $3, $4, 'story', $1, $5, 'moved')`,
+                [storyId, userId, story.status, status, story.project_id]
             );
 
             res.json({
@@ -213,7 +213,7 @@ export const kanbanController = {
             const userId = req.user.userId;
 
             const subTaskResult = await query(
-                `SELECT s.project_id
+                `SELECT s.project_id, st.status as current_status, st.story_id as parent_story_id
          FROM sub_tasks st
          JOIN stories s ON st.story_id = s.id
          WHERE st.id = $1`,
@@ -224,9 +224,11 @@ export const kanbanController = {
                 return res.status(404).json({ error: 'Sub-task not found' });
             }
 
+            const subTask = subTaskResult.rows[0];
+
             const accessCheck = await query(
                 'SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2',
-                [subTaskResult.rows[0].project_id, userId]
+                [subTask.project_id, userId]
             );
 
             if (accessCheck.rows.length === 0 && req.user.role !== 'admin') {
@@ -241,6 +243,12 @@ export const kanbanController = {
             const result = await query(
                 'UPDATE sub_tasks SET status = $1 WHERE id = $2 RETURNING *',
                 [status, id]
+            );
+
+            await query(
+                `INSERT INTO change_history (story_id, user_id, field_changed, old_value, new_value, entity_type, entity_id, project_id, action_type)
+                 VALUES ($1, $2, 'status', $3, $4, 'sub_task', $5, $6, 'moved')`,
+                [subTask.parent_story_id, userId, subTask.current_status, status, id, subTask.project_id]
             );
 
             res.json({ id: result.rows[0].id, status: result.rows[0].status });

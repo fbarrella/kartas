@@ -59,6 +59,8 @@ A modern, comprehensive alternative to Jira for agile team management, built wit
 - **Access Control**: Team and epic management are restricted to project owners/admins — members get view-only access; admins can change any other user's role from User Management (with a self-demotion safeguard)
 - **Email Invitations**: Admins can send invites by email — SMTP by default, or Gmail via an app password, selected with `EMAIL_PROVIDER` — with specific delivery feedback (sent / not configured / send failed, each with the exact reason) and the invite link always shown as a manual fallback
 - **Admin-Created Users**: Admins can create a user account directly from User Management with a temporary password, bypassing the invite flow entirely; the new user is required to change their password on first login
+- **"For You" Page**: A per-project personal view, alongside Backlog/Epics/Sprints/Kanban — every story/sub-task assigned to you in that project (sorted in-progress-first), plus a paginated activity feed of your recent actions there (created/edited/moved/commented on stories and sub-tasks, epic and sprint changes)
+- **Project Settings**: A per-project, per-user preference page — choose which page a project opens to (defaults to Backlog)
 
 ### Additional Features
 - **Story Detail Page**: Full-page view with all story information
@@ -169,7 +171,7 @@ This project is being developed in phases:
 - **Phase 1**: ✅ Core authentication, project management, and backlog
 - **Phase 2**: ✅ Sprint management and kanban board
 - **Phase 3**: ✅ UI/UX improvements, epic enhancements, and advanced features
-- **Phase 4** (In Progress): ✅ Critical fixes & UI polish · ✅ Backlog/epic hardening · ✅ Kanban header context · ✅ Sub-tasks system · ✅ Access control refinements · ✅ Email invitations & admin-created users · 🔜 "For You" personal dashboard
+- **Phase 4**: ✅ Critical fixes & UI polish · ✅ Backlog/epic hardening · ✅ Kanban header context · ✅ Sub-tasks system · ✅ Access control refinements · ✅ Email invitations & admin-created users · ✅ "For You" personal dashboard
 
 See [`DEVLOG.md`](./DEVLOG.md) for the detailed, dated changelog of every Phase 4 change.
 

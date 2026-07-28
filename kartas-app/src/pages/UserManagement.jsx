@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import UserDropdown from '../components/UserDropdown';
+import '../components/navigation.css';
+import kartasLogoWhite from '../assets/kartas-logo-white.png';
 
 const USER_ROLE_OPTIONS = ['admin', 'project_owner', 'member'];
 
@@ -157,39 +160,44 @@ const UserManagement = () => {
                 padding: 'var(--spacing-md) 0',
                 boxShadow: 'var(--shadow-md)'
             }}>
-                <div className="container">
-                    <div className="flex flex-between" style={{ alignItems: 'center' }}>
-                        <h1 style={{ color: 'white', margin: 0 }}>User Management</h1>
-                        <div className="flex flex-gap-sm">
-                            <button
-                                onClick={() => setShowCreateUserModal(true)}
-                                className="btn btn-secondary"
-                            >
-                                + Create User
-                            </button>
-                            <button
-                                onClick={() => setShowInviteModal(true)}
-                                className="btn btn-secondary"
-                            >
-                                + Invite User
-                            </button>
-                        </div>
-                    </div>
+                <div className="container flex flex-between" style={{ alignItems: 'center' }}>
+                    <Link to="/" style={{ display: 'flex', alignItems: 'center' }}>
+                        <img src={kartasLogoWhite} alt="Kartas" style={{ height: '36px' }} />
+                    </Link>
+                    <UserDropdown />
                 </div>
             </header>
 
             {/* Main Content */}
             <div className="container" style={{ marginTop: 'var(--spacing-xl)' }}>
-                {/* Navigation */}
-                <div className="mb-lg">
+                <div className="mb-md">
                     <Link to="/" className="btn btn-secondary btn-sm">
-                        ← Back to Dashboard
+                        ← Go back to My Projects
                     </Link>
                 </div>
+
+                <div className="flex flex-between mb-lg" style={{ alignItems: 'center' }}>
+                    <h2 style={{ margin: 0 }}>User Management</h2>
+                    <div className="flex flex-gap-sm">
+                        <button
+                            onClick={() => setShowCreateUserModal(true)}
+                            className="btn btn-secondary"
+                        >
+                            + Create User
+                        </button>
+                        <button
+                            onClick={() => setShowInviteModal(true)}
+                            className="btn btn-secondary"
+                        >
+                            + Invite User
+                        </button>
+                    </div>
+                </div>
+
                 {/* Pending Invites */}
                 {pendingInvites.length > 0 && (
                     <div className="mb-xl">
-                        <h2>Pending Invites</h2>
+                        <h3>Pending Invites</h3>
                         <div className="card">
                             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                 <thead>
@@ -231,7 +239,7 @@ const UserManagement = () => {
 
                 {/* Active Users */}
                 <div>
-                    <h2>Active Users</h2>
+                    <h3>Active Users</h3>
                     {error && (
                         <div className="card mb-md" style={{ backgroundColor: 'var(--color-danger-light)', borderLeft: '4px solid var(--color-danger)' }}>
                             {error}

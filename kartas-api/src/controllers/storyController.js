@@ -43,6 +43,12 @@ export const storyController = {
 
             const story = result.rows[0];
 
+            await query(
+                `INSERT INTO change_history (story_id, user_id, field_changed, old_value, new_value, entity_type, entity_id, project_id, action_type)
+                 VALUES ($1, $2, 'creation', NULL, $3, 'story', $1, $4, 'created')`,
+                [story.id, userId, title, projectId]
+            );
+
             res.status(201).json({
                 id: story.id,
                 storyId: story.story_id,
@@ -439,9 +445,12 @@ export const storyController = {
             // Record changes in history
             for (const change of changes) {
                 await query(
-                    `INSERT INTO change_history (story_id, user_id, field_changed, old_value, new_value)
-           VALUES ($1, $2, $3, $4, $5)`,
-                    [storyId, userId, change.field, String(change.oldValue), String(change.newValue)]
+                    `INSERT INTO change_history (story_id, user_id, field_changed, old_value, new_value, entity_type, entity_id, project_id, action_type)
+           VALUES ($1, $2, $3, $4, $5, 'story', $1, $6, $7)`,
+                    [
+                        storyId, userId, change.field, String(change.oldValue), String(change.newValue),
+                        story.project_id, change.field === 'status' ? 'moved' : 'edited'
+                    ]
                 );
             }
 
@@ -541,6 +550,12 @@ export const storyController = {
             );
 
             const comment = result.rows[0];
+
+            await query(
+                `INSERT INTO change_history (story_id, user_id, field_changed, old_value, new_value, entity_type, entity_id, project_id, action_type)
+                 VALUES ($1, $2, 'comment', NULL, $3, 'story', $1, $4, 'commented')`,
+                [storyId, userId, content.slice(0, 200), storyResult.rows[0].project_id]
+            );
 
             res.status(201).json({
                 id: comment.id,

@@ -327,6 +327,10 @@ a:hover {
   margin-top: var(--spacing-lg);
 }
 
+.mt-xl {
+  margin-top: var(--spacing-xl);
+}
+
 .mb-xs {
   margin-bottom: var(--spacing-xs);
 }
@@ -341,6 +345,10 @@ a:hover {
 
 .mb-lg {
   margin-bottom: var(--spacing-lg);
+}
+
+.mb-xl {
+  margin-bottom: var(--spacing-xl);
 }
 
 .flex {

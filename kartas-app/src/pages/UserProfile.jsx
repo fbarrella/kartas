@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
+import UserDropdown from '../components/UserDropdown';
+import '../components/navigation.css';
+import kartasLogoWhite from '../assets/kartas-logo-white.png';
 
 const UserProfile = () => {
-    const navigate = useNavigate();
     const { user: currentUser } = useAuth();
     const [profile, setProfile] = useState({
         firstName: '',
@@ -98,18 +100,26 @@ const UserProfile = () => {
                 padding: 'var(--spacing-md) 0',
                 boxShadow: 'var(--shadow-md)'
             }}>
-                <div className="container">
-                    <div className="flex flex-gap-md" style={{ alignItems: 'center' }}>
-                        <button onClick={() => navigate(-1)} style={{ color: 'white', background: 'none', border: 'none', cursor: 'pointer' }}>
-                            ← Back
-                        </button>
-                        <h1 style={{ color: 'white', margin: 0 }}>My Profile</h1>
-                    </div>
+                <div className="container flex flex-between" style={{ alignItems: 'center' }}>
+                    <Link to="/" style={{ display: 'flex', alignItems: 'center' }}>
+                        <img src={kartasLogoWhite} alt="Kartas" style={{ height: '36px' }} />
+                    </Link>
+                    <UserDropdown />
                 </div>
             </header>
 
             {/* Main Content */}
             <div className="container" style={{ marginTop: 'var(--spacing-xl)', maxWidth: '600px' }}>
+                <div className="mb-md">
+                    <Link to="/" className="btn btn-secondary btn-sm">
+                        ← Go back to My Projects
+                    </Link>
+                </div>
+
+                <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
+                    <h2 style={{ margin: 0 }}>My Profile</h2>
+                </div>
+
                 {successMessage && (
                     <div className="alert alert-success mb-md">{successMessage}</div>
                 )}

@@ -32,6 +32,12 @@ export const sprintController = {
 
             const sprint = result.rows[0];
 
+            await query(
+                `INSERT INTO change_history (user_id, field_changed, new_value, entity_type, entity_id, project_id, action_type)
+                 VALUES ($1, 'creation', $2, 'sprint', $3, $4, 'created')`,
+                [userId, name, sprint.id, projectId]
+            );
+
             res.status(201).json({
                 id: sprint.id,
                 projectId: sprint.project_id,
@@ -283,6 +289,12 @@ export const sprintController = {
 
             const updatedSprint = result.rows[0];
 
+            await query(
+                `INSERT INTO change_history (user_id, field_changed, new_value, entity_type, entity_id, project_id, action_type)
+                 VALUES ($1, 'sprint', $2, 'sprint', $3, $4, 'edited')`,
+                [userId, updatedSprint.name, sprintId, sprint.project_id]
+            );
+
             res.json({
                 id: updatedSprint.id,
                 projectId: updatedSprint.project_id,
@@ -365,6 +377,12 @@ export const sprintController = {
 
             const updatedSprint = result.rows[0];
 
+            await query(
+                `INSERT INTO change_history (user_id, field_changed, old_value, new_value, entity_type, entity_id, project_id, action_type)
+                 VALUES ($1, 'status', $2, 'active', 'sprint', $3, $4, 'edited')`,
+                [userId, sprint.status, sprintId, sprint.project_id]
+            );
+
             res.json({
                 id: updatedSprint.id,
                 projectId: updatedSprint.project_id,
@@ -433,6 +451,12 @@ export const sprintController = {
             );
 
             const updatedSprint = result.rows[0];
+
+            await query(
+                `INSERT INTO change_history (user_id, field_changed, old_value, new_value, entity_type, entity_id, project_id, action_type)
+                 VALUES ($1, 'status', 'active', 'completed', 'sprint', $2, $3, 'edited')`,
+                [userId, sprintId, sprint.project_id]
+            );
 
             res.json({
                 id: updatedSprint.id,
