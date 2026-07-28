@@ -1,34 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import UserDropdown from './UserDropdown';
+import { useSidebarCollapsed } from '../hooks/useSidebarCollapsed';
 import './navigation.css';
 import kartasLogoWhite from '../assets/kartas-logo-white.png';
 
 const ProjectLayout = ({ projectId, projectName, children }) => {
-    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
-        const saved = localStorage.getItem('sidebarCollapsed');
-        return saved === 'true';
-    });
-
-    // Listen for sidebar state changes
-    useEffect(() => {
-        const handleStorageChange = () => {
-            const saved = localStorage.getItem('sidebarCollapsed');
-            setIsSidebarCollapsed(saved === 'true');
-        };
-
-        // Listen for changes
-        window.addEventListener('storage', handleStorageChange);
-
-        // Also check periodically (for same-tab changes)
-        const interval = setInterval(handleStorageChange, 100);
-
-        return () => {
-            window.removeEventListener('storage', handleStorageChange);
-            clearInterval(interval);
-        };
-    }, []);
+    const isSidebarCollapsed = useSidebarCollapsed();
 
     return (
         <div style={{ backgroundColor: 'var(--color-background)' }}>
@@ -38,12 +17,15 @@ const ProjectLayout = ({ projectId, projectName, children }) => {
                 color: 'white',
                 padding: 'var(--spacing-md) 0',
                 boxShadow: 'var(--shadow-md)',
-                position: 'relative',
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
                 zIndex: 200
             }}>
                 <div className="container flex flex-between" style={{ alignItems: 'center' }}>
                     <div className="flex flex-gap-md" style={{ alignItems: 'center' }}>
-                        <Link to="/" style={{ display: 'flex', alignItems: 'center' }}>
+                        <Link to={`/project/${projectId}/for-you`} style={{ display: 'flex', alignItems: 'center' }}>
                             <img src={kartasLogoWhite} alt="Kartas" style={{ height: '36px' }} />
                         </Link>
                         <span style={{ color: 'rgba(255,255,255,0.5)' }}>|</span>

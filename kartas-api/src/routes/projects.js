@@ -21,6 +21,10 @@ const validateAddMember = [
     body('role').optional().isIn(['owner', 'member'])
 ];
 
+const validateSettingsUpdate = [
+    body('defaultLandingPage').isIn(['for-you', 'backlog', 'epics', 'sprints', 'kanban', 'reports', 'team'])
+];
+
 // All routes require authentication
 router.use(authenticateToken);
 
@@ -29,6 +33,8 @@ router.post('/', requireProjectOwner, validateProjectCreation, projectController
 router.get('/', projectController.getUserProjects);
 router.get('/:projectId', projectController.getProject);
 router.get('/:projectId/members', projectController.getProjectMembers);
+router.get('/:projectId/settings', projectController.getProjectSettings);
+router.put('/:projectId/settings', validateSettingsUpdate, projectController.updateProjectSettings);
 router.put('/:projectId', validateProjectUpdate, projectController.updateProject);
 router.delete('/:projectId', projectController.deleteProject);
 router.post('/:projectId/members', validateAddMember, projectController.addMember);

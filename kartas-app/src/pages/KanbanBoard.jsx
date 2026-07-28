@@ -369,7 +369,7 @@ const KanbanBoard = () => {
             </div>
 
             {/* Kanban Board */}
-            <div className="container" style={{ marginTop: 'var(--spacing-md)', overflowX: 'auto' }}>
+            <div className="container-fluid" style={{ marginTop: 'var(--spacing-md)', overflowX: 'auto', padding: '0 var(--spacing-sm)' }}>
                 <DragDropContext onDragEnd={handleDragEnd}>
                     <div style={{
                         display: 'flex',

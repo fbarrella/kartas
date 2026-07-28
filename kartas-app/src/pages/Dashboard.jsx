@@ -56,7 +56,9 @@ const Dashboard = () => {
                 boxShadow: 'var(--shadow-md)'
             }}>
                 <div className="container flex flex-between" style={{ alignItems: 'center' }}>
-                    <img src={kartasLogoWhite} alt="Kartas" style={{ height: '36px' }} />
+                    <Link to="/" style={{ display: 'flex', alignItems: 'center' }}>
+                        <img src={kartasLogoWhite} alt="Kartas" style={{ height: '36px' }} />
+                    </Link>
                     <UserDropdown />
                 </div>
             </header>
@@ -95,7 +97,7 @@ const Dashboard = () => {
                         {projects.map((project) => (
                             <Link
                                 key={project.id}
-                                to={`/project/${project.id}/team`}
+                                to={`/project/${project.id}/${project.defaultLandingPage || 'backlog'}`}
                                 style={{ textDecoration: 'none' }}
                             >
                                 <div className="card" style={{

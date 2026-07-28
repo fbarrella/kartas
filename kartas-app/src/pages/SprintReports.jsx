@@ -54,26 +54,40 @@ const SprintReports = () => {
 
     if (loading && !report) {
         return (
-            <div className="text-center">Loading...</div>
+            <>
+                <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
+                    <h2 style={{ margin: 0 }}>Reports</h2>
+                </div>
+                <div className="text-center">Loading...</div>
+            </>
         );
     }
 
     if (sprints.length === 0) {
         return (
-            <div className="card text-center">
-                <h2>No Completed Sprints</h2>
-                <p className="text-muted mt-md">
-                    Complete a sprint to view metrics and reports.
-                </p>
-                <Link to={`/project/${projectId}/sprints`} className="btn btn-primary mt-md">
-                    Go to Sprints
-                </Link>
-            </div>
+            <>
+                <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
+                    <h2 style={{ margin: 0 }}>Reports</h2>
+                </div>
+                <div className="card text-center">
+                    <h2>No Completed Sprints</h2>
+                    <p className="text-muted mt-md">
+                        Complete a sprint to view metrics and reports.
+                    </p>
+                    <Link to={`/project/${projectId}/sprints`} className="btn btn-primary mt-md">
+                        Go to Sprints
+                    </Link>
+                </div>
+            </>
         );
     }
 
     return (
         <>
+            <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
+                <h2 style={{ margin: 0 }}>Reports</h2>
+            </div>
+
             {/* Sprint Selector */}
             <div style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 'var(--spacing-md)', marginBottom: 'var(--spacing-lg)' }}>
                 <div className="flex flex-gap-md" style={{ alignItems: 'center' }}>

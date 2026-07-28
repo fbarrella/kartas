@@ -130,7 +130,15 @@ export const epicController = {
                 [epicId, projectId, title, description, startDate, endDate, color || '#0052CC', userId]
             );
 
-            res.status(201).json(result.rows[0]);
+            const epic = result.rows[0];
+
+            await query(
+                `INSERT INTO change_history (user_id, field_changed, new_value, entity_type, entity_id, project_id, action_type)
+                 VALUES ($1, 'creation', $2, 'epic', $3, $4, 'created')`,
+                [userId, title, epic.id, projectId]
+            );
+
+            res.status(201).json(epic);
         } catch (error) {
             console.error('Error creating epic:', error);
             res.status(500).json({ error: 'Server error' });
@@ -177,7 +185,15 @@ export const epicController = {
                 [title, description, startDate, endDate, status, color, epicId]
             );
 
-            res.json(result.rows[0]);
+            const updatedEpic = result.rows[0];
+
+            await query(
+                `INSERT INTO change_history (user_id, field_changed, new_value, entity_type, entity_id, project_id, action_type)
+                 VALUES ($1, 'epic', $2, 'epic', $3, $4, 'edited')`,
+                [userId, updatedEpic.title, epicId, epic.project_id]
+            );
+
+            res.json(updatedEpic);
         } catch (error) {
             console.error('Error updating epic:', error);
             res.status(500).json({ error: 'Server error' });

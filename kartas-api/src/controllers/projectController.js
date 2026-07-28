@@ -59,24 +59,28 @@ export const projectController = {
             if (isAdmin) {
                 // Admins can see all projects
                 projectsQuery = `
-          SELECT p.*, 
+          SELECT p.*,
                  u.first_name || ' ' || u.last_name as created_by_name,
-                 pm.role as user_role
+                 pm.role as user_role,
+                 pus.default_landing_page
           FROM projects p
           LEFT JOIN users u ON p.created_by = u.id
           LEFT JOIN project_members pm ON p.id = pm.project_id AND pm.user_id = $1
+          LEFT JOIN project_user_settings pus ON pus.project_id = p.id AND pus.user_id = $1
           ORDER BY p.created_at DESC
         `;
                 params = [userId];
             } else {
                 // Regular users only see projects they're members of
                 projectsQuery = `
-          SELECT p.*, 
+          SELECT p.*,
                  u.first_name || ' ' || u.last_name as created_by_name,
-                 pm.role as user_role
+                 pm.role as user_role,
+                 pus.default_landing_page
           FROM projects p
           INNER JOIN project_members pm ON p.id = pm.project_id
           LEFT JOIN users u ON p.created_by = u.id
+          LEFT JOIN project_user_settings pus ON pus.project_id = p.id AND pus.user_id = $1
           WHERE pm.user_id = $1
           ORDER BY p.created_at DESC
         `;
@@ -93,6 +97,7 @@ export const projectController = {
                 createdBy: project.created_by,
                 createdByName: project.created_by_name,
                 userRole: project.user_role,
+                defaultLandingPage: project.default_landing_page || 'backlog',
                 createdAt: project.created_at
             })));
         } catch (error) {
@@ -398,6 +403,66 @@ export const projectController = {
             })));
         } catch (error) {
             console.error('Error fetching project members:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
+    // Get the current user's settings for a project (e.g. default landing page)
+    async getProjectSettings(req, res) {
+        try {
+            const { projectId } = req.params;
+            const userId = req.user.userId;
+
+            const accessCheck = await query(
+                'SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2',
+                [projectId, userId]
+            );
+
+            if (accessCheck.rows.length === 0 && req.user.role !== 'admin') {
+                return res.status(403).json({ error: 'Access denied' });
+            }
+
+            const result = await query(
+                'SELECT default_landing_page FROM project_user_settings WHERE project_id = $1 AND user_id = $2',
+                [projectId, userId]
+            );
+
+            res.json({
+                defaultLandingPage: result.rows[0]?.default_landing_page || 'backlog'
+            });
+        } catch (error) {
+            console.error('Error fetching project settings:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
+    // Update the current user's settings for a project
+    async updateProjectSettings(req, res) {
+        try {
+            const { projectId } = req.params;
+            const { defaultLandingPage } = req.body;
+            const userId = req.user.userId;
+
+            const accessCheck = await query(
+                'SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2',
+                [projectId, userId]
+            );
+
+            if (accessCheck.rows.length === 0 && req.user.role !== 'admin') {
+                return res.status(403).json({ error: 'Access denied' });
+            }
+
+            await query(
+                `INSERT INTO project_user_settings (project_id, user_id, default_landing_page)
+                 VALUES ($1, $2, $3)
+                 ON CONFLICT (project_id, user_id)
+                 DO UPDATE SET default_landing_page = $3, updated_at = CURRENT_TIMESTAMP`,
+                [projectId, userId, defaultLandingPage]
+            );
+
+            res.json({ defaultLandingPage });
+        } catch (error) {
+            console.error('Error updating project settings:', error);
             res.status(500).json({ error: 'Server error' });
         }
     }

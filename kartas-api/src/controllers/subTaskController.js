@@ -34,6 +34,13 @@ export const subTaskController = {
             );
 
             const st = result.rows[0];
+
+            await query(
+                `INSERT INTO change_history (story_id, user_id, field_changed, new_value, entity_type, entity_id, project_id, action_type)
+                 VALUES ($1, $2, 'creation', $3, 'sub_task', $4, $5, 'created')`,
+                [storyId, userId, title, st.id, storyResult.rows[0].project_id]
+            );
+
             res.status(201).json({
                 id: st.id,
                 storyId: st.story_id,
@@ -94,6 +101,13 @@ export const subTaskController = {
             );
 
             const st = result.rows[0];
+
+            await query(
+                `INSERT INTO change_history (story_id, user_id, field_changed, new_value, entity_type, entity_id, project_id, action_type)
+                 VALUES ($1, $2, 'sub_task', $3, 'sub_task', $4, $5, 'edited')`,
+                [st.story_id, userId, st.title, id, subTaskResult.rows[0].project_id]
+            );
+
             res.json({
                 id: st.id,
                 storyId: st.story_id,

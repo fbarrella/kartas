@@ -263,6 +263,7 @@
 .page-content {
     transition: margin-left 0.3s ease;
     min-height: calc(100vh - 64px);
+    padding-top: 64px;
 }
 
 .page-content.with-sidebar-expanded {

@@ -10,6 +10,7 @@ import AdminSetup from './pages/AdminSetup';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import ForYou from './pages/ForYou';
 import ProjectView from './pages/ProjectView';
 import Backlog from './pages/Backlog';
 import StoryDetail from './pages/StoryDetail';
@@ -19,6 +20,7 @@ import Epics from './pages/Epics';
 import UserManagement from './pages/UserManagement';
 import UserProfile from './pages/UserProfile';
 import SprintReports from './pages/SprintReports';
+import ProjectSettings from './pages/ProjectSettings';
 
 import './index.css';
 
@@ -90,12 +92,14 @@ function AppRoutes() {
                     </ProtectedRoute>
                 }
             >
+                <Route path="for-you" element={<ForYou />} />
                 <Route path="backlog" element={<Backlog />} />
                 <Route path="epics" element={<Epics />} />
                 <Route path="sprints" element={<Sprints />} />
                 <Route path="kanban" element={<KanbanBoard />} />
                 <Route path="reports" element={<SprintReports />} />
                 <Route path="team" element={<ProjectView />} />
+                <Route path="settings" element={<ProjectSettings />} />
                 <Route path="story/:storyId" element={<StoryDetail />} />
             </Route>
 

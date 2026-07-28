@@ -15,6 +15,7 @@ import epicRoutes from './routes/epics.js';
 import inviteRoutes from './routes/invites.js';
 import userRoutes from './routes/users.js';
 import sprintMetricsRoutes from './routes/sprintMetrics.js';
+import forYouRoutes from './routes/forYou.js';
 
 // Import database
 import pool from './config/database.js';
@@ -49,6 +50,7 @@ app.use('/api/kanban', kanbanRoutes);
 app.use('/api/invites', inviteRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/metrics', sprintMetricsRoutes);
+app.use('/api/for-you', forYouRoutes);
 app.use('/api', epicRoutes);
 
 // 404 handler
