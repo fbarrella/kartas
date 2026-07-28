@@ -1,6 +1,30 @@
-# DEVLOG — Kartas Phase 4
+# DEVLOG — Kartas
 
-Development log for all Phase 4 changes. Each entry records what was done, which files changed, and the current status.
+Development log for all Kartas changes, across every phase. Each entry records what was done, which files changed, and the current status. This log is continuous — it is not reset when a new phase begins.
+
+---
+
+## [2026-07-28] — Phase 5 Kickoff — PRD Created
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (planning)
+- **Summary**: Phase 4 is complete (see the summary entry immediately below, and `.planning/PRD_PHASE4.md`, archived from `.planning/PRD.md`). Drafted the Phase 5 PRD (`.planning/PRD.md`) from `.planning/nextsteps.txt`, covering three pillars: a navigation overhaul (persistent "Kartas" app-name top bar, a new breadcrumb system, a sidebar project-identity header), story descriptions as markdown (new shared editor/renderer, applied to the create modal, the story edit page, and the Kanban quick-view modal), and people-centric Kanban (avatar-based assignees with a hover card, plus a new per-project "user details" page reachable from Team Members and the hover card). Research pass (three parallel `Explore` agents) confirmed: no markdown library exists yet in `kartas-app` (`react-markdown` + `remark-gfm` are new deps), no breadcrumb or hover-card/popover component exists anywhere in the app today, avatar initials are reimplemented independently in three places with no per-user color variation, and `forYouController.js`'s existing tasks/activity queries are already shaped correctly to generalize from "me" to an arbitrary `:userId` for the new user-details page — no new schema needed for that part. No database migrations are anticipated for this phase; requirement IDs use new prefixes (`NAV-*`, `MD-*`, `AV-*`, `UD-*`) to avoid colliding with Phase 4's IDs.
+- **Files Changed**:
+  - `.planning/PRD.md` — Rewritten as the Phase 5 PRD (prior Phase 4 content moved to `.planning/PRD_PHASE4.md`)
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-28] — Phase 5 PRD Review — Open Decisions Resolved
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (planning)
+- **Summary**: Reviewed the draft Phase 5 PRD's open design notes/assumptions with the user before starting implementation. Resolved: `MD-01`'s "markdown mode" is a Write/Preview tab pair (not a split-pane or WYSIWYG editor); `AV-01` avatars get per-user hashed colors (not a single fixed color); `AV-03`'s hover card is built on a new `@floating-ui/react` dependency (not hand-rolled positioning); `NAV-02` breadcrumbs use explicit per-page items (not URL-derived); `UD-02`'s user-details page gets no dedicated sidebar nav entry (links only). Also pulled two items out of Section 6 (out of scope) into active scope: new `MD-05` (epic description markdown, in `Epics.jsx`) and `MD-06` (sub-item description markdown, in `SubItemEditModal.jsx`), both lightweight extensions of `MD-01`'s shared editor/renderer. A generic reusable `Modal` shell component was considered and explicitly declined for this phase. `.planning/PRD.md` Section 4 was rewritten from "assumptions to confirm" into a resolved decisions log for future reference.
+- **Files Changed**:
+  - `.planning/PRD.md` — `MD-01` acceptance criteria rewritten for tabbed mode; new `MD-05`/`MD-06` requirements added; `AV-03` updated for `@floating-ui/react`; Section 4 rewritten as resolved decisions; Sections 5/6/8/9 updated accordingly
+- **Migration**: N/A
+- **Status**: Done
 
 ---
 
