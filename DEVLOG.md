@@ -4,6 +4,63 @@ Development log for all Kartas changes, across every phase. Each entry records w
 
 ---
 
+## [2026-07-29] — HIST-01 — Story-Scoped History Endpoint
+
+- **Author**: Claude
+- **PRD Requirement**: HIST-01
+- **Summary**: New `GET /stories/:storyId/history?limit=&offset=` returns a story's `change_history`, including its sub-tasks' changes (sub-task edits already carry the parent story's `story_id`, so no schema change was needed), paginated with the same `limit+1`-row `hasMore` pattern already used by `forYouController.getMyActivity` (default/initial page size 10, per the PRD, vs. that endpoint's 20). Comment entries are excluded — `HIST-02` (sub-phase 6.2) will show comments in their own section directly above history on the same page, so including them here would duplicate the same event. Filtered on `ch.field_changed != 'comment'` rather than `action_type != 'commented'`, since `field_changed = 'comment'` has always been set as a literal in `addComment`'s INSERT, even on rows predating migration 009's `entity_type`/`action_type` columns — more reliable than a `COALESCE`-derived default. Access-gated the same way as `GET /stories/:storyId` (project membership or global admin). No frontend UI yet — that's `HIST-02`.
+- **Files Changed**:
+  - `kartas-api/src/controllers/storyController.js` — New `getStoryHistory` method
+  - `kartas-api/src/routes/stories.js` — New `GET /:storyId/history` route
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: Curl-verified end-to-end via a temp DB-seeded test user (bcrypt-hashed, added to a real project's `project_members`, logged in for real via `POST /api/auth/login`): `GET /stories/4/history?limit=5` returned exactly 5 items ordered newest-first with `hasMore: true` against an 11-row story; a throwaway `field_changed='comment'` row inserted directly (newest `changed_at` of all rows for that story) was confirmed absent from the response even at `limit=1`, proving the exclusion filter works regardless of recency; unauthenticated request → 401; nonexistent story → 404. All seeded/inserted rows (temp user, `project_members` row, the throwaway `change_history` row) were deleted afterward — story 4's `change_history` count confirmed back to its original 11.
+
+---
+
+## [2026-07-29] — KAN-01, KAN-02, KAN-03 — Kanban Board Polish
+
+- **Author**: Claude
+- **PRD Requirement**: KAN-01, KAN-02, KAN-03
+- **Summary**: Three related `KanbanBoard.jsx` fixes/additions, implemented together since all three touch the same modals/cards.
+  **KAN-03**: Left-clicking a sub-task card previously opened `SubItemEditModal` directly in edit mode (`setSelectedSubtask`), unlike story cards which open a read-only view first. Changed the click handler to `setViewSubtask(item)` instead, matching story-card behavior — the existing read-only "View Sub-Item" modal (previously only reachable via right-click) is now also the left-click destination.
+  **KAN-02**: Added an "Edit Story" link to the read-only Story View modal's footer (navigates to `/project/:projectId/story/:storyId`, same destination as the existing right-click "Edit Story" item) and an "Edit Sub-task" link to the Sub-Item View modal's footer — this one deep-links to `/project/:projectId/story/:parentStoryId?editSubItem=:subItemId`. `StoryDetail.jsx` now reads that `editSubItem` query param (via a new `useSearchParams` hook) once `fetchStory()` resolves, looks up the matching entry in the freshly-fetched `story.subTasks` (not the Kanban-shaped object passed across pages — avoids any cross-page shape mismatch), and opens `SubItemEditModal` in edit mode via the page's existing `openEditSubItem` handler — the same path its own per-row "Edit" button already uses. The query param is stripped immediately after use (`searchParams.delete` + `setSearchParams(..., { replace: true })`) so a later refetch (e.g. after saving) or a manual page refresh doesn't reopen the modal. Together, `KAN-02`+`KAN-03` mean sub-task edit access is preserved after `KAN-03`'s view-first change — just one extra click via the new button.
+  **KAN-01**: The active-sprint header's "Elapsed Time" bar was a standalone `maxWidth: 280px` block with no siblings. Added a horizontal avatar row to its right, showing everyone currently assigned to at least one story/sub-task in the active sprint — derived client-side from the already-fetched `columns` board data (`columns.flatMap(col => col.stories)`, deduped by `assigneeId` via a `Map`), no new endpoint needed. Reuses the existing `AssigneeAvatarWithHoverCard` component unmodified, so hovering a participant shows the same name/role/email card used everywhere else in the app. Empty-participant sprints simply omit the avatar row.
+- **Files Changed**:
+  - `kartas-app/src/pages/KanbanBoard.jsx` — Sub-task card click handler, Edit buttons on both View modals, `participants` derivation + avatar row next to the Elapsed Time bar
+  - `kartas-app/src/pages/StoryDetail.jsx` — `useSearchParams`-based auto-open of `SubItemEditModal` from `?editSubItem=`
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean. Manual browser click-through handed off to the user (sub-task card → view not edit; both modals' new Edit buttons navigate correctly, including the deep-link auto-opening the right sub-item's edit modal; sprint header shows participant avatars with working hover cards).
+
+---
+
+## [2026-07-29] — UI-01 — Uniform Lateral Margins
+
+- **Author**: Claude
+- **PRD Requirement**: UI-01
+- **Summary**: The 1200px-vs-1400px width difference between Story Detail and every other project page was controlled by a single conditional: `App.jsx`'s `ProjectLayoutShell` computed `isStoryDetail` from the URL and passed it as `ProjectLayout`'s `wide` prop, which conditionally applied `maxWidth: '1400px'`. Removed the conditional entirely — `ProjectLayout.jsx`'s container now always uses `maxWidth: '1400px'`, and the now-dead `isStoryDetail`/`wide` plumbing (including the `useLocation` import, since it had no other use in the file) was deleted from both files rather than left as unused code. Every page under `ProjectLayoutShell` (Backlog, Epics, Sprints, Kanban, Reports, Team, For You, Story Detail) now shares the same lateral margins; pages outside a project (`Dashboard.jsx`, `UserManagement.jsx`, `UserProfile.jsx`) are unaffected since they never render `ProjectLayout`.
+- **Files Changed**:
+  - `kartas-app/src/App.jsx` — Removed `isStoryDetail`/`useLocation`, removed `wide` prop pass
+  - `kartas-app/src/components/ProjectLayout.jsx` — Removed `wide` prop, hardcoded `maxWidth: '1400px'`
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean. Manual browser click-through handed off to the user (confirm no layout breakage — overflowing tables, mis-sized modals — across all affected pages at the new width).
+
+---
+
+## [2026-07-29] — Phase 6 Kickoff — PRD Created
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (planning)
+- **Summary**: Phase 5 is complete (see the summary entry immediately below, and `.planning/PRD_PHASE5.md`, archived from `.planning/PRD.md`). Drafted the Phase 6 PRD (`.planning/PRD.md`) from `.planning/nextsteps.txt`, covering seven areas: Kanban polish (sprint-participant avatars, View/Edit modal parity between stories and sub-tasks, a sub-task-card-click fix), a new story comment system with `@`-mention autocomplete for people and tickets, a story change-history section, a "For You" page overhaul (two new widgets — a bar-graph "Team Workload" view and a "Sprint Countdown" elapsed-time widget — a split activity feed, a grid layout, and full per-user widget customization), a per-user dark mode reachable from a new system-level "Settings" menu, an admin-only system-wide color palette with curated presets, and uniform lateral margins across all project pages. Research pass (three parallel `Explore` agents covering Kanban/For-You internals, comments/history/activity infrastructure, and the theming/layout system) confirmed: `recharts` and `@floating-ui/react` are already dependencies (no new packages needed this phase), the `comments` table and its `POST` endpoint already exist but are completely unwired in the frontend, `change_history` already links sub-task edits to their parent story via `story_id` (no new schema needed for story-scoped history to include sub-item changes), and the app's CSS-custom-property-driven styling (consumed via `var(--color-*)` in both CSS files and inline JS styles) makes a `data-theme`-attribute theme-swap architecturally low-risk. Four design ambiguities were resolved with the user via targeted questions before finalizing: `@`-mentions use a single auto-detected trigger rather than separate syntax for people vs. tickets; "Actions History" (renamed, unchanged data) and "Latest Activities" (new: others' actions on my items + mentions of me) are two separate widgets, not one broadened feed; admin palette customization targets a curated ~9-category set with derived shades rather than every individual CSS token; and the story history section includes sub-task changes, not just story-entity ones. Four migrations anticipated (`011`–`014`, for comment mentions, widget preferences, per-user theme preference, and system-wide theme settings); requirement IDs use new prefixes (`KAN-*`, `CMT-*`, `HIST-*`, `FY-*`, `DM-*`, `PAL-*`, `UI-*`) to avoid colliding with earlier phases'.
+- **Files Changed**:
+  - `.planning/PRD.md` — Rewritten as the Phase 6 PRD (prior Phase 5 content moved to `.planning/PRD_PHASE5.md`)
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
 ## [2026-07-29] — Phase 5 Complete — All PRD Requirements Delivered
 
 - **Author**: Claude

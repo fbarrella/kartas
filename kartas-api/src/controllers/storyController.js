@@ -368,6 +368,68 @@ export const storyController = {
         }
     },
 
+    // Paginated change history for a single story, including its sub-tasks'
+    // changes (sub-task edits already carry the parent story_id). Comment rows
+    // are excluded here since they're shown in the story's Comments section
+    // instead — field_changed is filtered rather than action_type since it has
+    // always been set as a literal, even on rows from before entity_type/
+    // action_type existed (migration 009).
+    async getStoryHistory(req, res) {
+        try {
+            const { storyId } = req.params;
+            const userId = req.user.userId;
+            const limit = Math.min(parseInt(req.query.limit) || 10, 100);
+            const offset = parseInt(req.query.offset) || 0;
+
+            const storyResult = await query('SELECT project_id FROM stories WHERE id = $1', [storyId]);
+            if (storyResult.rows.length === 0) {
+                return res.status(404).json({ error: 'Story not found' });
+            }
+
+            const accessCheck = await query(
+                'SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2',
+                [storyResult.rows[0].project_id, userId]
+            );
+            if (accessCheck.rows.length === 0 && req.user.role !== 'admin') {
+                return res.status(403).json({ error: 'Access denied' });
+            }
+
+            const result = await query(
+                `SELECT ch.id, ch.field_changed, ch.old_value, ch.new_value, ch.changed_at, ch.user_id,
+                        u.first_name || ' ' || u.last_name as user_name,
+                        COALESCE(ch.entity_type, 'story') as entity_type,
+                        COALESCE(ch.action_type, CASE WHEN ch.field_changed = 'status' THEN 'moved' ELSE 'edited' END) as action_type
+                 FROM change_history ch
+                 LEFT JOIN users u ON u.id = ch.user_id
+                 WHERE ch.story_id = $1 AND ch.field_changed != 'comment'
+                 ORDER BY ch.changed_at DESC
+                 LIMIT $2 OFFSET $3`,
+                [storyId, limit + 1, offset]
+            );
+
+            const hasMore = result.rows.length > limit;
+            const rows = result.rows.slice(0, limit);
+
+            res.json({
+                items: rows.map(row => ({
+                    id: row.id,
+                    userId: row.user_id,
+                    userName: row.user_name,
+                    actionType: row.action_type,
+                    entityType: row.entity_type,
+                    fieldChanged: row.field_changed,
+                    oldValue: row.old_value,
+                    newValue: row.new_value,
+                    changedAt: row.changed_at
+                })),
+                hasMore
+            });
+        } catch (error) {
+            console.error('Error fetching story history:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
     // Update story
     async updateStory(req, res) {
         try {

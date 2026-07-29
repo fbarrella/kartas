@@ -51,6 +51,7 @@ router.get('/:storyId', storyController.getStory);
 router.put('/:storyId', validateStoryUpdate, storyController.updateStory);
 router.delete('/:storyId', storyController.deleteStory);
 router.post('/:storyId/comments', validateComment, storyController.addComment);
+router.get('/:storyId/history', storyController.getStoryHistory);
 router.post('/:storyId/sub-tasks', validateSubTaskCreation, subTaskController.createSubTask);
 
 export default router;

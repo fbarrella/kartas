@@ -352,6 +352,14 @@ const KanbanBoard = () => {
         ? Math.min(Math.max(((new Date() - new Date(sprint.startDate)) / (new Date(sprint.endDate) - new Date(sprint.startDate))) * 100, 0), 100)
         : 0;
 
+    const participants = Array.from(
+        new Map(
+            columns.flatMap(col => col.stories)
+                .filter(item => item.assigneeId)
+                .map(item => [item.assigneeId, item])
+        ).values()
+    );
+
     return (
         <>
             <Breadcrumb items={[
@@ -370,31 +378,47 @@ const KanbanBoard = () => {
                     </p>
                 )}
                 {sprint?.startDate && sprint?.endDate && (
-                    <div style={{ marginTop: 'var(--spacing-sm)', maxWidth: '280px' }}>
-                        <div style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            fontSize: 'var(--font-size-xs)',
-                            color: 'var(--color-neutral-600)',
-                            marginBottom: '2px'
-                        }}>
-                            <span>Elapsed Time</span>
-                            <span>{Math.round(elapsedPercent)}%</span>
-                        </div>
-                        <div style={{
-                            width: '100%',
-                            height: '4px',
-                            backgroundColor: 'var(--color-neutral-100)',
-                            borderRadius: '4px',
-                            overflow: 'hidden'
-                        }}>
+                    <div style={{ marginTop: 'var(--spacing-sm)', display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
+                        <div style={{ maxWidth: '280px', flex: '0 0 auto', width: '280px' }}>
                             <div style={{
-                                width: `${elapsedPercent}%`,
-                                height: '100%',
-                                backgroundColor: 'var(--color-success)',
-                                transition: 'width 0.3s ease'
-                            }} />
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                fontSize: 'var(--font-size-xs)',
+                                color: 'var(--color-neutral-600)',
+                                marginBottom: '2px'
+                            }}>
+                                <span>Elapsed Time</span>
+                                <span>{Math.round(elapsedPercent)}%</span>
+                            </div>
+                            <div style={{
+                                width: '100%',
+                                height: '4px',
+                                backgroundColor: 'var(--color-neutral-100)',
+                                borderRadius: '4px',
+                                overflow: 'hidden'
+                            }}>
+                                <div style={{
+                                    width: `${elapsedPercent}%`,
+                                    height: '100%',
+                                    backgroundColor: 'var(--color-success)',
+                                    transition: 'width 0.3s ease'
+                                }} />
+                            </div>
                         </div>
+                        {participants.length > 0 && (
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                                {participants.map(p => (
+                                    <AssigneeAvatarWithHoverCard
+                                        key={p.assigneeId}
+                                        assigneeId={p.assigneeId}
+                                        assigneeName={p.assigneeName}
+                                        assigneeRole={p.assigneeRole}
+                                        assigneeEmail={p.assigneeEmail}
+                                        projectId={projectId}
+                                    />
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -500,7 +524,7 @@ const KanbanBoard = () => {
                                                                 ref={provided.innerRef}
                                                                 {...provided.draggableProps}
                                                                 {...provided.dragHandleProps}
-                                                                onClick={() => isSubtask ? setSelectedSubtask(item) : setSelectedStory(item)}
+                                                                onClick={() => isSubtask ? setViewSubtask(item) : setSelectedStory(item)}
                                                                 onContextMenu={(e) => isSubtask ? handleSubtaskContextMenu(e, item) : handleContextMenu(e, item)}
                                                                 style={{
                                                                     ...provided.draggableProps.style,
@@ -737,6 +761,13 @@ const KanbanBoard = () => {
                         )}
 
                         <div className="mt-lg flex flex-gap-sm" style={{ justifyContent: 'flex-end', flexShrink: 0 }}>
+                            <Link
+                                to={`/project/${projectId}/story/${selectedStory.id}`}
+                                className="btn btn-primary"
+                                style={{ textDecoration: 'none' }}
+                            >
+                                Edit Story
+                            </Link>
                             <button
                                 onClick={() => setSelectedStory(null)}
                                 className="btn btn-secondary"
@@ -821,6 +852,13 @@ const KanbanBoard = () => {
                         )}
 
                         <div className="mt-lg flex flex-gap-sm" style={{ justifyContent: 'flex-end', flexShrink: 0 }}>
+                            <Link
+                                to={`/project/${projectId}/story/${viewSubtask.parentStoryId}?editSubItem=${viewSubtask.id}`}
+                                className="btn btn-primary"
+                                style={{ textDecoration: 'none' }}
+                            >
+                                Edit Sub-task
+                            </Link>
                             <button
                                 onClick={() => setViewSubtask(null)}
                                 className="btn btn-secondary"

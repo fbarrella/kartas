@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import SubItemEditModal, { SUBITEM_TYPE_OPTIONS, SUBITEM_STATUS_OPTIONS } from '../components/SubItemEditModal';
 import Breadcrumb from '../components/Breadcrumb';
@@ -29,6 +29,7 @@ const TYPE_OPTIONS = [
 const StoryDetail = () => {
     const { projectId, storyId } = useParams();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
 
     const [project, setProject] = useState(null);
     const [story, setStory] = useState(null);
@@ -75,6 +76,18 @@ const StoryDetail = () => {
         try {
             const response = await api.get(`/stories/${storyId}`);
             setStory(response.data);
+
+            const editSubItemId = searchParams.get('editSubItem');
+            if (editSubItemId) {
+                const item = response.data.subTasks?.find(st => st.id === parseInt(editSubItemId));
+                if (item) {
+                    setEditingSubItem(item);
+                    setShowSubItemModal(true);
+                }
+                searchParams.delete('editSubItem');
+                setSearchParams(searchParams, { replace: true });
+            }
+
             setFormData({
                 title: response.data.title || '',
                 description: response.data.description || '',
