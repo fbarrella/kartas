@@ -6,7 +6,7 @@ import { useSidebarCollapsed } from '../hooks/useSidebarCollapsed';
 import './navigation.css';
 import kartasLogoWhite from '../assets/kartas-logo-white.png';
 
-const ProjectLayout = ({ projectId, projectName, projectDescription, children }) => {
+const ProjectLayout = ({ projectId, projectName, projectDescription, wide, children }) => {
     const isSidebarCollapsed = useSidebarCollapsed();
 
     return (
@@ -39,7 +39,7 @@ const ProjectLayout = ({ projectId, projectName, projectDescription, children })
 
             {/* Main Content */}
             <div className={`page-content ${isSidebarCollapsed ? 'with-sidebar-collapsed' : 'with-sidebar-expanded'}`}>
-                <div className="container" style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-xl)' }}>
+                <div className="container" style={{ marginTop: 'var(--spacing-xl)', marginBottom: 'var(--spacing-xl)', ...(wide ? { maxWidth: '1400px' } : {}) }}>
                     {children}
                 </div>
             </div>

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useOutletContext, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import Breadcrumb from '../components/Breadcrumb';
+import MarkdownEditor from '../components/MarkdownEditor';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 import '../components/navigation.css';
 
 
@@ -838,28 +840,13 @@ const Backlog = () => {
                     zIndex: 1000,
                     overflowY: 'auto'
                 }} onClick={() => setShowCreateModal(false)}>
-                    <div className="card" style={{ maxWidth: '600px', width: '100%', margin: 'var(--spacing-md)' }}
+                    <div className="card" style={{ maxWidth: '850px', width: '100%', margin: 'var(--spacing-md)' }}
                         onClick={(e) => e.stopPropagation()}>
                         <div className="card-header">
                             <h3 className="card-title">Create New Story</h3>
                         </div>
 
                         <form onSubmit={handleCreateStory}>
-                            <div className="form-group">
-                                <label className="form-label">Type</label>
-                                <select
-                                    className="form-select"
-                                    value={newStory.type}
-                                    onChange={(e) => setNewStory({ ...newStory, type: e.target.value })}
-                                >
-                                    {TYPE_OPTIONS.map(option => (
-                                        <option key={option.value} value={option.value}>
-                                            {option.icon} {option.label}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
                             <div className="form-group">
                                 <label className="form-label">Title</label>
                                 <input
@@ -872,25 +859,48 @@ const Backlog = () => {
                                 />
                             </div>
 
-                            <div className="form-group">
-                                <label className="form-label">Description</label>
-                                <textarea
-                                    className="form-textarea"
-                                    value={newStory.description}
-                                    onChange={(e) => setNewStory({ ...newStory, description: e.target.value })}
-                                    rows={5}
-                                />
+                            <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: '1fr 1fr',
+                                gap: 'var(--spacing-md)',
+                                paddingBottom: 'var(--spacing-md)',
+                                marginBottom: 'var(--spacing-md)',
+                                borderBottom: '1px solid var(--color-border)'
+                            }}>
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label">Type</label>
+                                    <select
+                                        className="form-select"
+                                        value={newStory.type}
+                                        onChange={(e) => setNewStory({ ...newStory, type: e.target.value })}
+                                    >
+                                        {TYPE_OPTIONS.map(option => (
+                                            <option key={option.value} value={option.value}>
+                                                {option.icon} {option.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label">Story Points</label>
+                                    <input
+                                        type="number"
+                                        className="form-input"
+                                        value={newStory.storyPoints}
+                                        onChange={(e) => setNewStory({ ...newStory, storyPoints: e.target.value })}
+                                        min="0"
+                                        placeholder="Optional"
+                                    />
+                                </div>
                             </div>
 
                             <div className="form-group">
-                                <label className="form-label">Story Points</label>
-                                <input
-                                    type="number"
-                                    className="form-input"
-                                    value={newStory.storyPoints}
-                                    onChange={(e) => setNewStory({ ...newStory, storyPoints: e.target.value })}
-                                    min="0"
-                                    placeholder="Optional"
+                                <label className="form-label">Description</label>
+                                <MarkdownEditor
+                                    value={newStory.description}
+                                    onChange={(v) => setNewStory({ ...newStory, description: v })}
+                                    rows={10}
                                 />
                             </div>
 
@@ -932,26 +942,17 @@ const Backlog = () => {
                     zIndex: 1000,
                     overflowY: 'auto'
                 }} onClick={() => setSelectedStory(null)}>
-                    <div className="card" style={{ maxWidth: '700px', width: '100%', margin: 'var(--spacing-md)' }}
+                    <div className="card" style={{ maxWidth: '850px', width: '100%', margin: 'var(--spacing-md)', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}
                         onClick={(e) => e.stopPropagation()}>
-                        <div className="card-header">
+                        <div className="card-header" style={{ flexShrink: 0 }}>
                             <div className="flex flex-between" style={{ alignItems: 'center' }}>
                                 <h3 className="card-title">{selectedStory.storyId}</h3>
                                 <span>{getTypeIcon(selectedStory.type)} {selectedStory.type}</span>
                             </div>
                         </div>
 
-                        <div>
+                        <div style={{ flexShrink: 0 }}>
                             <h4>{selectedStory.title}</h4>
-
-                            {selectedStory.description && (
-                                <div className="mt-md">
-                                    <strong>Description:</strong>
-                                    <p className="mt-sm" style={{ whiteSpace: 'pre-wrap' }}>
-                                        {selectedStory.description}
-                                    </p>
-                                </div>
-                            )}
 
                             <div className="mt-md" style={{
                                 display: 'grid',
@@ -985,15 +986,31 @@ const Backlog = () => {
                                     <p className="mt-xs">{selectedStory.creatorName || 'Unknown'}</p>
                                 </div>
                             </div>
+                        </div>
 
-                            <div className="mt-lg flex flex-gap-sm" style={{ justifyContent: 'flex-end' }}>
-                                <button
-                                    onClick={() => setSelectedStory(null)}
-                                    className="btn btn-secondary"
-                                >
-                                    Close
-                                </button>
+                        {selectedStory.description && (
+                            <div className="mt-md" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                                <strong style={{ flexShrink: 0 }}>Description:</strong>
+                                <div className="mt-sm" style={{
+                                    flex: 1,
+                                    minHeight: 0,
+                                    overflowY: 'auto',
+                                    border: '1px solid var(--color-border)',
+                                    borderRadius: 'var(--radius-md)',
+                                    padding: 'var(--spacing-md)'
+                                }}>
+                                    <MarkdownRenderer content={selectedStory.description} />
+                                </div>
                             </div>
+                        )}
+
+                        <div className="mt-lg flex flex-gap-sm" style={{ justifyContent: 'flex-end', flexShrink: 0 }}>
+                            <button
+                                onClick={() => setSelectedStory(null)}
+                                className="btn btn-secondary"
+                            >
+                                Close
+                            </button>
                         </div>
                     </div>
                 </div>

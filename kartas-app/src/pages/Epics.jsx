@@ -3,6 +3,8 @@ import { useParams, useOutletContext, Link } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import Breadcrumb from '../components/Breadcrumb';
+import MarkdownEditor from '../components/MarkdownEditor';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 import '../components/navigation.css';
 
 
@@ -278,12 +280,9 @@ const Epics = () => {
                                 </div>
 
                                 {epic.description && (
-                                    <p className="text-muted" style={{
-                                        marginTop: 'var(--spacing-sm)',
-                                        lineHeight: '1.5'
-                                    }}>
-                                        {epic.description}
-                                    </p>
+                                    <div style={{ marginTop: 'var(--spacing-sm)' }}>
+                                        <MarkdownRenderer content={epic.description} className="text-muted" />
+                                    </div>
                                 )}
 
                                 <div className="mt-md" style={{
@@ -381,11 +380,10 @@ const Epics = () => {
 
                             <div className="form-group">
                                 <label className="form-label">Description</label>
-                                <textarea
-                                    className="form-textarea"
-                                    rows="4"
+                                <MarkdownEditor
                                     value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                    onChange={(v) => setFormData({ ...formData, description: v })}
+                                    rows={6}
                                 />
                             </div>
 

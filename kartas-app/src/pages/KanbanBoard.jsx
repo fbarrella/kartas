@@ -4,9 +4,21 @@ import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import api from '../services/api';
 import SubItemEditModal from '../components/SubItemEditModal';
 import Breadcrumb from '../components/Breadcrumb';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 import '../components/navigation.css';
 
 const formatDate = (d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+const STATUS_OPTIONS = [
+    { value: 'backlog', label: 'Backlog', color: 'var(--color-neutral-400)' },
+    { value: 'refining', label: 'Refining', color: 'var(--color-info)' },
+    { value: 'ready', label: 'Ready', color: 'var(--color-success)' },
+    { value: 'in_development', label: 'In Development', color: 'var(--color-warning)' },
+    { value: 'review', label: 'Review', color: 'var(--color-secondary)' },
+    { value: 'test', label: 'Test', color: 'var(--color-info)' },
+    { value: 'done', label: 'Done', color: 'var(--color-success)' },
+    { value: 'cancelled', label: 'Cancelled', color: 'var(--color-danger)' }
+];
 
 const KanbanBoard = () => {
     const { projectId } = useParams();
@@ -601,26 +613,17 @@ const KanbanBoard = () => {
                     zIndex: 1000,
                     overflowY: 'auto'
                 }} onClick={() => setSelectedStory(null)}>
-                    <div className="card" style={{ maxWidth: '700px', width: '100%', margin: 'var(--spacing-md)' }}
+                    <div className="card" style={{ maxWidth: '850px', width: '100%', margin: 'var(--spacing-md)', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}
                         onClick={(e) => e.stopPropagation()}>
-                        <div className="card-header">
+                        <div className="card-header" style={{ flexShrink: 0 }}>
                             <div className="flex flex-between" style={{ alignItems: 'center' }}>
                                 <h3 className="card-title">{selectedStory.storyId}</h3>
                                 <span>{getTypeIcon(selectedStory.type)} {selectedStory.type}</span>
                             </div>
                         </div>
 
-                        <div>
+                        <div style={{ flexShrink: 0 }}>
                             <h4>{selectedStory.title}</h4>
-
-                            {selectedStory.description && (
-                                <div className="mt-md">
-                                    <strong>Description:</strong>
-                                    <p className="mt-sm" style={{ whiteSpace: 'pre-wrap' }}>
-                                        {selectedStory.description}
-                                    </p>
-                                </div>
-                            )}
 
                             <div className="mt-md" style={{
                                 display: 'grid',
@@ -629,7 +632,16 @@ const KanbanBoard = () => {
                             }}>
                                 <div>
                                     <strong>Status:</strong>
-                                    <p className="mt-xs">{selectedStory.status}</p>
+                                    <p className="mt-xs">
+                                        {(() => {
+                                            const statusOption = STATUS_OPTIONS.find(s => s.value === selectedStory.status);
+                                            return (
+                                                <span className="badge" style={{ backgroundColor: statusOption?.color || 'var(--color-neutral-400)', color: 'white' }}>
+                                                    {statusOption?.label || selectedStory.status}
+                                                </span>
+                                            );
+                                        })()}
+                                    </p>
                                 </div>
                                 <div>
                                     <strong>Blocked:</strong>
@@ -654,15 +666,31 @@ const KanbanBoard = () => {
                                     </p>
                                 </div>
                             </div>
+                        </div>
 
-                            <div className="mt-lg flex flex-gap-sm" style={{ justifyContent: 'flex-end' }}>
-                                <button
-                                    onClick={() => setSelectedStory(null)}
-                                    className="btn btn-secondary"
-                                >
-                                    Close
-                                </button>
+                        {selectedStory.description && (
+                            <div className="mt-md" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                                <strong style={{ flexShrink: 0 }}>Description:</strong>
+                                <div className="mt-sm" style={{
+                                    flex: 1,
+                                    minHeight: 0,
+                                    overflowY: 'auto',
+                                    border: '1px solid var(--color-border)',
+                                    borderRadius: 'var(--radius-md)',
+                                    padding: 'var(--spacing-md)'
+                                }}>
+                                    <MarkdownRenderer content={selectedStory.description} />
+                                </div>
                             </div>
+                        )}
+
+                        <div className="mt-lg flex flex-gap-sm" style={{ justifyContent: 'flex-end', flexShrink: 0 }}>
+                            <button
+                                onClick={() => setSelectedStory(null)}
+                                className="btn btn-secondary"
+                            >
+                                Close
+                            </button>
                         </div>
                     </div>
                 </div>
