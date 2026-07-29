@@ -91,6 +91,8 @@ export const storyController = {
             let queryText = `
         SELECT s.*,
                u1.first_name || ' ' || u1.last_name as assignee_name,
+               u1.role as assignee_role,
+               u1.email as assignee_email,
                u2.first_name || ' ' || u2.last_name as creator_name,
                e.title as epic_title
         FROM stories s
@@ -193,6 +195,8 @@ export const storyController = {
                 storyPoints: story.story_points,
                 assigneeId: story.assignee_id,
                 assigneeName: story.assignee_name,
+                assigneeRole: story.assignee_role,
+                assigneeEmail: story.assignee_email,
                 creatorId: story.creator_id,
                 creatorName: story.creator_name,
                 isBlocked: story.is_blocked,
@@ -257,7 +261,9 @@ export const storyController = {
             // Get sub-tasks
             const subTasksResult = await query(
                 `SELECT st.*,
-                u.first_name || ' ' || u.last_name as assignee_name
+                u.first_name || ' ' || u.last_name as assignee_name,
+                u.role as assignee_role,
+                u.email as assignee_email
          FROM sub_tasks st
          LEFT JOIN users u ON st.assignee_id = u.id
          WHERE st.story_id = $1
@@ -331,6 +337,8 @@ export const storyController = {
                     storyPoints: st.story_points,
                     assigneeId: st.assignee_id,
                     assigneeName: st.assignee_name,
+                    assigneeRole: st.assignee_role,
+                    assigneeEmail: st.assignee_email,
                     createdAt: st.created_at,
                     updatedAt: st.updated_at
                 })),
@@ -426,6 +434,10 @@ export const storyController = {
                 changes.push({ field: 'is_blocked', oldValue: story.is_blocked, newValue: isBlocked });
             }
 
+            // assignee_id is nullable (unassigning is valid), so COALESCE can't be used for it —
+            // COALESCE can't distinguish "field omitted" from "field explicitly set to null".
+            const assigneeIdToSet = assigneeId !== undefined ? assigneeId : story.assignee_id;
+
             // Update story
             const result = await query(
                 `UPDATE stories
@@ -435,11 +447,11 @@ export const storyController = {
              title = COALESCE($4, title),
              description = COALESCE($5, description),
              story_points = COALESCE($6, story_points),
-             assignee_id = COALESCE($7, assignee_id),
+             assignee_id = $7,
              is_blocked = COALESCE($8, is_blocked)
          WHERE id = $9
          RETURNING *`,
-                [epicId, type, status, title, description, storyPoints, assigneeId, isBlocked, storyId]
+                [epicId, type, status, title, description, storyPoints, assigneeIdToSet, isBlocked, storyId]
             );
 
             // Record changes in history

@@ -4,6 +4,183 @@ Development log for all Kartas changes, across every phase. Each entry records w
 
 ---
 
+## [2026-07-29] — Phase 5 Complete — All PRD Requirements Delivered
+
+- **Author**: Claude
+- **PRD Requirement**: All (`NAV-01`–`NAV-03`, `MD-01`–`MD-06`, `AV-01`–`AV-03`, `UD-01`–`UD-03`)
+- **Summary**: Confirmed every requirement in `.planning/PRD.md` is implemented, verified, and logged in this file, across all 5 suggested implementation sub-phases:
+  - **5.1 Foundations** — `NAV-01`, `NAV-02`, `AV-01`, `MD-01`
+  - **5.2 Navigation Polish** — `NAV-03`
+  - **5.3 Markdown Story Editing** — `MD-02`–`MD-06`
+  - **5.4 Kanban People** — `AV-02`, `AV-03`
+  - **5.5 User Details Page** — `UD-01`–`UD-03`
+
+  Beyond the PRD's original scope, several rounds of user-driven follow-up — all logged individually above — extended and hardened the work: two rounds of markdown/layout polish after `5.3`; a Kanban badge/status/field-grid polish round; a fix for a long-standing bug where unassigning a story or sub-task silently never persisted (`COALESCE`-in-partial-update pattern); Kanban sub-task context-menu parity with the story menu (View/Edit/full Assign To); viewport-edge clamping for both Kanban context menus; and — after `5.5` shipped — extending the `AV-02`/`AV-03` avatar-and-hover-card pattern to three more surfaces (Backlog's Assignee column, Epic "Created by", Story Detail's sub-items list) plus a UI pass converting two "show completed" checkboxes to the app's lever-switch styling and decluttering the Backlog filter bar. User confirmed final testing: "That is it! Everything worked out like planned! We're done!"
+  `README.md`'s "Features" and "Development Phases" sections updated with a Phase 5 summary, per the end-of-phase process rule. Phase 5 is complete.
+- **Files Changed**:
+  - `README.md` — Phase 5 feature summary and development-phases entry
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-29] — Extend avatar + hover card to Backlog assignee, Epic creator, and Story Detail sub-items
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (user-requested extension of `AV-02`/`AV-03`'s pattern, post-Phase-5)
+- **Summary**: `AssigneeAvatarWithHoverCard.jsx` (built in `AV-03` for the Kanban board only) is now also used in three more places, all reusing the exact same component unmodified — it was already generic enough (props: `assigneeId`/`assigneeName`/`assigneeRole`/`assigneeEmail`/`projectId`), it just needed each surface's data to actually include role/email.
+  1. **`Backlog.jsx`'s Assignee column** — replaced the plain `story.assigneeName` text with the avatar+hover-card. The cell's existing `onClick` (opens the row's read-only story modal) required wrapping the avatar in a `<span onClick={(e) => e.stopPropagation()}>` so clicking/hovering it doesn't also pop the modal open.
+  2. **`Epics.jsx`'s "Created by"** on each epic card — same treatment. Each epic card is itself wrapped in a `<Link>` (navigates to the backlog filtered by that epic) with an existing `e.target.closest('button')` escape hatch for its Edit/Delete buttons — added the same `stopPropagation()` wrapper so interacting with the creator avatar doesn't trigger that outer navigation. (The floating hover card itself is unaffected either way, since `@floating-ui/react`'s `FloatingPortal` renders it to `document.body`, outside the card's DOM subtree — the stopPropagation is only needed for clicks on the small trigger avatar itself.)
+  3. **`StoryDetail.jsx`'s sub-items list** — upgraded from the plain `AssigneeAvatar` (no hover card, from `AV-02`) to `AssigneeAvatarWithHoverCard`, the same component already used on Kanban and now Backlog/Epics.
+  **Backend**: none of the three backing endpoints previously selected the assignee's/creator's `role`/`email` (only `AV-03`'s `kanbanController.js` had been extended). Added `u.role as assignee_role, u.email as assignee_email` (or `creator_role`/`creator_email` for epics) to each query, mirroring the exact pattern from `AV-03`:
+  - `storyController.js::getProjectStories` (Backlog's list endpoint) — plain SELECT addition, no `GROUP BY` (none exists in this query).
+  - `storyController.js::getStory`'s sub-tasks query (Story Detail's endpoint) — same, no `GROUP BY`.
+  - `epicController.js::getEpics` — this endpoint, unlike the others, doesn't remap to camelCase; it spreads the raw SQL row (`...epic`) into the response, so the new `creator_role`/`creator_email` columns needed no JS mapping change to appear — just the two SELECT columns, **plus** adding `u.role, u.email` to the existing `GROUP BY e.id, u.first_name, u.last_name` (this query aggregates `COUNT(s.id)`, so it does have one, unlike the story endpoints touched above). The frontend passes `epic.created_by` (the raw FK column, since this endpoint has no `creatorId` camelCase field) as `assigneeId` to the shared component — the prop names say "assignee" but the component is generic; it's just displaying whichever user object it's given.
+- **Verification**: Backend curl-verified via a temp project member (no data mutated, pure reads): confirmed `GET /stories/project/4` returns correct `assigneeRole`/`assigneeEmail` for assigned stories, `GET /project/4/epics` returns correct `creator_role`/`creator_email`, and `GET /stories/6` returns correct `assigneeRole`/`assigneeEmail` for an assigned sub-task and `null`/`null` for an unassigned one (LEFT JOIN correctly returns null, not an error). Temp user cleaned up. `npm run build` clean; `docker-compose logs app` showed clean HMR updates for all three touched pages with no resolve errors.
+- **Files Changed**:
+  - `kartas-api/src/controllers/storyController.js` — `getProjectStories` and `getStory` (sub-tasks) now select/return `assigneeRole`/`assigneeEmail`
+  - `kartas-api/src/controllers/epicController.js` — `getEpics` now selects `creator_role`/`creator_email` (`GROUP BY` extended)
+  - `kartas-app/src/pages/Backlog.jsx` — Assignee column uses `AssigneeAvatarWithHoverCard`
+  - `kartas-app/src/pages/Epics.jsx` — "Created by" uses `AssigneeAvatarWithHoverCard`
+  - `kartas-app/src/pages/StoryDetail.jsx` — Sub-items list upgraded from `AssigneeAvatar` to `AssigneeAvatarWithHoverCard`
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-29] — Backlog/Epics "show completed" checkboxes → toggle switch; Backlog filter bar reorganized
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (user-requested UI polish)
+- **Summary**: Two independent UI requests:
+  1. **Checkbox → switch**: `Backlog.jsx`'s "Show completed stories" and `Epics.jsx`'s "Show completed epics" plain `<input type="checkbox">` filters were converted to the same `.switch`/`.switch-track`/`.switch-thumb`/`.switch-text` toggle markup already used by `StoryDetail.jsx`'s "Blocked" field (`MD-03`-era polish round). That existing CSS hardcodes the "on" color to `var(--color-danger)` (red) via `.switch input:checked ~ .switch-track` — semantically right for "Blocked" but wrong for a neutral filter toggle. Added a new `.switch-primary` modifier (`index.css`, same selector shape/specificity so source order — placed after the base rule — decides which wins) that overrides the checked color to `var(--color-primary)`; both new switches use `className="switch switch-primary"`, leaving `StoryDetail.jsx`'s existing red Blocked switch completely untouched.
+  2. **Backlog filter bar reorganization**: the "Show completed stories" switch moved out of the "Search and Quick Filters" row (previously a flex sibling of the search input and quick-filter buttons) and into the "Advanced Filters" section below, alongside the 5 dropdown filters (Type/Status/Assignee/Epic/Sprint) — six items total. That section's grid changed from `repeat(auto-fit, minmax(150px, 1fr))` (a variable number of columns depending on viewport width) to a fixed `repeat(3, 1fr)` so it's always exactly 3 per row (2 rows of 3, since 6 divides evenly), with the gap increased from `var(--spacing-sm)` to `var(--spacing-md)` for breathing room — matching the gap already used by `StoryDetail.jsx`'s own "compact fields" grid, for visual consistency between the two pages' denser-grid patterns.
+- **Verification**: `npm run build` clean (pure CSS/JSX change, no backend involved). `docker-compose logs app` showed clean HMR updates for `Backlog.jsx`/`Epics.jsx`/`index.css`.
+- **Files Changed**:
+  - `kartas-app/src/index.css` — New `.switch-primary` modifier
+  - `kartas-app/src/pages/Backlog.jsx` — "Show completed stories" checkbox → switch, moved into the Advanced Filters grid; grid changed to fixed 3-column with larger gap
+  - `kartas-app/src/pages/Epics.jsx` — "Show completed epics" checkbox → switch
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-29] — UD-02 / UD-03 — "[Name]'s Details" Page + Navigation Into It
+
+- **Author**: Claude
+- **PRD Requirement**: UD-02, UD-03
+- **Summary**: New project-scoped page at `/project/:projectId/user/:userId` (new `kartas-app/src/pages/UserDetail.jsx`, nested under `ProjectLayoutShell` in `App.jsx` alongside `story/:storyId` — no dedicated `Sidebar.jsx` nav entry, per Section 4). Header block, top to bottom per the PRD's literal ordering: a 56px `AV-01` avatar circle (reuses `.user-avatar`'s shape/color classes with inline size overrides — same technique already used elsewhere for size variants), the page title `"[First Last]'s Details"` (the name lives in the title, no separate repeated heading), then role/email as plain text below (no card chrome — this isn't `AV-03`'s hover card). Profile data (name/role/email) is sourced from `GET /projects/:projectId/members` — deliberately **not** the Kanban DTO's `assigneeRole`/`assigneeEmail` added in `AV-03`, since that's the global `users.role`, while this page (per the PRD's explicit data note) uses the project-scoped `project_members.role` (owner/member) — two different, intentionally different sources, not an inconsistency. Breadcrumb: "Projects / [Project Name] / Team Members / [First Last]'s Details", with "Team Members" linking to `/project/:projectId/team` (a new working intermediate crumb — previous breadcrumbs in this app only ever had project-name as the one non-terminal middle crumb; this is the first 4-level trail).
+  Below the header: an assigned-work table and an activity feed, both close copies of `ForYou.jsx`'s existing table/list JSX (status colors/labels, `describeActivity`, `formatRelativeTime` — copied rather than extracted into a shared component, consistent with this codebase's established practice of not extracting shared UI across pages, per the PRD Section 4's "generic reusable Modal" decision and the equivalent already-duplicated `STATUS_OPTIONS` pattern in `KanbanBoard.jsx`/`Backlog.jsx`). Two adaptations from `ForYou.jsx`: empty-state copy is now third-person ("{firstName} doesn't have any tasks assigned...", "{firstName}'s recent actions...") since this is someone else's page, not "my" own; and the activity feed calls `UD-01`'s new endpoint with `?limit=15` and renders **no "Load More" button at all** (hard-capped per the PRD, not paginated like "For You"'s own feed).
+  `UD-03`'s two navigation entry points: `ProjectView.jsx`'s Team Members table — member name is now a `<Link>` to `/project/:projectId/user/:userId` (previously plain text); and `AV-03`'s hover card (built in `5.4` against a route that didn't exist yet, by design per that session's PRD-ordering note) — no code change needed there, it already linked to the right URL shape, it just now actually resolves instead of hitting the app's catch-all redirect.
+  **Incidental fix**: adding the `Link` import to `ProjectView.jsx` for the new member-name link also fixes the previously-flagged latent bug (`<Link to="/">` used in the "Project Not Found" branch with no `Link` import, which would have crashed if that branch were ever hit) — mentioning this explicitly since it was fixed as a side effect of unrelated work, not silently.
+- **Verification**: `npm run build` clean; `docker-compose logs app` showed clean HMR updates for `App.jsx`/`ProjectView.jsx`/`UserDetail.jsx` with no resolve errors. Backend data paths (`GET /for-you/project/:projectId/user/:userId/tasks`/`.../activity`, `GET /projects/:projectId/members`) were already curl-verified in `UD-01`'s entry above and are unmodified here — no new backend surface, so no additional curl pass was needed for this pair. Manual browser click-through handed off to the user.
+- **Files Changed**:
+  - `kartas-app/src/pages/UserDetail.jsx` — New
+  - `kartas-app/src/App.jsx` — New `user/:userId` route under `/project/:projectId`
+  - `kartas-app/src/pages/ProjectView.jsx` — `Link` import added (also fixes a pre-existing missing-import bug); member name in the Team Members table is now a link to the new page
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-29] — UD-01 — Per-User, Per-Project Tasks & Activity Endpoints
+
+- **Author**: Claude
+- **PRD Requirement**: UD-01
+- **Summary**: Generalized `forYouController.js`'s `getMyTasks`/`getMyActivity` (rather than duplicating them, per the PRD's explicit instruction) to accept an optional `:userId` route param — when present, the query targets that user's assigned stories/sub-tasks (`getMyTasks`) or authored activity (`getMyActivity`, keyed on `change_history.user_id`, unchanged semantics — "activity" has always meant "things this user did," not "things affecting this user's items"); when absent, both default to the caller (`req.user.userId`), preserving the existing "For You" page's behavior exactly. The access check is unchanged in spirit but now explicitly separates "caller" from "target": the caller must be a member of `:projectId` (or an admin) — the target user is looked up regardless of their own membership status, per the PRD's explicit note ("the target `:userId` is looked up regardless of the caller's own assignment"). New routes `GET /api/for-you/project/:projectId/user/:userId/tasks` and `.../activity` added alongside the existing `:projectId/tasks`/`:projectId/activity` routes (both point at the same controller methods — no route-level duplication either). `getMyActivity`'s `limit` query param already existed and needs no change — `UD-02` will simply call it with `?limit=15` and skip pagination, per the PRD ("hard cap of 15... not paginated"), which is a frontend concern, not a backend one. No schema changes — `change_history` already carries everything needed (`project_id`/`entity_type`/`action_type` from migration `009`).
+- **Verification**: Curl-verified via two temp test users against the real "Reson8" project (project 4): (1) a temp project member's own tasks correctly returned `[]` (no assignments); (2) the same caller fetching `GET /for-you/project/4/user/2/tasks` correctly returned the *target* user's real assigned stories (`RES-0001`, `RES-0002`), not the caller's own (empty) set; (3) `GET /for-you/project/4/user/2/activity?limit=15` returned a correctly-shaped activity entry; (4) a second temp user who is *not* a project member got `403` when attempting the same `user/2/tasks` call, confirming the caller-membership gate still applies regardless of who the target is. Both temp users (and their `project_members`/`refresh_tokens` rows) cleaned up afterward — no story/sub-task data was created or mutated, only read. `npm run migrate` not needed (no migration).
+- **Files Changed**:
+  - `kartas-api/src/controllers/forYouController.js` — `getMyTasks`/`getMyActivity` now resolve an optional `req.params.userId` (defaulting to the caller) as the query target, separately from the caller-membership access check
+  - `kartas-api/src/routes/forYou.js` — New `GET /project/:projectId/user/:userId/tasks` and `.../activity` routes
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-29] — Kanban context menus: viewport-edge clamping (flip up/left near screen edges)
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (bug found by the user while testing the sub-task context menu enhancements below, fixed before continuing Phase 5)
+- **Summary**: Both `KanbanBoard.jsx` context menus (story right-click, sub-task right-click) rendered at a fixed `top`/`left` equal to the raw cursor coordinates, with no viewport-edge awareness — right-clicking a card near the bottom (or right) of the screen rendered the menu partially or fully off-screen. Added a small shared `useClampedMenuPosition(x, y, visible)` hook: on open, it renders the menu invisible for one frame, measures its actual rendered size via `getBoundingClientRect()` in a `useLayoutEffect` (runs synchronously before the browser paints, so there's no flash at the wrong position), and flips the menu above/left of the cursor whenever it would overflow the bottom or right edge of the viewport (clamped to `0` as a floor, in case the menu is taller/wider than the viewport itself). Resets to unmeasured/hidden whenever the menu closes, so reopening at a new position never briefly shows a stale prior placement. Applied to both menus via their existing `ref`/`top`/`left` style props — no change to menu contents or any other behavior.
+- **Verification**: `npm run build` clean. Pure frontend, no backend involved — user confirmed via manual click-through: "Everything tested and all is working perfectly."
+- **Files Changed**:
+  - `kartas-app/src/pages/KanbanBoard.jsx` — New `useClampedMenuPosition` hook; both context menus wired to use it instead of raw cursor coordinates
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-29] — Kanban sub-task context menu: View/Edit actions + full "Assign To" list
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (user-requested follow-up after the unassign-bug fix, for parity with the story context menu)
+- **Summary**: The sub-task right-click context menu only had "View Parent Story" / "Remove Assignee" (single conditional item, added in the unassign-bug fix above) / "Move To" / "Delete" — missing the "View"/"Edit" pair and the full "Assign To" member list that the story context menu already had. Added: a new read-only "👁️ View Sub-Item" quick-view modal (new `viewSubtask` state), mirroring the existing story quick-view modal's layout (Status/Story Points/Assignee badges + `MarkdownRenderer`'d description, no Blocked/Sub-tasks fields since those don't apply to sub-items) — this is a genuinely new surface, since sub-tasks previously had no read-only view, only the edit form (click-to-edit opens `SubItemEditModal` directly). A new "✏️ Edit Sub-Item" item reuses the existing `setSelectedSubtask` state (same action as clicking the card). The "Assign To" section was expanded from a single conditional "Remove Assignee" item into the full pattern already used by the story menu: header, conditional "🚫 Remove Assignee" (only when currently assigned), then the full project-members list — each member wired to the already-existing `handleAssignSubtask` handler. Deliberately did not add this same "View"/full-"Assign To" treatment to the "Move To" submenu or restructure the sub-task card's own click behavior (still opens edit directly) — out of scope, user only asked about the context menu.
+- **Verification**: `npm run build` clean. Pure frontend, no backend involved (reuses the already-fixed `PUT /sub-tasks/:id` endpoint). User confirmed via manual click-through.
+- **Files Changed**:
+  - `kartas-app/src/pages/KanbanBoard.jsx` — New `viewSubtask` state + read-only view modal; new "View Sub-Item"/"Edit Sub-Item" context menu items; "Assign To" expanded to the full member list
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-29] — Fix: unassigning a story/sub-task assignee was silently a no-op
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (bug found by the user while testing `AV-03`, fixed before continuing Phase 5)
+- **Root Cause**: `storyController.updateStory` and `subTaskController.updateSubTask` both built their `UPDATE` statements with `assignee_id = COALESCE($n, assignee_id)`. `COALESCE` can't distinguish "field omitted from the request" (should keep the existing value) from "field explicitly sent as `null`" (should clear it) — both collapse to a bound SQL `NULL` parameter, so an explicit unassign silently fell back to the old value. This affected every existing "Unassigned" UI (Story Detail's assignee `<select>`, Backlog's bulk-assign toolbar, `SubItemEditModal`'s assignee field) even though all three already sent `assigneeId: null` correctly — the bug was entirely on the write path, not missing UI, for those three surfaces. Separately, the Kanban board's right-click "Assign To" submenu (story cards) had no "remove" option at all — only a list of members to assign *to* — and the sub-task context menu had no assignee-related actions whatsoever (by original design, per `ST-03`, since sub-tasks are click-to-edit).
+- **Fix (backend)**: Both controllers now resolve `assigneeId` in JS before the query — `assigneeId !== undefined ? assigneeId : <current row's assignee_id>` — and bind that resolved value to a plain `assignee_id = $n` assignment instead of wrapping it in `COALESCE`. All other fields in both statements are untouched (still `COALESCE`-based partial updates) — this fix is scoped to `assignee_id` only, the field actually reported broken. Also updated the (currently unenforced — no `validationResult()` call exists anywhere in `kartas-api`, confirmed via search) `assigneeId` validators in `stories.js`/`subTasks.js` from `.optional().isInt()` to `.optional({ nullable: true }).isInt()` across all four occurrences, so an explicit `null` isn't rejected if validation enforcement is ever added later — a defensive fix for the same bug class, not a behavior change today.
+- **Fix (frontend)**: Added a "🚫 Remove Assignee" item to `KanbanBoard.jsx`'s story right-click context menu, inside the existing "Assign To" block (above the member list), conditionally rendered only when the story currently has an assignee — reuses the existing `handleAssignStory(storyId, null)` call, which already forwarded whatever `assigneeId` it was given. Added a new `handleAssignSubtask(id, assigneeId)` handler (mirrors `handleAssignStory`, hits `PUT /sub-tasks/:id`) and a matching conditional "🚫 Remove Assignee" item in the sub-task context menu — deliberately just the one action (not a full "Assign To" member list), consistent with that menu's existing intentionally-trimmed scope (`ST-03`), since assigning *to* someone still happens via click-to-edit (`SubItemEditModal`), which already had a working "Unassigned" option once the backend fix landed.
+- **Verification**: Backend verified via the temp-test-user pattern, using a throwaway story + sub-task (not any real data) to avoid touching anything the user might have open: created both assigned to a temp user, confirmed `PUT /stories/:id { assigneeId: null }` and `PUT /sub-tasks/:id { assigneeId: null }` each set `assignee_id` to `NULL` in the DB (previously silently kept the old value). Also confirmed no regression — a `PUT` that omits `assigneeId` entirely still leaves the existing assignee untouched. Cleaned up all temp rows (story, sub-task, project membership, refresh tokens, user) and confirmed zero orphaned `change_history` rows afterward. `npm run build` clean.
+- **Files Changed**:
+  - `kartas-api/src/controllers/storyController.js` — `updateStory`'s `assignee_id` handling no longer uses `COALESCE`
+  - `kartas-api/src/controllers/subTaskController.js` — `updateSubTask`'s `assignee_id` handling no longer uses `COALESCE`
+  - `kartas-api/src/routes/stories.js` — `assigneeId` validators accept explicit `null` (defensive, currently unenforced)
+  - `kartas-api/src/routes/subTasks.js` — same
+  - `kartas-app/src/pages/KanbanBoard.jsx` — New "Remove Assignee" item in the story context menu; new `handleAssignSubtask` handler + "Remove Assignee" item in the sub-task context menu
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-29] — AV-03 — User Hover Card
+
+- **Author**: Claude
+- **PRD Requirement**: AV-03
+- **Summary**: Hovering a Kanban assignee avatar (`AV-02`) now shows a floating card — avatar, full name, role, email, and a copy-to-clipboard button — built on a new `@floating-ui/react` dependency (no existing tooltip/popover precedent anywhere in the app to reuse). Backend: `kanbanController.js`'s `getKanbanBoard` story and sub-task query paths now also select `role`/`email` from the already-joined `users` table (aliased `u1` for stories, `u` for sub-tasks) and expose them as `assigneeRole`/`assigneeEmail`, matching the existing `assigneeId`/`assigneeName` camelCase convention — the story query's existing `GROUP BY` had to gain `u1.role, u1.email` since it has aggregates (subtask counts); the sub-task query has no `GROUP BY` so the addition was a plain SELECT change. This means the hover card needs no per-hover round-trip, per the PRD's explicit goal. A pre-implementation ambiguity was resolved with the user: the codebase has two different "role" concepts for the same person (global `users.role`: admin/project_owner/member, vs. project-scoped `project_members.role`: owner/member, used by Team Members/planned `UD-02`) — the PRD's "joined from users" wording was confirmed to mean the global role, not the project-scoped one.
+  Frontend: new presentational `UserHoverCard.jsx` (prop-driven, no internal fetch) and a new `AssigneeAvatarWithHoverCard.jsx` wrapper that composes `AV-02`'s existing `AssigneeAvatar` as the floating-ui reference/trigger and `UserHoverCard` as the floating content, using `useFloating` + `useHover({ handleClose: safePolygon(), delay: { open: 150, close: 0 } })` + `useDismiss` + `useInteractions`. `safePolygon()` is what satisfies the AC's "moving the cursor from the avatar toward the card must not cause it to vanish mid-transit" — it keeps the card open while the cursor crosses the triangular gap between trigger and card, which a plain `useHover` would not. Chose reference-anchored placement (`right-start` + `offset`/`flip`/`shift({ padding: 8 })`) over true cursor-coordinate tracking — the avatar is only 18px, so the two approaches are visually indistinguishable, and virtual-element cursor tracking would complicate `safePolygon()`'s bounding-box-based logic for no real benefit. The floating card renders via `FloatingPortal` (mounted at `document.body`) at `zIndex: 1000`, matching the app's existing floating-overlay tier (`.modal-overlay`, `.user-dropdown-menu`). The wrapper is used **only** at `KanbanBoard.jsx`'s two call sites (story cards, sub-task cards) — `AssigneeAvatar.jsx` itself and its separate `StoryDetail.jsx` sub-items usage are untouched, so Story Detail does not silently gain hover-card/navigate-away behavior. Unassigned items (`assigneeName` falsy) render the same plain dashed "?" circle as before with zero hover wiring attached. Clicking the avatar/name inside the card (only that block, not the whole card) links to `/project/:projectId/user/:userId` — `UD-02` (the target page) doesn't exist yet, so this currently falls through to the app's catch-all route and redirects to `/`, which is expected per the PRD's own suggested implementation order (5.4 before 5.5), not a bug.
+  Installed `@floating-ui/react` following this project's established container-volume-sync procedure (host `npm install`, then `docker-compose exec -T app npm install`, clear `node_modules/.vite`, `docker-compose restart app`) — confirmed via container logs (`✨ new dependencies optimized: @floating-ui/react`, clean reload, no unresolved-import errors) and a direct `curl` of the new module (`200`).
+- **Verification**: Backend verified via the temp-test-user pattern — seeded a temp member on the real "Reson8" project (no need to change any story's assignee; existing assigned stories/sub-tasks in the active sprint already had real assignees), logged in for real, confirmed `GET /kanban/project/4` returned correct `assigneeRole`/`assigneeEmail` for both a story and a sub-task assignee, matching the DB exactly. Cleaned up all temp `project_members`/`refresh_tokens`/`users` rows. `npm run build` clean. User confirmed full manual click-through: "Tested and everything worked out great!"
+- **Files Changed**:
+  - `kartas-api/src/controllers/kanbanController.js` — Story/sub-task queries + JS mapping extended with `assigneeRole`/`assigneeEmail`
+  - `kartas-app/package.json` — Added `@floating-ui/react`
+  - `kartas-app/src/components/UserHoverCard.jsx` — New
+  - `kartas-app/src/components/AssigneeAvatarWithHoverCard.jsx` — New
+  - `kartas-app/src/components/navigation.css` — New `.user-hover-card*` styles
+  - `kartas-app/src/pages/KanbanBoard.jsx` — Both assignee-avatar call sites upgraded to `AssigneeAvatarWithHoverCard`
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-28] — AV-02 — Kanban Assignee Avatars (+ Story Detail sub-items extension)
+
+- **Author**: Claude
+- **PRD Requirement**: AV-02
+- **Summary**: `KanbanBoard.jsx` rendered assignees on story cards and sub-task cards as raw `@FirstName` text (`item.assigneeName.split(' ')[0]`), with no visual distinction for unassigned items. Replaced both sites with a small (18px) avatar circle showing initials, using `AV-01`'s `getAvatarColor(seed)` for a per-user color keyed on `assigneeId` (stable even if a name is later edited) and a new `getInitialsFromFullName(fullName)` helper (`avatar.js`) that splits the API's single `"First Last"` string before delegating to the existing `getInitials(firstName, lastName)`. Unassigned items show a distinct muted, dashed-outline circle (`?` glyph) rather than a solid colored one, per the PRD's explicit "must remain visually distinct" requirement. No backend change was needed — `GET /kanban/project/:projectId` already returns `assigneeId` for both stories and sub-tasks.
+  After initial verification, the user pointed out that the Story Detail (Edit Story) page's Sub-items list had the exact same `@FirstName` pattern (not originally in AV-02's PRD scope, which only named "Kanban... story cards and sub-task cards", but a direct extension of the same fix requested live). Since the avatar markup was now needed in two files, extracted it into a new shared `kartas-app/src/components/AssigneeAvatar.jsx` (`{ assigneeId, assigneeName }` props) instead of duplicating the JSX — `KanbanBoard.jsx` was refactored to consume the shared component (its local copy removed), and `StoryDetail.jsx`'s sub-items row now uses it too. The two supporting CSS classes were renamed from `.kanban-assignee-avatar`/`.kanban-assignee-unassigned` to generic `.assignee-avatar-sm`/`.assignee-avatar-sm-unassigned` (`navigation.css`, already imported by both consumers) since they're no longer Kanban-specific.
+  The avatar is wrapped in a `<span data-assignee-id={...}>` with no hover/click handlers yet — deliberately left as a plain, distinct DOM node for `AV-03` (hover card) to attach to later, per the PRD's "avatar is the hover/click target for AV-03" note.
+- **Verification**: `npm run build` clean (both before and after the sub-items extension). Manual browser click-through confirmed by the user: colored initials circles render correctly on Kanban story/sub-task cards and the Story Detail sub-items list; unassigned items show the dashed muted circle, clearly distinct from an assigned avatar; different assignees show different colors, consistent for the same assignee across surfaces; hover tooltip shows the full name; drag-and-drop unaffected. User confirmed "Everything worked out great!"
+- **Files Changed**:
+  - `kartas-app/src/utils/avatar.js` — New `getInitialsFromFullName(fullName)` export
+  - `kartas-app/src/components/AssigneeAvatar.jsx` — New shared component
+  - `kartas-app/src/components/navigation.css` — New `.assignee-avatar-sm`/`.assignee-avatar-sm-unassigned` styles
+  - `kartas-app/src/pages/KanbanBoard.jsx` — Story card and sub-task card assignee text replaced with `AssigneeAvatar`
+  - `kartas-app/src/pages/StoryDetail.jsx` — Sub-items list assignee text replaced with `AssigneeAvatar`
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
 ## [2026-07-28] — Post-5.3 UI polish, round 2: field grid, Blocked switch, description containment, Kanban badges/status
 
 - **Author**: Claude

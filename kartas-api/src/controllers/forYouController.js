@@ -14,15 +14,20 @@ const STATUS_RANK = {
 };
 
 export const forYouController = {
-    // My assigned tasks (stories + sub-tasks) within a single project
+    // Assigned tasks (stories + sub-tasks) within a single project, for either the
+    // caller ("My Tasks" / "For You") or an arbitrary target user (UD-01/UD-02's
+    // "[Name]'s Details" page) — the route optionally carries :userId; when absent,
+    // this defaults to the caller. Either way, the caller must be a project member;
+    // the target user is looked up regardless of their own membership/assignment.
     async getMyTasks(req, res) {
         try {
             const { projectId } = req.params;
-            const userId = req.user.userId;
+            const callerId = req.user.userId;
+            const targetUserId = req.params.userId || callerId;
 
             const accessCheck = await query(
                 'SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2',
-                [projectId, userId]
+                [projectId, callerId]
             );
 
             if (accessCheck.rows.length === 0 && req.user.role !== 'admin') {
@@ -36,7 +41,7 @@ export const forYouController = {
                  FROM stories s
                  LEFT JOIN epics e ON e.id = s.epic_id
                  WHERE s.project_id = $1 AND s.assignee_id = $2`,
-                [projectId, userId]
+                [projectId, targetUserId]
             );
 
             const subTasksResult = await query(
@@ -47,7 +52,7 @@ export const forYouController = {
                  JOIN stories s ON s.id = st.story_id
                  LEFT JOIN epics e ON e.id = s.epic_id
                  WHERE s.project_id = $1 AND st.assignee_id = $2`,
-                [projectId, userId]
+                [projectId, targetUserId]
             );
 
             const storyIds = storiesResult.rows.map(s => s.id).concat(
@@ -116,17 +121,21 @@ export const forYouController = {
         }
     },
 
-    // My recent activity within a single project, paginated latest-first
+    // Recent activity within a single project, paginated latest-first — for either
+    // the caller or an arbitrary target user, same :userId convention as getMyTasks.
+    // UD-01/UD-02 pass ?limit=15 and never paginate further (no "Load More" there),
+    // unlike the "For You" page's own use of this endpoint.
     async getMyActivity(req, res) {
         try {
             const { projectId } = req.params;
-            const userId = req.user.userId;
+            const callerId = req.user.userId;
+            const targetUserId = req.params.userId || callerId;
             const limit = Math.min(parseInt(req.query.limit) || 20, 100);
             const offset = parseInt(req.query.offset) || 0;
 
             const accessCheck = await query(
                 'SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2',
-                [projectId, userId]
+                [projectId, callerId]
             );
 
             if (accessCheck.rows.length === 0 && req.user.role !== 'admin') {
@@ -150,7 +159,7 @@ export const forYouController = {
                  WHERE ch.user_id = $1 AND COALESCE(ch.project_id, s.project_id) = $2
                  ORDER BY ch.changed_at DESC
                  LIMIT $3 OFFSET $4`,
-                [userId, projectId, limit + 1, offset]
+                [targetUserId, projectId, limit + 1, offset]
             );
 
             const hasMore = result.rows.length > limit;

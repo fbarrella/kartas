@@ -5,6 +5,7 @@ import SubItemEditModal, { SUBITEM_TYPE_OPTIONS, SUBITEM_STATUS_OPTIONS } from '
 import Breadcrumb from '../components/Breadcrumb';
 import MarkdownEditor from '../components/MarkdownEditor';
 import MarkdownRenderer from '../components/MarkdownRenderer';
+import AssigneeAvatarWithHoverCard from '../components/AssigneeAvatarWithHoverCard';
 import '../components/navigation.css';
 
 
@@ -525,9 +526,13 @@ const StoryDetail = () => {
                                             {item.storyPoints}
                                         </span>
                                     )}
-                                    <span className="text-small text-muted">
-                                        {item.assigneeName ? `@${item.assigneeName.split(' ')[0]}` : 'Unassigned'}
-                                    </span>
+                                    <AssigneeAvatarWithHoverCard
+                                        assigneeId={item.assigneeId}
+                                        assigneeName={item.assigneeName}
+                                        assigneeRole={item.assigneeRole}
+                                        assigneeEmail={item.assigneeEmail}
+                                        projectId={projectId}
+                                    />
                                 </div>
                                 <div className="flex flex-gap-xs">
                                     <button onClick={() => openEditSubItem(item)} className="btn btn-secondary btn-sm">

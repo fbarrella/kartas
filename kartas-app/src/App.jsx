@@ -21,6 +21,7 @@ import UserManagement from './pages/UserManagement';
 import UserProfile from './pages/UserProfile';
 import SprintReports from './pages/SprintReports';
 import ProjectSettings from './pages/ProjectSettings';
+import UserDetail from './pages/UserDetail';
 
 import './index.css';
 
@@ -108,6 +109,7 @@ function AppRoutes() {
                 <Route path="team" element={<ProjectView />} />
                 <Route path="settings" element={<ProjectSettings />} />
                 <Route path="story/:storyId" element={<StoryDetail />} />
+                <Route path="user/:userId" element={<UserDetail />} />
             </Route>
 
             <Route

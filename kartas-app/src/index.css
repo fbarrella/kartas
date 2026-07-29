@@ -764,6 +764,11 @@ a:hover {
   background-color: var(--color-danger);
 }
 
+/* Neutral (non-"danger") variant for toggles that aren't a warning state, e.g. filter switches. */
+.switch-primary input:checked ~ .switch-track {
+  background-color: var(--color-primary);
+}
+
 .switch input:checked ~ .switch-track .switch-thumb {
   transform: translateX(18px);
 }

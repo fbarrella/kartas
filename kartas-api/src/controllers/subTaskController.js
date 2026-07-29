@@ -87,6 +87,10 @@ export const subTaskController = {
                 return res.status(403).json({ error: 'Access denied' });
             }
 
+            // assignee_id is nullable (unassigning is valid), so COALESCE can't be used for it —
+            // COALESCE can't distinguish "field omitted" from "field explicitly set to null".
+            const assigneeIdToSet = assigneeId !== undefined ? assigneeId : subTaskResult.rows[0].assignee_id;
+
             const result = await query(
                 `UPDATE sub_tasks
          SET type = COALESCE($1, type),
@@ -94,10 +98,10 @@ export const subTaskController = {
              description = COALESCE($3, description),
              status = COALESCE($4, status),
              story_points = COALESCE($5, story_points),
-             assignee_id = COALESCE($6, assignee_id)
+             assignee_id = $6
          WHERE id = $7
          RETURNING *`,
-                [type, title, description, status, storyPoints, assigneeId, id]
+                [type, title, description, status, storyPoints, assigneeIdToSet, id]
             );
 
             const st = result.rows[0];

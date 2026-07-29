@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useOutletContext } from 'react-router-dom';
+import { useParams, useOutletContext, Link } from 'react-router-dom';
 import api from '../services/api';
 import UserSelect from '../components/UserSelect';
 import { useAuth } from '../contexts/AuthContext';
@@ -125,7 +125,12 @@ const ProjectView = () => {
                             {project.members?.map((member) => (
                                 <tr key={member.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
                                     <td style={{ padding: 'var(--spacing-sm)' }}>
-                                        {member.firstName} {member.lastName}
+                                        <Link
+                                            to={`/project/${projectId}/user/${member.id}`}
+                                            style={{ color: 'var(--color-text)', textDecoration: 'none' }}
+                                        >
+                                            {member.firstName} {member.lastName}
+                                        </Link>
                                     </td>
                                     <td style={{ padding: 'var(--spacing-sm)' }}>{member.email}</td>
                                     <td style={{ padding: 'var(--spacing-sm)' }}>
