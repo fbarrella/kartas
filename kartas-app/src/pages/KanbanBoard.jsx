@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useOutletContext, Link } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import api from '../services/api';
 import SubItemEditModal from '../components/SubItemEditModal';
+import Breadcrumb from '../components/Breadcrumb';
+import '../components/navigation.css';
 
 const formatDate = (d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
 const KanbanBoard = () => {
     const { projectId } = useParams();
+    const { projectName, defaultLandingPage } = useOutletContext();
     const [project, setProject] = useState(null);
     const [sprint, setSprint] = useState(null);
     const [columns, setColumns] = useState([]);
@@ -274,13 +277,20 @@ const KanbanBoard = () => {
 
     if (!sprint) {
         return (
-            <div className="card text-center">
-                <h2>No Active Sprint</h2>
-                <p className="text-muted mt-md">Start a sprint to use the kanban board</p>
-                <Link to={`/project/${projectId}/sprints`} className="btn btn-primary mt-md">
-                    Go to Sprints
-                </Link>
-            </div>
+            <>
+                <Breadcrumb items={[
+                    { label: 'Projects', to: '/' },
+                    { label: projectName, to: `/project/${projectId}/${defaultLandingPage}` },
+                    { label: 'Kanban Board' },
+                ]} />
+                <div className="card text-center">
+                    <h2>No Active Sprint</h2>
+                    <p className="text-muted mt-md">Start a sprint to use the kanban board</p>
+                    <Link to={`/project/${projectId}/sprints`} className="btn btn-primary mt-md">
+                        Go to Sprints
+                    </Link>
+                </div>
+            </>
         );
     }
 
@@ -290,6 +300,11 @@ const KanbanBoard = () => {
 
     return (
         <>
+            <Breadcrumb items={[
+                { label: 'Projects', to: '/' },
+                { label: projectName, to: `/project/${projectId}/${defaultLandingPage}` },
+                { label: 'Kanban Board' },
+            ]} />
             <div className="mb-md">
                 <h2 style={{ margin: 0, marginBottom: 'var(--spacing-sm)' }}>{sprint?.name || 'Kanban Board'}</h2>
                 {sprint?.objective && (

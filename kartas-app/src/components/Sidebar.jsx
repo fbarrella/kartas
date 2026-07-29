@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { getProjectInitials, getAvatarColor } from '../utils/avatar';
 import './navigation.css';
 
-const Sidebar = ({ projectId }) => {
+const Sidebar = ({ projectId, projectName, projectDescription }) => {
     const [isCollapsed, setIsCollapsed] = useState(() => {
         const saved = localStorage.getItem('sidebarCollapsed');
         return saved === 'true';
@@ -120,6 +121,21 @@ const Sidebar = ({ projectId }) => {
                         </>
                     )}
                 </button>
+
+                <div className="sidebar-project">
+                    <div
+                        className="sidebar-project-avatar"
+                        style={{ backgroundColor: getAvatarColor(projectId) }}
+                    >
+                        {getProjectInitials(projectName)}
+                    </div>
+                    <div className="sidebar-project-info">
+                        <div className="sidebar-project-name">{projectName}</div>
+                        {projectDescription && (
+                            <div className="sidebar-project-description">{projectDescription}</div>
+                        )}
+                    </div>
+                </div>
             </div>
 
             <nav className="sidebar-nav">

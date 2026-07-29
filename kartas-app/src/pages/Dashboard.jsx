@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import UserDropdown from '../components/UserDropdown';
+import Breadcrumb from '../components/Breadcrumb';
 import '../components/navigation.css';
 import kartasLogoWhite from '../assets/kartas-logo-white.png';
 
@@ -56,8 +57,9 @@ const Dashboard = () => {
                 boxShadow: 'var(--shadow-md)'
             }}>
                 <div className="container flex flex-between" style={{ alignItems: 'center' }}>
-                    <Link to="/" style={{ display: 'flex', alignItems: 'center' }}>
+                    <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
                         <img src={kartasLogoWhite} alt="Kartas" style={{ height: '36px' }} />
+                        <span style={{ color: 'white', fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-semibold)' }}>Kartas</span>
                     </Link>
                     <UserDropdown />
                 </div>
@@ -65,6 +67,7 @@ const Dashboard = () => {
 
             {/* Main Content */}
             <div className="container" style={{ marginTop: 'var(--spacing-xl)' }}>
+                <Breadcrumb items={[{ label: 'Projects' }]} />
                 <div className="flex flex-between mb-lg" style={{ alignItems: 'center' }}>
                     <h2>Your Projects</h2>
                     {canCreateProject && (

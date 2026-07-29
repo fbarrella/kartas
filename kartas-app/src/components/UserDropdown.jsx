@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { getInitials, getAvatarColor } from '../utils/avatar';
 
 const UserDropdown = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -30,14 +31,6 @@ const UserDropdown = () => {
         navigate('/login');
     };
 
-    // Generate initials from user name
-    const getInitials = () => {
-        if (!user) return '??';
-        const firstInitial = user.firstName?.[0] || '';
-        const lastInitial = user.lastName?.[0] || '';
-        return (firstInitial + lastInitial).toUpperCase();
-    };
-
     const getFullName = () => {
         if (!user) return 'User';
         return `${user.firstName || ''} ${user.lastName || ''}`.trim();
@@ -51,8 +44,8 @@ const UserDropdown = () => {
                 aria-expanded={isOpen}
                 aria-haspopup="true"
             >
-                <div className="user-avatar">
-                    {getInitials()}
+                <div className="user-avatar" style={{ backgroundColor: getAvatarColor(user?.id) }}>
+                    {getInitials(user?.firstName, user?.lastName)}
                 </div>
                 <span className="user-name">{getFullName()}</span>
                 <svg

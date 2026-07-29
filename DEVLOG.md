@@ -4,6 +4,87 @@ Development log for all Kartas changes, across every phase. Each entry records w
 
 ---
 
+## [2026-07-28] — NAV-03 — Sidebar Project Identity Header
+
+- **Author**: Claude
+- **PRD Requirement**: NAV-03
+- **Summary**: `NAV-01` moved the project name out of the top bar with a promise it would get a new home; this is that home. The sidebar's header (`Sidebar.jsx`) previously contained only the collapse-toggle button. Added a project-identity block directly below it: a square 2-letter project avatar (`border-radius: var(--radius-md)`, not a circle, per the PRD — distinct from the circular user avatars), the project name in bold, and the description in smaller muted text below it (omitted entirely, no empty gap, when the project has no description). The avatar reuses `AV-01`'s `getAvatarColor(seed)` (seeded on `projectId`, same hashed-palette convention as user avatars) plus a new `getProjectInitials(name)` export added to `avatar.js` — a project needs "first two characters of the name, uppercase" (e.g. "Reson8" → "RE"), a different extraction rule than the existing person-shaped `getInitials(firstName, lastName)`, so it's a small sibling function rather than a reuse of the same one. `GET /projects/:projectId` already returned `description` in its response (no backend change needed, unlike `NAV-02`'s `defaultLandingPage` addition) — `App.jsx`'s `ProjectLayoutShell` now also captures it into state and threads it through `ProjectLayout.jsx` as a new `projectDescription` prop down into `Sidebar.jsx`. Since `ProjectLayoutShell`'s fetch effect is already keyed on `[projectId]`, switching projects re-fetches and re-renders the whole block correctly with no stale-data risk. Per user preference, the collapsed sidebar keeps just the avatar visible (centered, name/description hidden) rather than hiding the whole block, matching how the existing nav items already collapse to icon-only.
+- **Verification**: `npm run build` clean. No backend change, so no curl verification needed. Dev stack is running (`docker-compose up -d`, hot-reload) for the user's manual click-through — open a project, confirm the sidebar shows avatar/name/description below the collapse button, switch projects to confirm it updates (not stale), and collapse the sidebar to confirm only the avatar remains.
+- **Files Changed**:
+  - `kartas-app/src/utils/avatar.js` — New `getProjectInitials(name)` export
+  - `kartas-app/src/App.jsx` — `ProjectLayoutShell` fetches/passes `projectDescription`
+  - `kartas-app/src/components/ProjectLayout.jsx` — Passes `projectDescription` through to `Sidebar`
+  - `kartas-app/src/components/Sidebar.jsx` — New project-identity block in `.sidebar-header`
+  - `kartas-app/src/components/navigation.css` — New `.sidebar-project*` styles + collapsed-state override
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-28] — AV-01 — Shared Avatar Utility
+
+- **Author**: Claude
+- **PRD Requirement**: AV-01
+- **Summary**: Avatar-initials markup was reimplemented independently in `UserDropdown.jsx` (a `getInitials()` local helper) and `UserSelect.jsx` (inline `user.firstName[0]}{user.lastName[0]`, no null-safety — would throw on an empty-string name), both rendering on a single fixed background color (`.user-avatar`'s CSS gradient, `.user-avatar-placeholder`'s solid `--color-primary`). New `kartas-app/src/utils/avatar.js` (first file in a new `utils/` directory — none existed in the frontend before) exports `getInitials(firstName, lastName)` (null-safe, matches original two-letter behavior) and `getAvatarColor(seed)`, a deterministic djb2-derived string hash mapping any seed (e.g. a user or project id) to one of 7 on-brand, white-text-contrast-safe palette colors (`--color-primary`, `--color-secondary`, `--color-success`, `--color-warning`, `--color-danger`, `--color-info`, `--color-primary-light`) — same seed always yields the same color, no `Math.random`. Both `UserDropdown.jsx` and `UserSelect.jsx` now call the shared utility and apply the per-user color via an inline `style={{ backgroundColor: getAvatarColor(user.id) }}` (previously not overridable — color was baked into the CSS class). `.user-avatar` (`navigation.css`) and `.user-avatar-placeholder` (`index.css`) had their hardcoded `background`/`background-color` declarations removed, keeping size/shape/font unchanged.
+- **Files Changed**:
+  - `kartas-app/src/utils/avatar.js` — New: `getInitials`, `getAvatarColor`
+  - `kartas-app/src/components/UserDropdown.jsx` — Uses shared utility instead of local `getInitials()`; per-user avatar color
+  - `kartas-app/src/components/UserSelect.jsx` — Uses shared utility (fixes null-safety gap); per-user avatar color
+  - `kartas-app/src/components/navigation.css` — `.user-avatar` no longer hardcodes a background
+  - `kartas-app/src/index.css` — `.user-avatar-placeholder` no longer hardcodes a background-color
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-28] — NAV-01 — Persistent "Kartas" App Identity in Top Bar
+
+- **Author**: Claude
+- **PRD Requirement**: NAV-01
+- **Summary**: The top bar previously showed the Kartas logo, a `|` separator, and the current project's name (`<h2>{projectName}</h2>`) in `ProjectLayout.jsx` (project-scoped pages only); `Dashboard.jsx`, `UserManagement.jsx`, and `UserProfile.jsx` showed just the logo. Removed the project name and separator from `ProjectLayout.jsx`'s header entirely (the project identity moves to `NAV-03`'s sidebar header, not yet built) and added a plain "Kartas" text label next to the logo, in all four files, so the top bar now shows a consistent app-identity lockup everywhere. Per user preference, the logo and "Kartas" text share a single `<Link>` (whole lockup navigates together) rather than only the logo being clickable — each file's existing link destination is unchanged (`ProjectLayout.jsx` → `/project/:id/for-you`, the other three → `/`).
+- **Files Changed**:
+  - `kartas-app/src/components/ProjectLayout.jsx` — Removed project name/separator; logo+"Kartas" now a single link
+  - `kartas-app/src/pages/Dashboard.jsx` — Logo+"Kartas" now a single link
+  - `kartas-app/src/pages/UserManagement.jsx` — Logo+"Kartas" now a single link
+  - `kartas-app/src/pages/UserProfile.jsx` — Logo+"Kartas" now a single link
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-28] — NAV-02 — Breadcrumb Navigation
+
+- **Author**: Claude
+- **PRD Requirement**: NAV-02
+- **Summary**: No breadcrumb trail existed anywhere in the app — `StoryDetail.jsx` had only a plain "← Back to Backlog" button. Added a new shared `Breadcrumb.jsx` (`items={[{label, to?}]}` prop; non-terminal items with a `to` render as `<Link>`s, the terminal item is always plain text) plus `.breadcrumb*` styles appended to `navigation.css`, and wired it into every page: Dashboard (single "Projects" crumb), the 8 project-scoped pages (`ForYou`, `Backlog`, `Epics`, `Sprints`, `KanbanBoard` — both its no-active-sprint and loaded branches, `SprintReports` — all 3 branches, `ProjectView`, `ProjectSettings`) each showing "Projects / [ProjectName] / [PageName]", `StoryDetail.jsx` showing "Projects / [ProjectName] / [StoryID] / Edit Story" (its old back-button removed entirely, replaced by the breadcrumb, per the PRD's "no duplicate back affordance"), and the unscoped system pages `UserManagement.jsx`/`UserProfile.jsx` showing a single crumb with their own page name and no "Projects" prefix — both keep their existing "← Go back to My Projects" link alongside the new breadcrumb (kept, not replaced, per user preference — the breadcrumb's terminal-only crumb has no link back to `/`, so removing the old link would have been a net navigation regression).
+  Per user preference, the project-name crumb links to the project's actual per-user default landing page (not a hardcoded page), which required extending the backend: `projectController.getProject` (`GET /projects/:projectId`) now `LEFT JOIN`s `project_user_settings` (scoped to the requesting user, mirroring the existing pattern already used in `getUserProjects`) and returns `defaultLandingPage` (falling back to `'backlog'`, same convention as the existing list endpoint). `App.jsx`'s `ProjectLayoutShell` now captures `defaultLandingPage` alongside `projectName` and exposes both to nested project pages via `useOutletContext` (previously unused anywhere in the app) instead of each page re-fetching independently — several project pages (`Backlog`, `Sprints`, `KanbanBoard`, `StoryDetail`) had their own vestigial `/projects/:id` fetch whose result (`project` state) was never actually read anywhere in the file; those fetches were left in place (out of scope for this task) but are now redundant with the new context, worth flagging for future cleanup.
+- **Verification**: `npm run build` clean. Backend change verified via the temp-test-user pattern: seeded a temp member on the real "Reson8" project with `project_user_settings.default_landing_page = 'kanban'` (a deliberately non-default value), logged in for real, confirmed `GET /projects/4` returned `"defaultLandingPage":"kanban"` (not the `'backlog'` fallback, proving the join actually reads the per-user row) — cleaned up all temp data (`project_user_settings`, `project_members`, `refresh_tokens`, `users` rows) afterward. Manual click-through of the rendered breadcrumb across all page types is still pending — dev stack is up (`docker-compose up -d`) for hands-on verification.
+- **Files Changed**:
+  - `kartas-app/src/components/Breadcrumb.jsx` — New shared component
+  - `kartas-app/src/components/navigation.css` — New `.breadcrumb*` styles
+  - `kartas-api/src/controllers/projectController.js` — `getProject` now returns `defaultLandingPage`
+  - `kartas-app/src/App.jsx` — `ProjectLayoutShell` exposes `projectName`/`defaultLandingPage` via `useOutletContext`
+  - `kartas-app/src/pages/Dashboard.jsx`, `ForYou.jsx`, `Backlog.jsx`, `Epics.jsx`, `Sprints.jsx`, `KanbanBoard.jsx`, `SprintReports.jsx`, `ProjectView.jsx`, `ProjectSettings.jsx`, `StoryDetail.jsx`, `UserManagement.jsx`, `UserProfile.jsx` — Breadcrumb wired in; `StoryDetail.jsx`'s old back button removed
+- **Migration**: N/A (existing `project_user_settings` table from `010_project_user_settings.sql`)
+- **Status**: Done
+
+---
+
+## [2026-07-28] — MD-01 — Markdown Editing/Rendering Infrastructure
+
+- **Author**: Claude
+- **PRD Requirement**: MD-01
+- **Summary**: No markdown library existed in `kartas-app` (confirmed: no `react-markdown`/`marked`/`remark` in `package.json`). Added `react-markdown` + `remark-gfm` as new frontend dependencies. New `MarkdownRenderer.jsx` renders markdown read-only via `ReactMarkdown` with the GFM plugin (tables/strikethrough/task lists) — no `rehype-raw`, no `dangerouslySetInnerHTML`, so raw HTML embedded in a description is never executed (stored-XSS prevention, per PRD). New `MarkdownEditor.jsx` is a controlled component (`value`/`onChange`) with a Write/Preview tab pair: the Write tab is a full-width `<textarea>` (reusing the existing `.form-textarea` class); the Preview tab renders the same `value` through `MarkdownRenderer`, read-only — both tabs share the single `value` prop as their source of truth, so switching tabs never loses in-progress edits. No existing tab-switcher pattern existed anywhere in the app to reuse; built the toggle from two `.btn.btn-sm` buttons (`.btn-primary` for the active tab, `.btn-secondary` for the inactive one). Added baseline `.markdown-content` styling (headings/lists/code/pre/table) to `index.css` so rendered markdown isn't bare-unstyled-browser-default, especially for GFM tables. This requirement is infrastructure only — neither component is wired into any page yet; that starts with `MD-02` (Backlog create-modal) next. No backend changes needed — `stories.description` (and the other description-bearing columns) are already `TEXT` with no length cap, and `storyController.js` passes the field through untouched already.
+- **Files Changed**:
+  - `kartas-app/package.json` — Added `react-markdown`, `remark-gfm`
+  - `kartas-app/src/components/MarkdownRenderer.jsx` — New
+  - `kartas-app/src/components/MarkdownEditor.jsx` — New
+  - `kartas-app/src/index.css` — New `.markdown-content` baseline styles
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
 ## [2026-07-28] — Phase 5 Kickoff — PRD Created
 
 - **Author**: Claude

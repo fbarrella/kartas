@@ -29,12 +29,17 @@ import './index.css';
 function ProjectLayoutShell() {
     const { projectId } = useParams();
     const [projectName, setProjectName] = useState('Loading...');
+    const [projectDescription, setProjectDescription] = useState('');
+    const [defaultLandingPage, setDefaultLandingPage] = useState('backlog');
 
     useEffect(() => {
         let cancelled = false;
         api.get(`/projects/${projectId}`)
             .then(res => {
-                if (!cancelled) setProjectName(res.data.name || 'Project');
+                if (cancelled) return;
+                setProjectName(res.data.name || 'Project');
+                setProjectDescription(res.data.description || '');
+                setDefaultLandingPage(res.data.defaultLandingPage || 'backlog');
             })
             .catch(() => {
                 if (!cancelled) setProjectName('Project');
@@ -43,8 +48,8 @@ function ProjectLayoutShell() {
     }, [projectId]);
 
     return (
-        <ProjectLayout projectId={projectId} projectName={projectName}>
-            <Outlet />
+        <ProjectLayout projectId={projectId} projectName={projectName} projectDescription={projectDescription}>
+            <Outlet context={{ projectName, defaultLandingPage }} />
         </ProjectLayout>
     );
 }

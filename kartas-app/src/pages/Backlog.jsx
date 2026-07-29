@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { useParams, useOutletContext, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import Breadcrumb from '../components/Breadcrumb';
+import '../components/navigation.css';
 
 
 const STATUS_OPTIONS = [
@@ -22,6 +24,7 @@ const TYPE_OPTIONS = [
 
 const Backlog = () => {
     const { projectId } = useParams();
+    const { projectName, defaultLandingPage } = useOutletContext();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const sprintIdFromUrl = searchParams.get('sprint');
@@ -380,6 +383,11 @@ const Backlog = () => {
 
     return (
         <>
+            <Breadcrumb items={[
+                { label: 'Projects', to: '/' },
+                { label: projectName, to: `/project/${projectId}/${defaultLandingPage}` },
+                { label: 'Backlog' },
+            ]} />
             {/* Page Title */}
             <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
                 <h2>

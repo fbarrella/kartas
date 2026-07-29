@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useOutletContext, Link } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import Breadcrumb from '../components/Breadcrumb';
+import '../components/navigation.css';
 
 
 const Epics = () => {
     const { projectId } = useParams();
+    const { projectName, defaultLandingPage } = useOutletContext();
     const { user } = useAuth();
     const [project, setProject] = useState(null);
     const [epics, setEpics] = useState([]);
@@ -155,6 +158,11 @@ const Epics = () => {
 
     return (
         <>
+            <Breadcrumb items={[
+                { label: 'Projects', to: '/' },
+                { label: projectName, to: `/project/${projectId}/${defaultLandingPage}` },
+                { label: 'Epics' },
+            ]} />
             <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
                 <h2 style={{ margin: 0 }}>Epics</h2>
                 <div className="flex flex-gap-md" style={{ alignItems: 'center' }}>

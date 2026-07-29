@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import SubItemEditModal, { SUBITEM_TYPE_OPTIONS, SUBITEM_STATUS_OPTIONS } from '../components/SubItemEditModal';
+import Breadcrumb from '../components/Breadcrumb';
+import '../components/navigation.css';
 
 
 const STATUS_OPTIONS = [
@@ -205,16 +207,12 @@ const StoryDetail = () => {
 
     return (
         <>
-            {/* Breadcrumb */}
-            <div className="mb-md">
-                <button
-                    onClick={() => navigate(`/project/${projectId}/backlog`)}
-                    className="btn btn-secondary btn-sm"
-                    style={{ padding: '4px 8px' }}
-                >
-                    ← Back to Backlog
-                </button>
-            </div>
+            <Breadcrumb items={[
+                { label: 'Projects', to: '/' },
+                { label: project?.name || 'Project', to: `/project/${projectId}/backlog` },
+                { label: story.storyId, to: `/project/${projectId}/backlog` },
+                { label: 'Edit Story' },
+            ]} />
 
             {/* Page Title */}
             <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>

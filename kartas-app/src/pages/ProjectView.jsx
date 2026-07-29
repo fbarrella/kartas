@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useOutletContext } from 'react-router-dom';
 import api from '../services/api';
 import UserSelect from '../components/UserSelect';
 import { useAuth } from '../contexts/AuthContext';
+import Breadcrumb from '../components/Breadcrumb';
+import '../components/navigation.css';
 
 
 const ProjectView = () => {
     const { projectId } = useParams();
+    const { projectName, defaultLandingPage } = useOutletContext();
     const { user } = useAuth();
     const [project, setProject] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -81,6 +84,11 @@ const ProjectView = () => {
 
     return (
         <>
+            <Breadcrumb items={[
+                { label: 'Projects', to: '/' },
+                { label: projectName, to: `/project/${projectId}/${defaultLandingPage}` },
+                { label: 'Team Members' },
+            ]} />
             {/* Page Title and Actions */}
             <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
                 <h2 style={{ margin: 0 }}>Team Members</h2>
