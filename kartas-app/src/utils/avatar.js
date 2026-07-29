@@ -14,6 +14,12 @@ export const getInitials = (firstName, lastName) => {
     return (first + last).toUpperCase() || '?';
 };
 
+export const getInitialsFromFullName = (fullName) => {
+    if (!fullName) return '?';
+    const [first, ...rest] = fullName.trim().split(' ');
+    return getInitials(first, rest.join(' '));
+};
+
 export const getProjectInitials = (name) => {
     const trimmed = name?.trim() || '';
     return trimmed.slice(0, 2).toUpperCase() || '?';

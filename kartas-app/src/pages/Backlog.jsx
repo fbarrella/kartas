@@ -4,6 +4,7 @@ import api from '../services/api';
 import Breadcrumb from '../components/Breadcrumb';
 import MarkdownEditor from '../components/MarkdownEditor';
 import MarkdownRenderer from '../components/MarkdownRenderer';
+import AssigneeAvatarWithHoverCard from '../components/AssigneeAvatarWithHoverCard';
 import '../components/navigation.css';
 
 
@@ -444,21 +445,13 @@ const Backlog = () => {
                             Ready
                         </button>
                     </div>
-                    <label className="flex flex-gap-sm" style={{ alignItems: 'center', fontSize: 'var(--font-size-sm)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                        <input
-                            type="checkbox"
-                            checked={showCompleted}
-                            onChange={(e) => setShowCompleted(e.target.checked)}
-                        />
-                        Show completed stories
-                    </label>
                 </div>
 
-                {/* Advanced Filters */}
+                {/* Advanced Filters — dropdowns + the completed-stories switch, 3 per row */}
                 <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                    gap: 'var(--spacing-sm)'
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: 'var(--spacing-md)'
                 }}>
                     <select
                         className="form-select"
@@ -527,6 +520,18 @@ const Backlog = () => {
                             </option>
                         ))}
                     </select>
+
+                    <label className="switch switch-primary">
+                        <input
+                            type="checkbox"
+                            checked={showCompleted}
+                            onChange={(e) => setShowCompleted(e.target.checked)}
+                        />
+                        <span className="switch-track">
+                            <span className="switch-thumb" />
+                        </span>
+                        <span className="switch-text">Show completed stories</span>
+                    </label>
                 </div>
             </div>
 
@@ -816,7 +821,15 @@ const Backlog = () => {
                                         style={{ padding: 'var(--spacing-sm)', fontSize: 'var(--font-size-sm)', cursor: 'pointer' }}
                                         onClick={() => setSelectedStory(story)}
                                     >
-                                        {story.assigneeName || 'Unassigned'}
+                                        <span onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex' }}>
+                                            <AssigneeAvatarWithHoverCard
+                                                assigneeId={story.assigneeId}
+                                                assigneeName={story.assigneeName}
+                                                assigneeRole={story.assigneeRole}
+                                                assigneeEmail={story.assigneeEmail}
+                                                projectId={projectId}
+                                            />
+                                        </span>
                                     </td>
                                 </tr>
                             ))}

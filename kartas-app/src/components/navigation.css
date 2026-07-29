@@ -33,6 +33,34 @@
     color: white;
 }
 
+.assignee-avatar-sm {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: var(--font-weight-bold);
+    font-size: 8px;
+    color: white;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.assignee-avatar-sm-unassigned {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: 1px dashed var(--color-neutral-300);
+    color: var(--color-neutral-400);
+    font-size: 9px;
+    line-height: 1;
+}
+
 .user-name {
     font-weight: var(--font-weight-medium);
     font-size: var(--font-size-base);
@@ -386,4 +414,77 @@
 
 .breadcrumb-separator {
     color: var(--color-neutral-400);
+}
+
+/* User Hover Card (AV-03) */
+.user-hover-card {
+    width: 260px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    padding: var(--spacing-md);
+}
+
+.user-hover-card-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    text-decoration: none;
+    color: inherit;
+    margin-bottom: var(--spacing-sm);
+}
+
+.user-hover-card-header:hover .user-hover-card-name {
+    text-decoration: underline;
+}
+
+.user-hover-card-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: var(--font-size-sm);
+    flex-shrink: 0;
+}
+
+.user-hover-card-name {
+    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-base);
+    color: var(--color-neutral-900);
+}
+
+.user-hover-card-role {
+    font-size: var(--font-size-sm);
+    color: var(--color-neutral-500);
+}
+
+.user-hover-card-email-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+    padding-top: var(--spacing-sm);
+    border-top: 1px solid var(--color-border);
+}
+
+.user-hover-card-email {
+    font-size: var(--font-size-sm);
+    color: var(--color-neutral-700);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.user-hover-card-copy-btn {
+    flex-shrink: 0;
+    padding: 2px 8px;
+    font-size: var(--font-size-xs);
+    background: var(--color-neutral-50);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: var(--color-neutral-900);
+}
+
+.user-hover-card-copy-btn:hover {
+    background: var(--color-neutral-100);
 }

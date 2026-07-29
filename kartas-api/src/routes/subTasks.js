@@ -11,7 +11,7 @@ const validateSubTaskUpdate = [
     body('title').optional().trim().isLength({ max: 255 }),
     body('description').optional().trim(),
     body('storyPoints').optional().isInt({ min: 0 }),
-    body('assigneeId').optional().isInt()
+    body('assigneeId').optional({ nullable: true }).isInt()
 ];
 
 router.use(authenticateToken);

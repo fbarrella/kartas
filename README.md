@@ -62,6 +62,14 @@ A modern, comprehensive alternative to Jira for agile team management, built wit
 - **"For You" Page**: A per-project personal view, alongside Backlog/Epics/Sprints/Kanban — every story/sub-task assigned to you in that project (sorted in-progress-first), plus a paginated activity feed of your recent actions there (created/edited/moved/commented on stories and sub-tasks, epic and sprint changes)
 - **Project Settings**: A per-project, per-user preference page — choose which page a project opens to (defaults to Backlog)
 
+### Phase 5 Additions
+- **Navigation Overhaul**: Persistent "Kartas" app identity in the top bar on every page; a breadcrumb trail reflecting the project/page hierarchy (including deep trails like "Projects / [Project] / Team Members / [Name]'s Details"); a sidebar project-identity header with a square avatar, name, and description
+- **Markdown Descriptions**: Story, epic, and sub-item descriptions are authored and rendered as markdown — a shared Write/Preview editor with GFM support (tables, strikethrough, task lists) — across the story creation modal, the Story Detail page, the Kanban/Backlog quick-view modals, epics, and sub-items
+- **People-Centric Kanban**: Assignees show as avatar circles with a deterministic per-user color instead of raw `@name` text, on Kanban story/sub-task cards, the Backlog's Assignee column, the Epic "Created by" field, and the Story Detail sub-items list. Hovering any avatar shows a card with the user's name, role, email, and a copy-to-clipboard button, clamped to stay fully on-screen and reachable by moving the cursor from the avatar onto the card itself
+- **User Details Page**: A per-project "[Name]'s Details" page — profile header, assigned stories/sub-tasks, and the 15 most recent activity entries for that person in the project — reachable from the Team Members page or any avatar's hover card
+- **Assignee Management**: Stories and sub-tasks can be unassigned (cleared back to "Unassigned") from every editor, plus a dedicated "Remove Assignee" action in the Kanban board's right-click menus, which also gained full "View"/"Edit" sub-item actions and viewport-aware positioning (menus flip to stay on-screen near screen edges)
+- **Filter UI Polish**: The Backlog's and Epics' "Show completed" toggles now match the app's lever-switch styling used elsewhere, and the Backlog's filter bar is reorganized into a denser, less cluttered layout
+
 ### Additional Features
 - **Story Detail Page**: Full-page view with all story information
 - **Team Collaboration**: Assign stories to team members
@@ -172,8 +180,9 @@ This project is being developed in phases:
 - **Phase 2**: ✅ Sprint management and kanban board
 - **Phase 3**: ✅ UI/UX improvements, epic enhancements, and advanced features
 - **Phase 4**: ✅ Critical fixes & UI polish · ✅ Backlog/epic hardening · ✅ Kanban header context · ✅ Sub-tasks system · ✅ Access control refinements · ✅ Email invitations & admin-created users · ✅ "For You" personal dashboard
+- **Phase 5**: ✅ Navigation overhaul (top bar, breadcrumbs, sidebar project header) · ✅ Markdown descriptions (stories, epics, sub-items) · ✅ People-centric Kanban (avatar assignees, hover cards) · ✅ Per-project User Details page · ✅ Assignee management (unassign, Kanban context-menu parity) · ✅ Filter UI polish
 
-See [`DEVLOG.md`](./DEVLOG.md) for the detailed, dated changelog of every Phase 4 change.
+See [`DEVLOG.md`](./DEVLOG.md) for the detailed, dated changelog of every change, across every phase.
 
 ## Key Workflows
 

@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import Breadcrumb from '../components/Breadcrumb';
 import MarkdownEditor from '../components/MarkdownEditor';
 import MarkdownRenderer from '../components/MarkdownRenderer';
+import AssigneeAvatarWithHoverCard from '../components/AssigneeAvatarWithHoverCard';
 import '../components/navigation.css';
 
 
@@ -168,13 +169,16 @@ const Epics = () => {
             <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
                 <h2 style={{ margin: 0 }}>Epics</h2>
                 <div className="flex flex-gap-md" style={{ alignItems: 'center' }}>
-                    <label className="flex flex-gap-sm" style={{ alignItems: 'center', fontSize: 'var(--font-size-sm)', cursor: 'pointer' }}>
+                    <label className="switch switch-primary">
                         <input
                             type="checkbox"
                             checked={showCompleted}
                             onChange={(e) => setShowCompleted(e.target.checked)}
                         />
-                        Show completed epics
+                        <span className="switch-track">
+                            <span className="switch-thumb" />
+                        </span>
+                        <span className="switch-text">Show completed epics</span>
                     </label>
                     {canManageEpics && (
                         <button onClick={() => handleOpenModal()} className="btn btn-primary">
@@ -305,8 +309,17 @@ const Epics = () => {
                                     <div>
                                         <strong>Stories:</strong> {epic.story_count}
                                     </div>
-                                    <div>
-                                        <strong>Created by:</strong> {epic.creator_name}
+                                    <div className="flex flex-gap-xs" style={{ alignItems: 'center' }}>
+                                        <strong>Created by:</strong>
+                                        <span onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex' }}>
+                                            <AssigneeAvatarWithHoverCard
+                                                assigneeId={epic.created_by}
+                                                assigneeName={epic.creator_name}
+                                                assigneeRole={epic.creator_role}
+                                                assigneeEmail={epic.creator_email}
+                                                projectId={projectId}
+                                            />
+                                        </span>
                                     </div>
                                 </div>
 

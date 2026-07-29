@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useParams, useOutletContext, Link } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import api from '../services/api';
 import SubItemEditModal from '../components/SubItemEditModal';
 import Breadcrumb from '../components/Breadcrumb';
 import MarkdownRenderer from '../components/MarkdownRenderer';
+import AssigneeAvatarWithHoverCard from '../components/AssigneeAvatarWithHoverCard';
 import '../components/navigation.css';
 
 const formatDate = (d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -19,6 +20,34 @@ const STATUS_OPTIONS = [
     { value: 'done', label: 'Done', color: 'var(--color-success)' },
     { value: 'cancelled', label: 'Cancelled', color: 'var(--color-danger)' }
 ];
+
+// Measures a fixed-position context menu after it renders and flips/clamps it
+// so it never overflows the bottom or right edge of the viewport.
+const useClampedMenuPosition = (x, y, visible) => {
+    const ref = useRef(null);
+    const [pos, setPos] = useState(null);
+
+    useLayoutEffect(() => {
+        if (!visible) {
+            setPos(null);
+            return;
+        }
+        const el = ref.current;
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        const { innerWidth, innerHeight } = window;
+        const top = (y + rect.height > innerHeight) ? Math.max(y - rect.height, 0) : y;
+        const left = (x + rect.width > innerWidth) ? Math.max(x - rect.width, 0) : x;
+        setPos({ top, left });
+    }, [x, y, visible]);
+
+    return {
+        ref,
+        top: pos ? pos.top : y,
+        left: pos ? pos.left : x,
+        visibility: pos ? 'visible' : 'hidden'
+    };
+};
 
 const KanbanBoard = () => {
     const { projectId } = useParams();
@@ -36,8 +65,11 @@ const KanbanBoard = () => {
     const [members, setMembers] = useState([]);
     const [showMoveSubmenu, setShowMoveSubmenu] = useState(false);
     const [selectedSubtask, setSelectedSubtask] = useState(null);
+    const [viewSubtask, setViewSubtask] = useState(null);
     const [subtaskContextMenu, setSubtaskContextMenu] = useState({ visible: false, x: 0, y: 0, subtask: null });
     const [showSubtaskMoveSubmenu, setShowSubtaskMoveSubmenu] = useState(false);
+    const contextMenuPos = useClampedMenuPosition(contextMenu.x, contextMenu.y, contextMenu.visible);
+    const subtaskContextMenuPos = useClampedMenuPosition(subtaskContextMenu.x, subtaskContextMenu.y, subtaskContextMenu.visible);
 
     useEffect(() => {
         fetchProject();
@@ -229,6 +261,16 @@ const KanbanBoard = () => {
             closeSubtaskContextMenu();
         } catch (error) {
             console.error('Error moving sub-item:', error);
+        }
+    };
+
+    const handleAssignSubtask = async (id, assigneeId) => {
+        try {
+            await api.put(`/sub-tasks/${id}`, { assigneeId });
+            fetchKanbanBoard();
+            closeSubtaskContextMenu();
+        } catch (error) {
+            console.error('Error assigning sub-item:', error);
         }
     };
 
@@ -490,7 +532,13 @@ const KanbanBoard = () => {
                                                                             {item.title}
                                                                         </div>
                                                                         <div className="flex flex-between" style={{ fontSize: '10px', color: 'var(--color-neutral-500)' }}>
-                                                                            <span>{item.assigneeName ? `@${item.assigneeName.split(' ')[0]}` : 'Unassigned'}</span>
+                                                                            <AssigneeAvatarWithHoverCard
+                                                                                assigneeId={item.assigneeId}
+                                                                                assigneeName={item.assigneeName}
+                                                                                assigneeRole={item.assigneeRole}
+                                                                                assigneeEmail={item.assigneeEmail}
+                                                                                projectId={projectId}
+                                                                            />
                                                                             {item.storyPoints != null && (
                                                                                 <span className="badge badge-neutral" style={{ fontSize: '9px', padding: '1px 4px' }}>
                                                                                     {item.storyPoints}
@@ -549,9 +597,13 @@ const KanbanBoard = () => {
                                                                     fontSize: 'var(--font-size-xs)',
                                                                     color: 'var(--color-neutral-500)'
                                                                 }}>
-                                                                    <span>
-                                                                        {item.assigneeName ? `@${item.assigneeName.split(' ')[0]}` : 'Unassigned'}
-                                                                    </span>
+                                                                    <AssigneeAvatarWithHoverCard
+                                                                        assigneeId={item.assigneeId}
+                                                                        assigneeName={item.assigneeName}
+                                                                        assigneeRole={item.assigneeRole}
+                                                                        assigneeEmail={item.assigneeEmail}
+                                                                        projectId={projectId}
+                                                                    />
                                                                     <div className="flex flex-gap-xs">
                                                                         {item.isBlocked && (
                                                                             <span className="badge badge-danger" style={{ fontSize: '10px', padding: '2px 6px' }}>
@@ -696,6 +748,90 @@ const KanbanBoard = () => {
                 </div>
             )}
 
+            {/* Sub-item View Modal (read-only) */}
+            {viewSubtask && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                    overflowY: 'auto'
+                }} onClick={() => setViewSubtask(null)}>
+                    <div className="card" style={{ maxWidth: '850px', width: '100%', margin: 'var(--spacing-md)', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}
+                        onClick={(e) => e.stopPropagation()}>
+                        <div className="card-header" style={{ flexShrink: 0 }}>
+                            <div className="flex flex-between" style={{ alignItems: 'center' }}>
+                                <h3 className="card-title">{viewSubtask.parentStoryCode}</h3>
+                                <span>{getSubtaskTypeIcon(viewSubtask.type)} {viewSubtask.type}</span>
+                            </div>
+                        </div>
+
+                        <div style={{ flexShrink: 0 }}>
+                            <h4>{viewSubtask.title}</h4>
+
+                            <div className="mt-md" style={{
+                                display: 'grid',
+                                gridTemplateColumns: '1fr 1fr',
+                                gap: 'var(--spacing-md)'
+                            }}>
+                                <div>
+                                    <strong>Status:</strong>
+                                    <p className="mt-xs">
+                                        {(() => {
+                                            const statusOption = STATUS_OPTIONS.find(s => s.value === viewSubtask.status);
+                                            return (
+                                                <span className="badge" style={{ backgroundColor: statusOption?.color || 'var(--color-neutral-400)', color: 'white' }}>
+                                                    {statusOption?.label || viewSubtask.status}
+                                                </span>
+                                            );
+                                        })()}
+                                    </p>
+                                </div>
+                                <div>
+                                    <strong>Story Points:</strong>
+                                    <p className="mt-xs">{viewSubtask.storyPoints || 'Not set'}</p>
+                                </div>
+                                <div>
+                                    <strong>Assignee:</strong>
+                                    <p className="mt-xs">{viewSubtask.assigneeName || 'Unassigned'}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {viewSubtask.description && (
+                            <div className="mt-md" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                                <strong style={{ flexShrink: 0 }}>Description:</strong>
+                                <div className="mt-sm" style={{
+                                    flex: 1,
+                                    minHeight: 0,
+                                    overflowY: 'auto',
+                                    border: '1px solid var(--color-border)',
+                                    borderRadius: 'var(--radius-md)',
+                                    padding: 'var(--spacing-md)'
+                                }}>
+                                    <MarkdownRenderer content={viewSubtask.description} />
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="mt-lg flex flex-gap-sm" style={{ justifyContent: 'flex-end', flexShrink: 0 }}>
+                            <button
+                                onClick={() => setViewSubtask(null)}
+                                className="btn btn-secondary"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Sub-item Edit Modal */}
             {selectedSubtask && (
                 <SubItemEditModal
@@ -796,10 +932,12 @@ const KanbanBoard = () => {
                     />
                     {/* Context Menu */}
                     <div
+                        ref={contextMenuPos.ref}
                         style={{
                             position: 'fixed',
-                            top: `${contextMenu.y}px`,
-                            left: `${contextMenu.x}px`,
+                            top: `${contextMenuPos.top}px`,
+                            left: `${contextMenuPos.left}px`,
+                            visibility: contextMenuPos.visibility,
                             backgroundColor: 'white',
                             borderRadius: 'var(--radius-md)',
                             boxShadow: 'var(--shadow-lg)',
@@ -868,6 +1006,23 @@ const KanbanBoard = () => {
                             <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-neutral-600)', padding: 'var(--spacing-xs)', fontWeight: 600 }}>
                                 Assign To
                             </div>
+                            {contextMenu.story?.assigneeId && (
+                                <div
+                                    onClick={() => handleAssignStory(contextMenu.story.id, null)}
+                                    style={{
+                                        padding: 'var(--spacing-sm)',
+                                        cursor: 'pointer',
+                                        borderRadius: 'var(--radius-sm)',
+                                        transition: 'background-color 0.2s',
+                                        fontSize: 'var(--font-size-sm)',
+                                        color: 'var(--color-danger)'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                >
+                                    🚫 Remove Assignee
+                                </div>
+                            )}
                             {members.map(member => (
                                 <div
                                     key={member.id}
@@ -981,10 +1136,12 @@ const KanbanBoard = () => {
                         onContextMenu={(e) => { e.preventDefault(); closeSubtaskContextMenu(); }}
                     />
                     <div
+                        ref={subtaskContextMenuPos.ref}
                         style={{
                             position: 'fixed',
-                            top: `${subtaskContextMenu.y}px`,
-                            left: `${subtaskContextMenu.x}px`,
+                            top: `${subtaskContextMenuPos.top}px`,
+                            left: `${subtaskContextMenuPos.left}px`,
+                            visibility: subtaskContextMenuPos.visibility,
                             backgroundColor: 'white',
                             borderRadius: 'var(--radius-md)',
                             boxShadow: 'var(--shadow-lg)',
@@ -993,6 +1150,42 @@ const KanbanBoard = () => {
                             zIndex: 1000
                         }}
                     >
+                        {/* View Sub-Item */}
+                        <div
+                            onClick={() => {
+                                setViewSubtask(subtaskContextMenu.subtask);
+                                closeSubtaskContextMenu();
+                            }}
+                            style={{
+                                padding: 'var(--spacing-sm)',
+                                cursor: 'pointer',
+                                borderRadius: 'var(--radius-sm)',
+                                transition: 'background-color 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                            👁️ View Sub-Item
+                        </div>
+
+                        {/* Edit Sub-Item */}
+                        <div
+                            onClick={() => {
+                                setSelectedSubtask(subtaskContextMenu.subtask);
+                                closeSubtaskContextMenu();
+                            }}
+                            style={{
+                                padding: 'var(--spacing-sm)',
+                                cursor: 'pointer',
+                                borderRadius: 'var(--radius-sm)',
+                                transition: 'background-color 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                            ✏️ Edit Sub-Item
+                        </div>
+
                         {/* View Parent Story */}
                         <Link
                             to={`/project/${projectId}/story/${subtaskContextMenu.subtask?.parentStoryId}`}
@@ -1012,6 +1205,49 @@ const KanbanBoard = () => {
                                 📖 View Parent Story
                             </div>
                         </Link>
+
+                        <div style={{ height: '1px', backgroundColor: 'var(--color-border)', margin: 'var(--spacing-xs) 0' }} />
+
+                        {/* Assign To */}
+                        <div style={{ padding: 'var(--spacing-xs)' }}>
+                            <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-neutral-600)', padding: 'var(--spacing-xs)', fontWeight: 600 }}>
+                                Assign To
+                            </div>
+                            {subtaskContextMenu.subtask?.assigneeId && (
+                                <div
+                                    onClick={() => handleAssignSubtask(subtaskContextMenu.subtask.id, null)}
+                                    style={{
+                                        padding: 'var(--spacing-sm)',
+                                        cursor: 'pointer',
+                                        borderRadius: 'var(--radius-sm)',
+                                        transition: 'background-color 0.2s',
+                                        fontSize: 'var(--font-size-sm)',
+                                        color: 'var(--color-danger)'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                >
+                                    🚫 Remove Assignee
+                                </div>
+                            )}
+                            {members.map(member => (
+                                <div
+                                    key={member.id}
+                                    onClick={() => handleAssignSubtask(subtaskContextMenu.subtask.id, member.id)}
+                                    style={{
+                                        padding: 'var(--spacing-sm)',
+                                        cursor: 'pointer',
+                                        borderRadius: 'var(--radius-sm)',
+                                        transition: 'background-color 0.2s',
+                                        fontSize: 'var(--font-size-sm)'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                >
+                                    👤 {member.firstName} {member.lastName}
+                                </div>
+                            ))}
+                        </div>
 
                         <div style={{ height: '1px', backgroundColor: 'var(--color-border)', margin: 'var(--spacing-xs) 0' }} />
 

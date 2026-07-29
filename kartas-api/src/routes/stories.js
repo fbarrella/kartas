@@ -14,7 +14,7 @@ const validateStoryCreation = [
     body('title').trim().notEmpty().isLength({ max: 255 }),
     body('description').optional().trim(),
     body('storyPoints').optional().isInt({ min: 0 }),
-    body('assigneeId').optional().isInt()
+    body('assigneeId').optional({ nullable: true }).isInt()
 ];
 
 const validateStoryUpdate = [
@@ -24,7 +24,7 @@ const validateStoryUpdate = [
     body('title').optional().trim().isLength({ max: 255 }),
     body('description').optional().trim(),
     body('storyPoints').optional().isInt({ min: 0 }),
-    body('assigneeId').optional().isInt(),
+    body('assigneeId').optional({ nullable: true }).isInt(),
     body('isBlocked').optional().isBoolean()
 ];
 
@@ -37,7 +37,7 @@ const validateSubTaskCreation = [
     body('title').trim().notEmpty().isLength({ max: 255 }),
     body('description').optional().trim(),
     body('storyPoints').optional().isInt({ min: 0 }),
-    body('assigneeId').optional().isInt(),
+    body('assigneeId').optional({ nullable: true }).isInt(),
     body('status').optional().isIn(['backlog', 'refining', 'ready', 'in_development', 'review', 'test', 'done', 'cancelled'])
 ];
 

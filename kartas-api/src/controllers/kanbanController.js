@@ -42,6 +42,8 @@ export const kanbanController = {
             const storiesResult = await query(
                 `SELECT s.*,
                 u1.first_name || ' ' || u1.last_name as assignee_name,
+                u1.role as assignee_role,
+                u1.email as assignee_email,
                 u2.first_name || ' ' || u2.last_name as creator_name,
                 e.title as epic_title,
                 COUNT(DISTINCT st.id) FILTER (WHERE st.status = 'done') as completed_subtasks,
@@ -53,7 +55,7 @@ export const kanbanController = {
          LEFT JOIN epics e ON s.epic_id = e.id
          LEFT JOIN sub_tasks st ON s.id = st.story_id
          WHERE ss.sprint_id = $1
-         GROUP BY s.id, u1.first_name, u1.last_name, u2.first_name, u2.last_name, e.title
+         GROUP BY s.id, u1.first_name, u1.last_name, u1.role, u1.email, u2.first_name, u2.last_name, e.title
          ORDER BY s.created_at`,
                 [sprint.id]
             );
@@ -62,6 +64,8 @@ export const kanbanController = {
             const subTasksResult = await query(
                 `SELECT st.*,
                 u.first_name || ' ' || u.last_name as assignee_name,
+                u.role as assignee_role,
+                u.email as assignee_email,
                 s.story_id as parent_story_code
          FROM sub_tasks st
          JOIN stories s ON st.story_id = s.id
@@ -89,6 +93,8 @@ export const kanbanController = {
                     storyPoints: story.story_points,
                     assigneeId: story.assignee_id,
                     assigneeName: story.assignee_name,
+                    assigneeRole: story.assignee_role,
+                    assigneeEmail: story.assignee_email,
                     creatorName: story.creator_name,
                     epicId: story.epic_id,
                     epicTitle: story.epic_title,
@@ -113,6 +119,8 @@ export const kanbanController = {
                     storyPoints: st.story_points,
                     assigneeId: st.assignee_id,
                     assigneeName: st.assignee_name,
+                    assigneeRole: st.assignee_role,
+                    assigneeEmail: st.assignee_email,
                     parentStoryId: st.story_id,
                     parentStoryCode: st.parent_story_code
                 });

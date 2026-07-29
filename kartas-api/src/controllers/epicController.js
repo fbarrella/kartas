@@ -22,13 +22,15 @@ export const epicController = {
             const result = await query(
                 `SELECT e.*,
                         u.first_name || ' ' || u.last_name as creator_name,
+                        u.role as creator_role,
+                        u.email as creator_email,
                         COUNT(s.id) as story_count,
                         COUNT(s.id) FILTER (WHERE s.status = 'done') as done_story_count
                  FROM epics e
                  LEFT JOIN users u ON e.created_by = u.id
                  LEFT JOIN stories s ON e.id = s.epic_id
                  WHERE e.project_id = $1
-                 GROUP BY e.id, u.first_name, u.last_name
+                 GROUP BY e.id, u.first_name, u.last_name, u.role, u.email
                  ORDER BY e.created_at DESC`,
                 [projectId]
             );
