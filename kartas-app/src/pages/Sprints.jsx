@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useOutletContext, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import Breadcrumb from '../components/Breadcrumb';
+import '../components/navigation.css';
 
 
 // Sprint with Metrics Component
@@ -246,6 +248,7 @@ const SprintWithMetrics = ({ sprint, projectId, onEnd, navigate }) => {
 
 const Sprints = () => {
     const { projectId } = useParams();
+    const { projectName, defaultLandingPage } = useOutletContext();
     const navigate = useNavigate();
     const [project, setProject] = useState(null);
     const [sprints, setSprints] = useState([]);
@@ -349,6 +352,11 @@ const Sprints = () => {
 
     return (
         <>
+            <Breadcrumb items={[
+                { label: 'Projects', to: '/' },
+                { label: projectName, to: `/project/${projectId}/${defaultLandingPage}` },
+                { label: 'Sprints' },
+            ]} />
             <div className="flex flex-between mb-lg" style={{ alignItems: 'center' }}>
                 <h2>Sprint Management</h2>
                 <button onClick={() => setShowCreateModal(true)} className="btn btn-primary">

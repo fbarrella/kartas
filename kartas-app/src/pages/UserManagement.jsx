@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import UserDropdown from '../components/UserDropdown';
+import Breadcrumb from '../components/Breadcrumb';
 import '../components/navigation.css';
 import kartasLogoWhite from '../assets/kartas-logo-white.png';
 
@@ -161,8 +162,9 @@ const UserManagement = () => {
                 boxShadow: 'var(--shadow-md)'
             }}>
                 <div className="container flex flex-between" style={{ alignItems: 'center' }}>
-                    <Link to="/" style={{ display: 'flex', alignItems: 'center' }}>
+                    <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
                         <img src={kartasLogoWhite} alt="Kartas" style={{ height: '36px' }} />
+                        <span style={{ color: 'white', fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-semibold)' }}>Kartas</span>
                     </Link>
                     <UserDropdown />
                 </div>
@@ -170,6 +172,7 @@ const UserManagement = () => {
 
             {/* Main Content */}
             <div className="container" style={{ marginTop: 'var(--spacing-xl)' }}>
+                <Breadcrumb items={[{ label: 'User Management' }]} />
                 <div className="mb-md">
                     <Link to="/" className="btn btn-secondary btn-sm">
                         ← Go back to My Projects

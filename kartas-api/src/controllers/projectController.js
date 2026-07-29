@@ -126,12 +126,14 @@ export const projectController = {
 
             // Get project details
             const result = await query(
-                `SELECT p.*, 
-                u.first_name || ' ' || u.last_name as created_by_name
+                `SELECT p.*,
+                u.first_name || ' ' || u.last_name as created_by_name,
+                pus.default_landing_page
          FROM projects p
          LEFT JOIN users u ON p.created_by = u.id
+         LEFT JOIN project_user_settings pus ON pus.project_id = p.id AND pus.user_id = $2
          WHERE p.id = $1`,
-                [projectId]
+                [projectId, userId]
             );
 
             if (result.rows.length === 0) {
@@ -158,6 +160,7 @@ export const projectController = {
                 createdBy: project.created_by,
                 createdByName: project.created_by_name,
                 createdAt: project.created_at,
+                defaultLandingPage: project.default_landing_page || 'backlog',
                 members: membersResult.rows.map(member => ({
                     id: member.id,
                     email: member.email,

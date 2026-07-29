@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../services/api';
+import { getInitials, getAvatarColor } from '../utils/avatar';
 
 const UserSelect = ({ onSelect, label = "Search User" }) => {
     const [query, setQuery] = useState('');
@@ -74,8 +75,8 @@ const UserSelect = ({ onSelect, label = "Search User" }) => {
                                 className="search-result-item"
                                 onClick={() => handleSelect(user)}
                             >
-                                <div className="user-avatar-placeholder">
-                                    {user.firstName[0]}{user.lastName[0]}
+                                <div className="user-avatar-placeholder" style={{ backgroundColor: getAvatarColor(user.id) }}>
+                                    {getInitials(user.firstName, user.lastName)}
                                 </div>
                                 <div className="user-info">
                                     <span className="user-display-name">

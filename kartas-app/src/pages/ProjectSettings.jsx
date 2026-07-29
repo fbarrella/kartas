@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useOutletContext } from 'react-router-dom';
 import api from '../services/api';
+import Breadcrumb from '../components/Breadcrumb';
+import '../components/navigation.css';
 
 const LANDING_PAGE_OPTIONS = [
     { value: 'backlog', label: 'Backlog' },
@@ -14,6 +16,7 @@ const LANDING_PAGE_OPTIONS = [
 
 const ProjectSettings = () => {
     const { projectId } = useParams();
+    const { projectName, defaultLandingPage: currentDefaultLandingPage } = useOutletContext();
     const [defaultLandingPage, setDefaultLandingPage] = useState('backlog');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -55,6 +58,11 @@ const ProjectSettings = () => {
 
     return (
         <div>
+            <Breadcrumb items={[
+                { label: 'Projects', to: '/' },
+                { label: projectName, to: `/project/${projectId}/${currentDefaultLandingPage}` },
+                { label: 'Settings' },
+            ]} />
             <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
                 <h2 style={{ margin: 0 }}>Settings</h2>
             </div>

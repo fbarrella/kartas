@@ -531,7 +531,6 @@ a:hover {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background-color: var(--color-primary);
   color: white;
   display: flex;
   align-items: center;
@@ -590,4 +589,44 @@ a:hover {
 .story-type-cell:hover::after {
   opacity: 1;
   transition-delay: 0.2s;
+}
+
+/* Markdown rendering (MD-01) */
+.markdown-content {
+  font-size: var(--font-size-base);
+  color: var(--color-neutral-900);
+  line-height: 1.6;
+}
+
+.markdown-content > *:first-child {
+  margin-top: 0;
+}
+
+.markdown-content > *:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-content code {
+  background: var(--color-neutral-50);
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  font-size: 0.9em;
+}
+
+.markdown-content pre {
+  background: var(--color-neutral-50);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+}
+
+.markdown-content table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.markdown-content th,
+.markdown-content td {
+  border: 1px solid var(--color-border);
+  padding: var(--spacing-xs) var(--spacing-sm);
 }

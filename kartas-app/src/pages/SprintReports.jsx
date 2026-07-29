@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useOutletContext, Link } from 'react-router-dom';
 import api from '../services/api';
 import BurndownChart from '../components/BurndownChart';
 import TimeInStatusChart from '../components/TimeInStatusChart';
+import Breadcrumb from '../components/Breadcrumb';
+import '../components/navigation.css';
 
 
 const SprintReports = () => {
     const { projectId } = useParams();
+    const { projectName, defaultLandingPage } = useOutletContext();
     const [sprints, setSprints] = useState([]);
     const [selectedSprintId, setSelectedSprintId] = useState(null);
     const [report, setReport] = useState(null);
@@ -55,6 +58,11 @@ const SprintReports = () => {
     if (loading && !report) {
         return (
             <>
+                <Breadcrumb items={[
+                    { label: 'Projects', to: '/' },
+                    { label: projectName, to: `/project/${projectId}/${defaultLandingPage}` },
+                    { label: 'Reports' },
+                ]} />
                 <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
                     <h2 style={{ margin: 0 }}>Reports</h2>
                 </div>
@@ -66,6 +74,11 @@ const SprintReports = () => {
     if (sprints.length === 0) {
         return (
             <>
+                <Breadcrumb items={[
+                    { label: 'Projects', to: '/' },
+                    { label: projectName, to: `/project/${projectId}/${defaultLandingPage}` },
+                    { label: 'Reports' },
+                ]} />
                 <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
                     <h2 style={{ margin: 0 }}>Reports</h2>
                 </div>
@@ -84,6 +97,11 @@ const SprintReports = () => {
 
     return (
         <>
+            <Breadcrumb items={[
+                { label: 'Projects', to: '/' },
+                { label: projectName, to: `/project/${projectId}/${defaultLandingPage}` },
+                { label: 'Reports' },
+            ]} />
             <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
                 <h2 style={{ margin: 0 }}>Reports</h2>
             </div>
