@@ -46,11 +46,14 @@ router.use(authenticateToken);
 
 // Routes
 router.post('/', validateStoryCreation, storyController.createStory);
+router.get('/search', storyController.searchStories);
 router.get('/project/:projectId', storyController.getProjectStories);
 router.get('/:storyId', storyController.getStory);
 router.put('/:storyId', validateStoryUpdate, storyController.updateStory);
 router.delete('/:storyId', storyController.deleteStory);
 router.post('/:storyId/comments', validateComment, storyController.addComment);
+router.put('/:storyId/comments/:commentId', validateComment, storyController.updateComment);
+router.delete('/:storyId/comments/:commentId', storyController.deleteComment);
 router.get('/:storyId/history', storyController.getStoryHistory);
 router.post('/:storyId/sub-tasks', validateSubTaskCreation, subTaskController.createSubTask);
 

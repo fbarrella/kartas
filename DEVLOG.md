@@ -4,6 +4,57 @@ Development log for all Kartas changes, across every phase. Each entry records w
 
 ---
 
+## [2026-07-29] — HIST-02 — Story Detail History Section
+
+- **Author**: Claude
+- **PRD Requirement**: HIST-02
+- **Summary**: Added a "History" section to `StoryDetail.jsx` — the last section on the page, below Comments, per the PRD's explicit ordering. Consumes sub-phase 6.1's `HIST-01` endpoint (`GET /stories/:storyId/history`), fetched once on mount alongside the page's other data. Renders each entry via new `describeHistoryEntry()`/`formatRelativeTime()` helpers (new `kartas-app/src/utils/activity.js`) and a "Load more" button appends the next page (`offset = historyItems.length`) when `hasMore` is true. `describeHistoryEntry` is deliberately a lighter function than `ForYou.jsx`'s `describeActivity` — it never needs to describe or link to a *different* entity (the page itself already is the entity), so it skips the cross-entity-type/link branching that function needs. `formatRelativeTime` is genuinely shared logic though, and since this same page's new Comments section (`CMT-02`, below) also needed a relative-time formatter, extracting it now (rather than writing a third near-identical copy alongside `ForYou.jsx`'s and `UserDetail.jsx`'s existing ones) was the natural point to stop compounding that duplication — flagged as worth doing in the PRD's `FY-04` Design Note and in the prior sub-phase's kickoff prompt.
+- **Files Changed**:
+  - `kartas-app/src/utils/activity.js` — New `formatRelativeTime`, `describeHistoryEntry`
+  - `kartas-app/src/pages/StoryDetail.jsx` — History section, `fetchHistory` with offset pagination
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean. Backend endpoint already curl-verified in `HIST-01`'s entry above; no new backend surface here. Manual browser click-through handed off to the user.
+
+---
+
+## [2026-07-29] — CMT-02, CMT-03 — Comment Section UI & @Mention Autocomplete
+
+- **Author**: Claude
+- **PRD Requirement**: CMT-02, CMT-03
+- **Summary**: Added a "Comments" section to `StoryDetail.jsx`, below Sub-items — the `comments` array `GET /stories/:storyId` already returned (confirmed unused by any frontend before this) is now rendered: avatar (`AssigneeAvatarWithHoverCard`, same component used everywhere else), name, relative timestamp (with "(edited)" when `updatedAt != createdAt`), content, and Edit/Delete controls gated the same way `CMT-01`'s backend permissions are (Edit: author only; Delete: author or global admin). A plain `<textarea>` (not `MarkdownEditor` — deliberately, per the PRD's "simple text input" requirement) composes new comments.
+  New `MentionTextarea.jsx` component (mounted for both the new-comment composer and inline comment editing) implements `CMT-03`'s single-`@`-trigger autocomplete: on `@`, a regex (`/@([A-Za-z0-9][\w.\- ]{0,40})$/`) captures the in-progress term from the textarea up to the cursor, debounced 300ms (matching `UserSelect.jsx`'s existing pattern), searching `GET /users/search` and a new `GET /stories/search?projectId=&q=` in parallel and merging results into one dropdown (reusing the existing `.search-dropdown`/`.search-result-item` CSS, no new styling needed). Selecting an entry inserts plain text at the cursor — `@First Last` for a person, the bare ticket code (e.g. `RES-0002`) for a ticket — exactly as typed, no hidden markup.
+  **Scope adjustment discovered during implementation**: the PRD's ticket-mention pattern assumed all three entity types (stories/epics/sub-tasks) have a stable short code, but `sub_tasks` has no such column in the schema (only `stories.story_id` and `epics.epic_id` do). Ticket mentions/search are scoped to **stories and epics only** — sub-tasks have no stable, unique, user-facing code to link them by, and inventing one (or a permalink/anchor system for sub-items) was judged out of scope for this already-large sub-phase. New backend `GET /stories/search?projectId=&q=` (`storyController.searchStories`, registered *before* `/:storyId` in `routes/stories.js` — required, since Express would otherwise route `/search` into the `:storyId` wildcard) searches both tables by code/title, mirroring `userController.searchUsers`'s existing `ILIKE`-both-sides pattern.
+  Rendering resolved mentions as links: `getStory` now also fetches the project's members and story/epic codes once per request (not once per comment) and attaches a `mentions: { users, tickets }` array to each comment in its response — the frontend trusts this backend-resolved metadata rather than re-deriving it, so a person's name only becomes a link if they're an actual project member and a ticket code only links if it's a real ticket in this project. New `kartas-app/src/utils/mentions.jsx`'s `renderCommentContent()` turns a comment's plain text into text/link segments using that metadata (person mentions link to `UD-02`'s User Details page; story mentions to Story Detail; epic mentions to `/backlog?epic=:id`, matching the existing epic-badge-link convention used elsewhere in the app).
+- **Files Changed**:
+  - `kartas-api/src/controllers/storyController.js` — New `searchStories`; `getStory`'s comments query extended with `user_role`/`user_email` and per-comment `mentions` metadata
+  - `kartas-api/src/routes/stories.js` — New `GET /search` route (before `/:storyId`)
+  - `kartas-app/src/components/MentionTextarea.jsx` — New shared mention-autocomplete textarea
+  - `kartas-app/src/utils/mentions.jsx` — New `renderCommentContent()`
+  - `kartas-app/src/pages/StoryDetail.jsx` — Comments section, compose/edit/delete handlers
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean. `GET /stories/search?projectId=4&q=RES` curl-verified returning both story and epic matches by code/title; `q` under 2 chars returns `[]`. Manual browser click-through (typing `@`, selecting a person/ticket, posting/editing/deleting a comment) handed off to the user.
+
+---
+
+## [2026-07-29] — CMT-01, CMT-04 — Comment Edit/Delete & Mention Notifications
+
+- **Author**: Claude
+- **PRD Requirement**: CMT-01, CMT-04
+- **Summary**: New `PUT`/`DELETE /stories/:storyId/comments/:commentId` — `PUT` is author-only (403 otherwise); `DELETE` allows the author **or** a global admin (per `nextsteps.txt`'s explicit "only admins should be able to delete any comment" — no project-owner exception). Both follow the existing `addComment`'s access-check shape.
+  New `comment_mentions` table (migration `011_add_comment_mentions.sql`) tracks who was `@mentioned` in a comment, deliberately **not** reusing `change_history` — that table's `user_id` column means "who performed the action" everywhere else it's used (activity feeds, story history), and repurposing it for "who was mentioned" would invert that meaning for every other consumer. New `kartas-api/src/utils/mentions.js` exports `resolveMentionedUsers(content, projectId)` (checks project members' `"@First Last"` against the raw comment text — matching `CMT-03`'s plain-text, no-hidden-token approach) and `resolveMentionedTickets(content, projectId)`, used by `addComment` (insert `comment_mentions` rows for each newly-mentioned member, excluding self-mentions) and the new `updateComment` (deletes and fully re-resolves `comment_mentions` for that comment on every edit, rather than diffing — reflects who is *currently* mentioned, so removing an `@mention` by editing stops it from surfacing in that person's future "Latest Activities" feed, `FY-04`, which is a later sub-phase and has no consumer of this table yet). `deleteComment` needs no manual `comment_mentions` cleanup — the FK cascades.
+- **Files Changed**:
+  - `kartas-api/src/migrations/011_add_comment_mentions.sql` — New `comment_mentions` table
+  - `kartas-api/src/utils/mentions.js` — New `resolveMentionedUsers`, `resolveMentionedTickets`
+  - `kartas-api/src/controllers/storyController.js` — New `updateComment`, `deleteComment`; `addComment` extended to insert mention rows
+  - `kartas-api/src/routes/stories.js` — New `PUT`/`DELETE /:storyId/comments/:commentId` routes
+- **Migration**: `011_add_comment_mentions.sql`
+- **Status**: Done
+- **Verification**: Migration applied cleanly (`docker-compose exec api npm run migrate`). Curl-verified end-to-end via two temp DB-seeded users on a real project: user A posted a comment mentioning user B by name and a ticket by code → `comment_mentions` row created for user B; user B (non-author, non-admin) got 403 on both `PUT` and `DELETE`; user A edited the comment to remove the mention → `comment_mentions` row correctly deleted; user B temporarily promoted to `admin` → successfully deleted user A's comment (200); user A successfully deleted their own separate comment (200). All seeded users, `project_members`/`comments`/`comment_mentions`/`change_history` rows cleaned up afterward — story 4's `comments`/`change_history` counts confirmed back to baseline (0 and 11 respectively).
+
+---
+
 ## [2026-07-29] — HIST-01 — Story-Scoped History Endpoint
 
 - **Author**: Claude
