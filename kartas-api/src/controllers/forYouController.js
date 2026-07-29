@@ -184,5 +184,167 @@ export const forYouController = {
             console.error('Error fetching activity:', error);
             res.status(500).json({ error: 'Server error' });
         }
+    },
+
+    // FY-01's "Team Workload" bar graph — each assignee's currently-assigned
+    // stories/sub-tasks in the active sprint, broken down by status. 404 (no
+    // active sprint) is treated the same way getKanbanBoard/getActiveSprint
+    // already do — the frontend shows a placeholder instead of an empty chart.
+    async getTeamWorkload(req, res) {
+        try {
+            const { projectId } = req.params;
+            const userId = req.user.userId;
+
+            const accessCheck = await query(
+                'SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2',
+                [projectId, userId]
+            );
+
+            if (accessCheck.rows.length === 0 && req.user.role !== 'admin') {
+                return res.status(403).json({ error: 'Access denied' });
+            }
+
+            const sprintResult = await query(
+                `SELECT id, name FROM sprints WHERE project_id = $1 AND status = 'active'`,
+                [projectId]
+            );
+
+            if (sprintResult.rows.length === 0) {
+                return res.status(404).json({ error: 'No active sprint found' });
+            }
+
+            const sprint = sprintResult.rows[0];
+
+            const itemsResult = await query(
+                `SELECT s.assignee_id, u.first_name || ' ' || u.last_name as assignee_name, s.status
+                 FROM sprint_stories ss
+                 JOIN stories s ON ss.story_id = s.id
+                 LEFT JOIN users u ON s.assignee_id = u.id
+                 WHERE ss.sprint_id = $1 AND s.assignee_id IS NOT NULL
+                 UNION ALL
+                 SELECT st.assignee_id, u.first_name || ' ' || u.last_name as assignee_name, st.status
+                 FROM sub_tasks st
+                 JOIN stories s ON st.story_id = s.id
+                 JOIN sprint_stories ss ON ss.story_id = s.id
+                 LEFT JOIN users u ON st.assignee_id = u.id
+                 WHERE ss.sprint_id = $1 AND st.assignee_id IS NOT NULL`,
+                [sprint.id]
+            );
+
+            const byAssignee = {};
+            itemsResult.rows.forEach(row => {
+                if (!byAssignee[row.assignee_id]) {
+                    byAssignee[row.assignee_id] = { assigneeId: row.assignee_id, assigneeName: row.assignee_name };
+                }
+                byAssignee[row.assignee_id][row.status] = (byAssignee[row.assignee_id][row.status] || 0) + 1;
+            });
+
+            res.json({
+                sprintId: sprint.id,
+                sprintName: sprint.name,
+                data: Object.values(byAssignee)
+            });
+        } catch (error) {
+            console.error('Error fetching team workload:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
+    // FY-04's "Latest Activities" — a *new*, separate feed from getMyActivity
+    // ("Actions History", my own actions, unchanged): this shows other users'
+    // changes to items assigned to me, plus comment @mentions of me anywhere in
+    // the project, merged and sorted together. Two heterogeneous sources can't
+    // share one SQL LIMIT/OFFSET cleanly, so both are fetched in full (bounded
+    // to a sane cap — this is a small-scale team tool, not a firehose) and
+    // paginated in JS after merging.
+    async getLatestActivities(req, res) {
+        try {
+            const { projectId } = req.params;
+            const userId = req.user.userId;
+            const limit = Math.min(parseInt(req.query.limit) || 10, 100);
+            const offset = parseInt(req.query.offset) || 0;
+            const FETCH_CAP = 200;
+
+            const accessCheck = await query(
+                'SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2',
+                [projectId, userId]
+            );
+
+            if (accessCheck.rows.length === 0 && req.user.role !== 'admin') {
+                return res.status(403).json({ error: 'Access denied' });
+            }
+
+            const changesResult = await query(
+                `SELECT ch.id, ch.field_changed, ch.old_value, ch.new_value, ch.changed_at,
+                        actor.first_name || ' ' || actor.last_name as actor_name,
+                        COALESCE(ch.entity_type, 'story') as entity_type,
+                        COALESCE(ch.action_type, CASE WHEN ch.field_changed = 'status' THEN 'moved' ELSE 'edited' END) as action_type,
+                        ch.story_id, s.story_id as story_code
+                 FROM change_history ch
+                 LEFT JOIN stories s ON s.id = ch.story_id
+                 LEFT JOIN sub_tasks subt ON subt.id = COALESCE(ch.entity_id, ch.story_id) AND COALESCE(ch.entity_type, 'story') = 'sub_task'
+                 LEFT JOIN users actor ON actor.id = ch.user_id
+                 WHERE COALESCE(ch.project_id, s.project_id) = $1
+                   AND ch.user_id != $2
+                   AND ch.field_changed != 'comment'
+                   AND (
+                        (COALESCE(ch.entity_type, 'story') = 'story' AND s.assignee_id = $2)
+                        OR (COALESCE(ch.entity_type, 'story') = 'sub_task' AND subt.assignee_id = $2)
+                   )
+                 ORDER BY ch.changed_at DESC
+                 LIMIT $3`,
+                [projectId, userId, FETCH_CAP]
+            );
+
+            const mentionsResult = await query(
+                `SELECT cm.id, cm.comment_id, cm.created_at as changed_at,
+                        c.story_id, s.story_id as story_code,
+                        cu.first_name || ' ' || cu.last_name as actor_name
+                 FROM comment_mentions cm
+                 JOIN comments c ON c.id = cm.comment_id
+                 JOIN stories s ON s.id = c.story_id
+                 JOIN users cu ON cu.id = c.user_id
+                 WHERE cm.mentioned_user_id = $2 AND s.project_id = $1
+                 ORDER BY cm.created_at DESC
+                 LIMIT $3`,
+                [projectId, userId, FETCH_CAP]
+            );
+
+            const changeItems = changesResult.rows.map(row => ({
+                id: `change-${row.id}`,
+                kind: 'change',
+                actorName: row.actor_name,
+                entityType: row.entity_type,
+                actionType: row.action_type,
+                fieldChanged: row.field_changed,
+                oldValue: row.old_value,
+                newValue: row.new_value,
+                storyId: row.story_id,
+                storyCode: row.story_code,
+                changedAt: row.changed_at
+            }));
+
+            const mentionItems = mentionsResult.rows.map(row => ({
+                id: `mention-${row.id}`,
+                kind: 'mention',
+                actorName: row.actor_name,
+                commentId: row.comment_id,
+                storyId: row.story_id,
+                storyCode: row.story_code,
+                changedAt: row.changed_at
+            }));
+
+            const merged = [...changeItems, ...mentionItems].sort(
+                (a, b) => new Date(b.changedAt) - new Date(a.changedAt)
+            );
+
+            const hasMore = merged.length > offset + limit;
+            const items = merged.slice(offset, offset + limit);
+
+            res.json({ items, hasMore });
+        } catch (error) {
+            console.error('Error fetching latest activities:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
     }
 };

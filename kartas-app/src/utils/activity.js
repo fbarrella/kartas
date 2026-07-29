@@ -33,3 +33,32 @@ export const describeHistoryEntry = (item) => {
     const field = FIELD_LABELS[item.fieldChanged] || item.fieldChanged;
     return `${item.userName || 'Someone'} updated ${field}`;
 };
+
+const STATUS_LABELS = {
+    backlog: 'Backlog', refining: 'Refining', ready: 'Ready',
+    in_development: 'In Development', review: 'Review', test: 'Test',
+    done: 'Done', cancelled: 'Cancelled'
+};
+
+// FY-04's "Latest Activities" widget — third-person descriptions of *other*
+// users' actions (unlike ForYou.jsx's own describeActivity, which narrates the
+// viewer's own actions in first person/imperative, e.g. "Moved X to Y").
+export const describeLatestActivity = (item) => {
+    if (item.kind === 'mention') {
+        return `${item.actorName || 'Someone'} mentioned you in a comment on ${item.storyCode}`;
+    }
+    const { actorName, actionType, entityType, fieldChanged, oldValue, newValue, storyCode } = item;
+    const who = actorName || 'Someone';
+    const target = entityType === 'sub_task' ? `a sub-item on ${storyCode}` : storyCode;
+
+    if (actionType === 'created') return `${who} created ${target}`;
+    if (actionType === 'moved') {
+        const from = STATUS_LABELS[oldValue] || oldValue;
+        const to = STATUS_LABELS[newValue] || newValue;
+        return oldValue != null
+            ? `${who} moved ${target} from ${from} to ${to}`
+            : `${who} moved ${target} to ${to}`;
+    }
+    const field = FIELD_LABELS[fieldChanged] || fieldChanged || 'a field';
+    return `${who} updated ${field} on ${target}`;
+};

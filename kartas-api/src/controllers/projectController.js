@@ -426,12 +426,14 @@ export const projectController = {
             }
 
             const result = await query(
-                'SELECT default_landing_page FROM project_user_settings WHERE project_id = $1 AND user_id = $2',
+                'SELECT default_landing_page, visible_widgets, grid_columns FROM project_user_settings WHERE project_id = $1 AND user_id = $2',
                 [projectId, userId]
             );
 
             res.json({
-                defaultLandingPage: result.rows[0]?.default_landing_page || 'backlog'
+                defaultLandingPage: result.rows[0]?.default_landing_page || 'backlog',
+                visibleWidgets: result.rows[0]?.visible_widgets || null,
+                gridColumns: result.rows[0]?.grid_columns || 2
             });
         } catch (error) {
             console.error('Error fetching project settings:', error);
@@ -439,11 +441,15 @@ export const projectController = {
         }
     },
 
-    // Update the current user's settings for a project
+    // Update the current user's settings for a project. Both fields are
+    // optional/independent — a caller updating only one (e.g. ForYou.jsx's
+    // widget-visibility gear icon vs. ProjectSettings.jsx's landing-page picker)
+    // must not clobber the other, so whichever field is omitted falls back to
+    // the row's current value rather than being overwritten with a default.
     async updateProjectSettings(req, res) {
         try {
             const { projectId } = req.params;
-            const { defaultLandingPage } = req.body;
+            const { defaultLandingPage, visibleWidgets, gridColumns } = req.body;
             const userId = req.user.userId;
 
             const accessCheck = await query(
@@ -455,15 +461,34 @@ export const projectController = {
                 return res.status(403).json({ error: 'Access denied' });
             }
 
-            await query(
-                `INSERT INTO project_user_settings (project_id, user_id, default_landing_page)
-                 VALUES ($1, $2, $3)
-                 ON CONFLICT (project_id, user_id)
-                 DO UPDATE SET default_landing_page = $3, updated_at = CURRENT_TIMESTAMP`,
-                [projectId, userId, defaultLandingPage]
+            const existing = await query(
+                'SELECT default_landing_page, visible_widgets, grid_columns FROM project_user_settings WHERE project_id = $1 AND user_id = $2',
+                [projectId, userId]
             );
 
-            res.json({ defaultLandingPage });
+            const finalLandingPage = defaultLandingPage !== undefined
+                ? defaultLandingPage
+                : (existing.rows[0]?.default_landing_page || 'backlog');
+            const finalWidgets = visibleWidgets !== undefined
+                ? JSON.stringify(visibleWidgets)
+                : (existing.rows[0]?.visible_widgets != null ? JSON.stringify(existing.rows[0].visible_widgets) : null);
+            const finalGridColumns = gridColumns !== undefined
+                ? gridColumns
+                : (existing.rows[0]?.grid_columns || 2);
+
+            await query(
+                `INSERT INTO project_user_settings (project_id, user_id, default_landing_page, visible_widgets, grid_columns)
+                 VALUES ($1, $2, $3, $4, $5)
+                 ON CONFLICT (project_id, user_id)
+                 DO UPDATE SET default_landing_page = $3, visible_widgets = $4, grid_columns = $5, updated_at = CURRENT_TIMESTAMP`,
+                [projectId, userId, finalLandingPage, finalWidgets, finalGridColumns]
+            );
+
+            res.json({
+                defaultLandingPage: finalLandingPage,
+                visibleWidgets: finalWidgets ? JSON.parse(finalWidgets) : null,
+                gridColumns: finalGridColumns
+            });
         } catch (error) {
             console.error('Error updating project settings:', error);
             res.status(500).json({ error: 'Server error' });

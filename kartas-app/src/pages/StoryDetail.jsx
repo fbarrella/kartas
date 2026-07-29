@@ -75,6 +75,22 @@ const StoryDetail = () => {
         fetchHistory(0);
     }, [projectId, storyId]);
 
+    // FY-04's "Latest Activities" widget links directly to a comment
+    // (#comment-{id}). Native browser anchor-scrolling doesn't reliably fire
+    // here since comments render asynchronously after fetchStory() resolves —
+    // by the time the hash target exists in the DOM, the initial navigation's
+    // scroll attempt has already happened (or never found the element).
+    useEffect(() => {
+        if (!story || !window.location.hash.startsWith('#comment-')) return;
+        const el = document.querySelector(window.location.hash);
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.style.transition = 'background-color 0.3s ease';
+        el.style.backgroundColor = 'var(--color-info-light)';
+        const timeout = setTimeout(() => { el.style.backgroundColor = ''; }, 2000);
+        return () => clearTimeout(timeout);
+    }, [story]);
+
     const fetchProject = async () => {
         try {
             const response = await api.get(`/projects/${projectId}`);

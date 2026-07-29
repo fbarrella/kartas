@@ -8,6 +8,8 @@ router.use(authenticateToken);
 
 router.get('/project/:projectId/tasks', forYouController.getMyTasks);
 router.get('/project/:projectId/activity', forYouController.getMyActivity);
+router.get('/project/:projectId/team-workload', forYouController.getTeamWorkload);
+router.get('/project/:projectId/latest-activities', forYouController.getLatestActivities);
 router.get('/project/:projectId/user/:userId/tasks', forYouController.getMyTasks);
 router.get('/project/:projectId/user/:userId/activity', forYouController.getMyActivity);
 

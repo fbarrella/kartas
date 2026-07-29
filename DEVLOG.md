@@ -4,6 +4,106 @@ Development log for all Kartas changes, across every phase. Each entry records w
 
 ---
 
+## [2026-07-29] — For You Widgets Stretch to Equal Row Height (follow-up to FY-05)
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (user-requested follow-up after browser-testing `6.3`)
+- **Summary**: The grid's `alignItems: 'start'` sized each widget `.card` to its own content height, so widgets sharing a row (e.g. a tall "My Tasks" table next to a short "Sprint Countdown") looked visually unbalanced — the shorter card's bottom edge didn't line up with its row-mates. Changed to `alignItems: 'stretch'` (CSS grid's default) — since every widget's root element is a plain `<div className="card">` with no explicit height, it now stretches to match the tallest card in its row automatically, no changes needed inside any individual widget component.
+- **Files Changed**:
+  - `kartas-app/src/pages/ForYou.jsx` — Grid `alignItems: 'start'` → `'stretch'`
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean — pure layout/CSS change, no data/logic affected. Manual browser click-through handed off to the user.
+
+---
+
+## [2026-07-29] — For You Grid Column Count (follow-up to FY-05/FY-06)
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (user-requested follow-up after browser-testing `6.3`)
+- **Summary**: `FY-05`'s grid used `repeat(auto-fit, minmax(420px, 1fr))`, which silently became 3 columns at wide viewport widths with no user control. Added an explicit 2-or-3-column choice to `FY-06`'s existing "Customize Widgets" modal (new "Layout" section, radio buttons), following the exact same independent-field partial-update pattern already established for `visibleWidgets` — a new nullable `grid_columns` column on `project_user_settings` (migration `013_add_widget_grid_columns.sql`), defaulting to 2 when unset. `ForYou.jsx`'s grid now uses `repeat(${gridColumns}, 1fr)` instead of the auto-fit rule.
+  **Discovery made while curl-verifying this change**: sending an out-of-range `gridColumns` (e.g. `5`) returned `200` instead of the expected `400` from the new `isInt({min:2,max:3})` validator. Root cause: `validationResult()` — the express-validator function that actually checks accumulated validation errors and rejects the request — is **never imported or called anywhere in the entire backend** (confirmed via a codebase-wide grep). Every `body()`/`param()` validator across every route file runs and silently attaches errors to `req`, but nothing ever reads them; requests proceed regardless of validation outcome. This is a pre-existing, systemic gap that predates this session — not a regression introduced by this change, and consistent with how every other validator in the codebase already behaved. Not fixed here (out of scope for this small follow-up — a real fix means adding a shared "check and reject" middleware and wiring it into every validated route, a much larger change than what was asked); flagged in `KICKOFF_PROMPT.md` for awareness.
+- **Files Changed**:
+  - `kartas-api/src/migrations/013_add_widget_grid_columns.sql` — New `grid_columns` column
+  - `kartas-api/src/controllers/projectController.js` — `getProjectSettings`/`updateProjectSettings` extended for `gridColumns`
+  - `kartas-api/src/routes/projects.js` — New `gridColumns` validator (decorative only, per the discovery above)
+  - `kartas-app/src/components/WidgetSettingsModal.jsx` — New "Layout" section (2/3 column radio choice), exports `DEFAULT_GRID_COLUMNS`
+  - `kartas-app/src/pages/ForYou.jsx` — Fetches/saves/applies `gridColumns`
+- **Migration**: `013_add_widget_grid_columns.sql`
+- **Status**: Done
+- **Verification**: Migration applied cleanly. Curl-verified with a temp user: default `gridColumns: 2` on a fresh settings row; `PUT {gridColumns:3}` persisted correctly; a subsequent `PUT {visibleWidgets:[...]}` (omitting `gridColumns`) left it at `3`, not reset — same partial-update guarantee as `visibleWidgets`. `npm run build` clean. Manual browser click-through handed off to the user.
+
+---
+
+## [2026-07-29] — FY-06 — Customizable "For You" Widgets
+
+- **Author**: Claude
+- **PRD Requirement**: FY-06
+- **Summary**: A "⚙️ Customize" button in the For You page header opens a new `WidgetSettingsModal.jsx` (mirroring `KanbanBoard.jsx`'s existing "Customize Columns" in-page-button-opens-modal pattern, not a dedicated settings page — this is a per-page/per-user preference, not project-wide) listing all five widgets with a checkbox each. Persistence extends `project_user_settings` (migration `012_add_widget_preferences.sql`, `visible_widgets JSONB`, `NULL` meaning "use the default set" — My Tasks + Actions History, per the PRD — rather than an empty array, so existing rows from Phase 4's default-landing-page feature aren't misread as "show nothing"). `projectController.getProjectSettings`/`updateProjectSettings` were extended (not duplicated into new endpoints) to also read/write this column — `updateProjectSettings` now resolves each field (`defaultLandingPage`, `visibleWidgets`) independently, falling back to the existing row's current value for whichever one wasn't included in a given request, so `ForYou.jsx`'s widget-only saves never clobber `ProjectSettings.jsx`'s landing-page choice and vice versa. If the saved set is empty, the page shows an empty-state placeholder pointing back at the gear icon, per the PRD.
+  Widget render order is **not** taken from the saved `visibleWidgets` array's own order (which would drift based on toggle history — e.g. re-enabling a widget moves it to the end) — `ForYou.jsx` instead filters a fixed canonical order (`WIDGET_DEFS`, exported from the new modal component) by membership in `visibleWidgets`, guaranteeing My Tasks and Actions History always read first when both are enabled, per the PRD's explicit ask.
+- **Files Changed**:
+  - `kartas-api/src/migrations/012_add_widget_preferences.sql` — New `visible_widgets` column
+  - `kartas-api/src/controllers/projectController.js` — `getProjectSettings`/`updateProjectSettings` extended for independent partial updates
+  - `kartas-api/src/routes/projects.js` — `defaultLandingPage` validator now optional, new optional `visibleWidgets` array validator
+  - `kartas-app/src/components/WidgetSettingsModal.jsx` — New; exports `WIDGET_DEFS`, `DEFAULT_WIDGETS`
+  - `kartas-app/src/pages/ForYou.jsx` — Gear icon, settings fetch/save, canonical-order widget rendering, empty-state placeholder
+- **Migration**: `012_add_widget_preferences.sql`
+- **Status**: Done
+- **Verification**: Migration applied cleanly. Curl-verified the partial-update behavior specifically (the main risk in this design): `PUT` with only `visibleWidgets` left `defaultLandingPage` at its existing value; a subsequent `PUT` with only `defaultLandingPage` left the just-saved `visibleWidgets` array completely intact rather than resetting it to `null`. `npm run build` clean. Manual browser click-through handed off to the user.
+
+---
+
+## [2026-07-29] — FY-04 — "Latest Activities" Widget
+
+- **Author**: Claude
+- **PRD Requirement**: FY-04
+- **Summary**: A new, separate widget from `ActionsHistoryWidget` (below) — per the user's explicit clarification during PRD drafting, this shows *other* people's activity, not the viewer's own. New `GET /for-you/project/:projectId/latest-activities?limit=&offset=` merges two heterogeneous sources: (1) `change_history` rows where the story/sub-task's current assignee is the caller but the actor isn't (someone else changed *my* item — resolved via a `sub_tasks` join keyed on `COALESCE(ch.entity_id, ch.story_id)` gated by `entity_type = 'sub_task'`, since a sub-task's own assignee can differ from its parent story's), and (2) `comment_mentions` rows (`CMT-04`, previously unconsumed) where the caller is the mentioned user. Since two different queries can't share one SQL `LIMIT`/`OFFSET` cleanly, both are fetched in full (capped at 200 rows each — this is a small-scale team tool, not a firehose) and merged/sorted/paginated in JS.
+  New `describeLatestActivity()` (`kartas-app/src/utils/activity.js`) narrates in third person ("John moved X to Y", "Jane mentioned you in a comment on X") — deliberately a different function from `ActionsHistoryWidget`'s `describeActivity` (first-person/imperative, "Moved X to Y"), since the two widgets describe different actors. Clicking a mention item links to `/project/:projectId/story/:storyId#comment-{commentId}` — `StoryDetail.jsx` (from `6.2`'s Comments section) already had the `id="comment-{id}"` anchor, but needed a new `useEffect` to actually scroll to and briefly highlight it, since comments render asynchronously after `fetchStory()` resolves and native browser anchor-scrolling doesn't reliably fire against a hash target that didn't exist yet at navigation time.
+- **Files Changed**:
+  - `kartas-api/src/controllers/forYouController.js` — New `getLatestActivities`
+  - `kartas-api/src/routes/forYou.js` — New `GET /project/:projectId/latest-activities` route
+  - `kartas-app/src/utils/activity.js` — New `describeLatestActivity`
+  - `kartas-app/src/components/LatestActivitiesWidget.jsx` — New
+  - `kartas-app/src/pages/StoryDetail.jsx` — New scroll-to-and-highlight-comment `useEffect`
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: Curl-verified end-to-end with two temp DB-seeded users and one fully throwaway story (created via the real API, assigned to user A, deleted at the end — its `ON DELETE CASCADE` FKs cleaned up every dependent `comments`/`change_history`/`comment_mentions` row in one shot, so real stories 4/5 were never touched, confirmed by re-checking their `assignee_id`/`status` unchanged after cleanup): user B edited the throwaway story's status and posted a comment mentioning user A → user A's `latest-activities` correctly showed both the status-change and the mention, newest-first; user B's own `latest-activities` (the actor, not the target) correctly showed neither. `npm run build` clean. Manual browser click-through handed off to the user.
+
+---
+
+## [2026-07-29] — FY-01, FY-02 — Team Workload & Sprint Countdown Widgets
+
+- **Author**: Claude
+- **PRD Requirement**: FY-01, FY-02
+- **Summary**: Two new data-visualization widgets for the active sprint, both showing the same placeholder ("There will only be data here once there's an active sprint") when `GET .../active` or the new team-workload endpoint 404s — matching the existing convention `getActiveSprint`/`getKanbanBoard` already use for "no active sprint."
+  **`FY-01` "Team Workload"**: New `GET /for-you/project/:projectId/team-workload`, grouping the active sprint's stories/sub-tasks by assignee and status (unassigned items excluded — nothing to chart them under). New `TeamWorkloadChart.jsx` renders it as a `recharts` stacked vertical bar graph (one bar per assignee, segmented by status color) — `recharts` was already a project dependency (used by `TimeInStatusChart.jsx`/`BurndownChart.jsx` in `SprintReports.jsx`), whose existing `ResponsiveContainer`/`Tooltip`/status-color-map conventions this new chart follows.
+  **`FY-02` "Sprint Countdown"**: No new backend — reuses the existing `GET /sprints/project/:projectId/active` endpoint. The widget itself reuses `KanbanBoard.jsx`'s Elapsed Time bar markup verbatim (the same visual pattern from `6.1`'s `KAN-01`), just under a more descriptive name per the PRD's explicit ask for "a good widget name."
+- **Files Changed**:
+  - `kartas-api/src/controllers/forYouController.js` — New `getTeamWorkload`
+  - `kartas-api/src/routes/forYou.js` — New `GET /project/:projectId/team-workload` route
+  - `kartas-app/src/components/TeamWorkloadChart.jsx` — New `recharts` chart
+  - `kartas-app/src/components/TeamWorkloadWidget.jsx`, `SprintCountdownWidget.jsx` — New
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: Curl-verified `team-workload` against the project's real active sprint (Sprint 1, project 4) — correctly grouped two real assignees' items by status, matching the sprint's actual story/sub-task assignments (read-only query, nothing mutated). `npm run build` clean. Manual browser click-through handed off to the user.
+
+---
+
+## [2026-07-29] — FY-05, FY-03 — Grid Layout & Widget Extraction, "Actions History" Rename
+
+- **Author**: Claude
+- **PRD Requirement**: FY-05, FY-03
+- **Summary**: `ForYou.jsx` was a single stacked-layout component with two inline sections (My Tasks table, Activity feed). With up to five widgets in this sub-phase, extracted each into its own component (`MyTasksWidget.jsx`, `ActionsHistoryWidget.jsx`) and rebuilt the page around a CSS grid (`repeat(auto-fit, minmax(420px, 1fr))`) that all widgets — including the three new ones landing later in this same sub-phase — render into as uniform `.card` items. This was done first, foundational to the rest of `6.3`, per the PRD's suggested order.
+  `FY-03`'s rename happened as part of the same extraction: `ActionsHistoryWidget.jsx` is the old "Activity" section verbatim (same `getMyActivity` query, same `describeActivity`/`activityLink` logic) — renamed to "Actions History" and its page size reduced from 20 to 10, per the PRD. Its data/behavior is otherwise byte-for-byte unchanged, per the user's explicit clarification during PRD drafting that this is **not** the same thing as the new `FY-04` "Latest Activities" widget (a separate entry, below) — this one still shows only the viewer's own actions.
+- **Files Changed**:
+  - `kartas-app/src/components/MyTasksWidget.jsx`, `ActionsHistoryWidget.jsx` — New, extracted from the old `ForYou.jsx`
+  - `kartas-app/src/pages/ForYou.jsx` — Rebuilt around a CSS grid; old inline My Tasks/Activity JSX removed
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean. Manual browser click-through handed off to the user.
+
+---
+
 ## [2026-07-29] — HIST-02 — Story Detail History Section
 
 - **Author**: Claude
