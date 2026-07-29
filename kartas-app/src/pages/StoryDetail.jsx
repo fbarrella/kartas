@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import SubItemEditModal, { SUBITEM_TYPE_OPTIONS, SUBITEM_STATUS_OPTIONS } from '../components/SubItemEditModal';
 import Breadcrumb from '../components/Breadcrumb';
+import MarkdownEditor from '../components/MarkdownEditor';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 import '../components/navigation.css';
 
 
@@ -38,6 +40,7 @@ const StoryDetail = () => {
     const [successMessage, setSuccessMessage] = useState('');
     const [showSubItemModal, setShowSubItemModal] = useState(false);
     const [editingSubItem, setEditingSubItem] = useState(null); // null = create mode
+    const [isEditingDescription, setIsEditingDescription] = useState(false);
 
     const [formData, setFormData] = useState({
         title: '',
@@ -118,6 +121,16 @@ const StoryDetail = () => {
 
     const handleChange = (field, value) => {
         setFormData(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleCancelDescriptionEdit = () => {
+        handleChange('description', story?.description || '');
+        setIsEditingDescription(false);
+    };
+
+    const handleSaveDescription = async () => {
+        await handleSave();
+        setIsEditingDescription(false);
     };
 
     const handleSave = async () => {
@@ -249,177 +262,231 @@ const StoryDetail = () => {
 
             {/* Story Details Card */}
             <div className="card">
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-lg)' }}>
-                    {/* Left Column */}
-                    <div>
-                        <div className="form-group">
-                            <label className="form-label">Title *</label>
-                            <input
-                                type="text"
-                                className="form-input"
-                                value={formData.title}
-                                onChange={(e) => handleChange('title', e.target.value)}
-                                required
-                            />
-                        </div>
+                <div className="form-group">
+                    <label className="form-label">Title *</label>
+                    <input
+                        type="text"
+                        className="form-input"
+                        value={formData.title}
+                        onChange={(e) => handleChange('title', e.target.value)}
+                        required
+                    />
+                </div>
 
-                        <div className="form-group">
-                            <label className="form-label">Description</label>
-                            <textarea
-                                className="form-textarea"
-                                value={formData.description}
-                                onChange={(e) => handleChange('description', e.target.value)}
-                                rows="6"
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label className="form-label">Type</label>
-                            <select
-                                className="form-select"
-                                value={formData.type}
-                                onChange={(e) => handleChange('type', e.target.value)}
-                            >
-                                {TYPE_OPTIONS.map(option => (
-                                    <option key={option.value} value={option.value}>
-                                        {option.icon} {option.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="form-group">
-                            <label className="form-label">Status</label>
-                            <select
-                                className="form-select"
-                                value={formData.status}
-                                onChange={(e) => handleChange('status', e.target.value)}
-                            >
-                                {STATUS_OPTIONS.map(option => (
-                                    <option key={option.value} value={option.value}>
-                                        {option.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="form-group">
-                            <label className="form-label flex flex-gap-sm" style={{ alignItems: 'center' }}>
-                                <input
-                                    type="checkbox"
-                                    checked={formData.isBlocked}
-                                    onChange={(e) => handleChange('isBlocked', e.target.checked)}
-                                />
-                                Blocked
-                            </label>
-                        </div>
+                {/* Compact fields row */}
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: 'var(--spacing-md)',
+                    paddingBottom: 'var(--spacing-md)',
+                    marginBottom: 'var(--spacing-md)',
+                    borderBottom: '1px solid var(--color-border)'
+                }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Type</label>
+                        <select
+                            className="form-select"
+                            value={formData.type}
+                            onChange={(e) => handleChange('type', e.target.value)}
+                        >
+                            {TYPE_OPTIONS.map(option => (
+                                <option key={option.value} value={option.value}>
+                                    {option.icon} {option.label}
+                                </option>
+                            ))}
+                        </select>
                     </div>
 
-                    {/* Right Column */}
-                    <div>
-                        <div className="form-group">
-                            <label className="form-label">Story Points</label>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Status</label>
+                        <select
+                            className="form-select"
+                            value={formData.status}
+                            onChange={(e) => handleChange('status', e.target.value)}
+                        >
+                            {STATUS_OPTIONS.map(option => (
+                                <option key={option.value} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Story Points</label>
+                        <input
+                            type="number"
+                            className="form-input"
+                            value={formData.points}
+                            onChange={(e) => handleChange('points', e.target.value)}
+                            min="0"
+                        />
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Assignee</label>
+                        <select
+                            className="form-select"
+                            value={formData.assigneeId || ''}
+                            onChange={(e) => handleChange('assigneeId', e.target.value ? parseInt(e.target.value) : null)}
+                        >
+                            <option value="">Unassigned</option>
+                            {members.map(member => (
+                                <option key={member.id} value={member.id}>
+                                    {member.firstName} {member.lastName}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Epic</label>
+                        <select
+                            className="form-select"
+                            value={formData.epicId || ''}
+                            onChange={(e) => handleChange('epicId', e.target.value ? parseInt(e.target.value) : null)}
+                        >
+                            <option value="">No Epic</option>
+                            {epics.map(epic => (
+                                <option key={epic.id} value={epic.id}>
+                                    {epic.title}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Blocked</label>
+                        <label className="switch">
                             <input
-                                type="number"
-                                className="form-input"
-                                value={formData.points}
-                                onChange={(e) => handleChange('points', e.target.value)}
-                                min="0"
+                                type="checkbox"
+                                checked={formData.isBlocked}
+                                onChange={(e) => handleChange('isBlocked', e.target.checked)}
                             />
-                        </div>
+                            <span className="switch-track">
+                                <span className="switch-thumb" />
+                            </span>
+                            <span className="switch-text">{formData.isBlocked ? 'Blocked' : 'Not blocked'}</span>
+                        </label>
+                    </div>
+                </div>
 
-                        <div className="form-group">
-                            <label className="form-label">Assignee</label>
-                            <select
-                                className="form-select"
-                                value={formData.assigneeId || ''}
-                                onChange={(e) => handleChange('assigneeId', e.target.value ? parseInt(e.target.value) : null)}
-                            >
-                                <option value="">Unassigned</option>
-                                {members.map(member => (
-                                    <option key={member.id} value={member.id}>
-                                        {member.firstName} {member.lastName}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="form-group">
-                            <label className="form-label">Epic</label>
-                            <select
-                                className="form-select"
-                                value={formData.epicId || ''}
-                                onChange={(e) => handleChange('epicId', e.target.value ? parseInt(e.target.value) : null)}
-                            >
-                                <option value="">No Epic</option>
-                                {epics.map(epic => (
-                                    <option key={epic.id} value={epic.id}>
-                                        {epic.title}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="form-group">
-                            <label className="form-label">Sprints</label>
-                            <div style={{ marginBottom: 'var(--spacing-sm)' }}>
-                                {story.sprints && story.sprints.length > 0 ? (
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-xs)' }}>
-                                        {story.sprints.map(sprint => (
-                                            <div
-                                                key={sprint.id}
-                                                style={{
-                                                    display: 'inline-flex',
-                                                    alignItems: 'center',
-                                                    gap: 'var(--spacing-xs)',
-                                                    padding: '4px 8px',
-                                                    backgroundColor: sprint.status === 'active' ? 'var(--color-success-light)' : 'var(--color-neutral-100)',
-                                                    border: `1px solid ${sprint.status === 'active' ? 'var(--color-success)' : 'var(--color-border)'}`,
-                                                    borderRadius: 'var(--radius-sm)',
-                                                    fontSize: 'var(--font-size-sm)'
-                                                }}
-                                            >
-                                                <span>{sprint.name}</span>
-                                                <button
-                                                    onClick={() => handleRemoveFromSprint(sprint.id)}
-                                                    style={{
-                                                        background: 'none',
-                                                        border: 'none',
-                                                        cursor: 'pointer',
-                                                        padding: '0',
-                                                        color: 'var(--color-danger)',
-                                                        fontSize: '14px',
-                                                        lineHeight: '1'
-                                                    }}
-                                                    title="Remove from sprint"
-                                                >
-                                                    ×
-                                                </button>
-                                            </div>
-                                        ))}
+                {/* Sprints */}
+                <div className="form-group" style={{
+                    paddingBottom: 'var(--spacing-md)',
+                    marginBottom: 'var(--spacing-md)',
+                    borderBottom: '1px solid var(--color-border)'
+                }}>
+                    <label className="form-label">Sprints</label>
+                    <div style={{ marginBottom: 'var(--spacing-sm)' }}>
+                        {story.sprints && story.sprints.length > 0 ? (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-xs)' }}>
+                                {story.sprints.map(sprint => (
+                                    <div
+                                        key={sprint.id}
+                                        style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 'var(--spacing-xs)',
+                                            padding: '4px 8px',
+                                            backgroundColor: sprint.status === 'active' ? 'var(--color-success-light)' : 'var(--color-neutral-100)',
+                                            border: `1px solid ${sprint.status === 'active' ? 'var(--color-success)' : 'var(--color-border)'}`,
+                                            borderRadius: 'var(--radius-sm)',
+                                            fontSize: 'var(--font-size-sm)'
+                                        }}
+                                    >
+                                        <span>{sprint.name}</span>
+                                        <button
+                                            onClick={() => handleRemoveFromSprint(sprint.id)}
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                padding: '0',
+                                                color: 'var(--color-danger)',
+                                                fontSize: '14px',
+                                                lineHeight: '1'
+                                            }}
+                                            title="Remove from sprint"
+                                        >
+                                            ×
+                                        </button>
                                     </div>
-                                ) : (
-                                    <div className="text-small text-muted">Not in any sprint</div>
-                                )}
-                            </div>
-                            <select
-                                className="form-select"
-                                onChange={(e) => {
-                                    if (e.target.value) {
-                                        handleAddToSprint(parseInt(e.target.value));
-                                        e.target.value = '';
-                                    }
-                                }}
-                                defaultValue=""
-                            >
-                                <option value="">Add to sprint...</option>
-                                {sprints.filter(s => !story.sprints?.find(ss => ss.id === s.id)).map(sprint => (
-                                    <option key={sprint.id} value={sprint.id}>
-                                        {sprint.name} ({sprint.status})
-                                    </option>
                                 ))}
-                            </select>
-                        </div>
+                            </div>
+                        ) : (
+                            <div className="text-small text-muted">Not in any sprint</div>
+                        )}
+                    </div>
+                    <select
+                        className="form-select"
+                        onChange={(e) => {
+                            if (e.target.value) {
+                                handleAddToSprint(parseInt(e.target.value));
+                                e.target.value = '';
+                            }
+                        }}
+                        defaultValue=""
+                    >
+                        <option value="">Add to sprint...</option>
+                        {sprints.filter(s => !story.sprints?.find(ss => ss.id === s.id)).map(sprint => (
+                            <option key={sprint.id} value={sprint.id}>
+                                {sprint.name} ({sprint.status})
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Description */}
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                    <div className="flex flex-between mb-sm" style={{ alignItems: 'center' }}>
+                        <label className="form-label" style={{ marginBottom: 0 }}>Description</label>
+                        {!isEditingDescription && (
+                            <button
+                                type="button"
+                                onClick={() => setIsEditingDescription(true)}
+                                className="btn btn-secondary btn-sm"
+                            >
+                                Edit Description
+                            </button>
+                        )}
+                    </div>
+
+                    <div style={{
+                        border: '1px solid var(--color-border)',
+                        borderRadius: 'var(--radius-md)',
+                        padding: 'var(--spacing-md)'
+                    }}>
+                        {isEditingDescription ? (
+                            <>
+                                <MarkdownEditor
+                                    value={formData.description}
+                                    onChange={(v) => handleChange('description', v)}
+                                    rows={12}
+                                />
+                                <div className="flex flex-gap-sm mt-sm" style={{ justifyContent: 'flex-end' }}>
+                                    <button
+                                        type="button"
+                                        onClick={handleCancelDescriptionEdit}
+                                        className="btn btn-secondary btn-sm"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleSaveDescription}
+                                        disabled={saving}
+                                        className="btn btn-primary btn-sm"
+                                    >
+                                        {saving ? 'Saving...' : 'Save'}
+                                    </button>
+                                </div>
+                            </>
+                        ) : formData.description ? (
+                            <MarkdownRenderer content={formData.description} />
+                        ) : (
+                            <div className="text-small text-muted">No description yet</div>
+                        )}
                     </div>
                 </div>
             </div>

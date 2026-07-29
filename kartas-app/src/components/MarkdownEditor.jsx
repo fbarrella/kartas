@@ -38,9 +38,13 @@ const MarkdownEditor = ({ value, onChange, placeholder = '', rows = 10 }) => {
             ) : (
                 <div
                     className="form-textarea markdown-preview"
-                    style={{ width: '100%', minHeight: `${rows * 24}px`, overflowY: 'auto' }}
+                    style={{ width: '100%', height: `${rows * 24}px`, overflowY: 'auto' }}
                 >
-                    <MarkdownRenderer content={value} />
+                    {value ? (
+                        <MarkdownRenderer content={value} />
+                    ) : (
+                        <span className="text-muted">Nothing to preview yet.</span>
+                    )}
                 </div>
             )}
         </div>

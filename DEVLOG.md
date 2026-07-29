@@ -4,6 +4,119 @@ Development log for all Kartas changes, across every phase. Each entry records w
 
 ---
 
+## [2026-07-28] — Post-5.3 UI polish, round 2: field grid, Blocked switch, description containment, Kanban badges/status
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (follow-up UI polish from user testing, on top of `MD-02`–`MD-06`)
+- **Summary**: Four more issues reported after browser-testing `5.3`:
+  1. **Story Detail compact fields row**: `repeat(auto-fit, minmax(160px, 1fr))` packed all six fields (Type, Status, Story Points, Assignee, Epic, Blocked) onto one line at the page's new 1400px width, reading as cramped. Changed to a fixed `1fr 1fr` grid, so fields now flow two per row across three rows.
+  2. **Blocked field**: replaced the plain checkbox with a toggle switch (track + thumb, `--color-danger` when on, matching the existing "Blocked" badge's color language elsewhere in the app) built from a visually-hidden native checkbox plus CSS sibling selectors for state — keeps keyboard/focus-visible behavior without JS beyond the existing `onChange`. Label now sits above the control like every other field in the row, with the switch and its status text (`Blocked`/`Not blocked`) flex-aligned so they're vertically centered.
+  3. **Description containment**: added a bordered, padded box around the description's rendered/edit content on `StoryDetail.jsx`, and — since the user asked for it to extend to "the Kanban view's 'view story' modal" — applied the same treatment to both `KanbanBoard.jsx`'s and `Backlog.jsx`'s quick-view modals (built together in `MD-04`, so kept in sync) for consistency. Iterated once within this round: the border initially wrapped the "Description" label + "Edit Description" button along with the content, which the user found visually redundant — moved the border to wrap only the content itself, with the label/button row sitting above it in normal flow.
+  4. **Kanban polish** (unplanned, called out directly during this round): the Blocked/Story-Points/Sub-tasks badge row on Kanban story cards read as glued together — root cause was `.flex-gap-xs`, used in `KanbanBoard.jsx` but never actually defined in `index.css` (only `.flex-gap-sm`/`.flex-gap-md` existed), so the gap silently applied nothing. Added the missing utility class (fixes spacing everywhere else `.flex-gap-xs` is used too, not just this one spot). Separately, the Kanban quick-view modal rendered `selectedStory.status` as a raw enum string (e.g. `in_development`) — added a `STATUS_OPTIONS` array to `KanbanBoard.jsx` (same value→label→color mapping already used by `Backlog.jsx`'s status filter) and now render it as a colored badge, matching the rest of the app's status presentation.
+- **Files Changed**:
+  - `kartas-app/src/pages/StoryDetail.jsx` — Compact fields grid → `1fr 1fr`; Blocked checkbox → switch; description border scoped to content only
+  - `kartas-app/src/pages/KanbanBoard.jsx` — New `STATUS_OPTIONS`; status rendered as colored badge; description border scoped to content-only scrollable region
+  - `kartas-app/src/pages/Backlog.jsx` — Same description border/scroll treatment as `KanbanBoard.jsx`, for consistency
+  - `kartas-app/src/index.css` — New `.switch`/`.switch-track`/`.switch-thumb`/`.switch-text` toggle styles; new `.flex-gap-xs` utility (previously referenced but undefined)
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-28] — Post-5.3 UI polish, round 1: markdown rendering spacing & modal scroll containment
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (follow-up UI polish from user testing, on top of `MD-01`–`MD-06`)
+- **Summary**: First round of issues reported after browser-testing `MD-02`–`MD-06`:
+  1. **Markdown spacing**: `index.css`'s global `* { margin: 0; padding: 0; }` reset strips all default block spacing, but `.markdown-content` (from `MD-01`) only had rules for `code`/`pre`/`table` — headings, paragraphs, and lists rendered with zero spacing and lists lost their `padding-left`, so bullets sat flush against the left edge. Added a full rule set: sized/weighted headings, paragraph margins, list `padding-left` (fixing the left-margin issue) plus nested-list and task-list-checkbox spacing, blockquotes, links, `hr`, and table header styling.
+  2. **`MarkdownEditor` Preview tab never scrolled**: it used `minHeight` on the preview container, which just grows to fit content instead of ever triggering `overflow`. Changed to a fixed `height` (matching the `rows` prop, same as the Write tab's textarea) so long previews now scroll inside a bounded box; also added a "Nothing to preview yet" placeholder for empty content.
+  3. **Kanban/Backlog quick-view modals scrolled as one unit**: the whole `.card` had `maxHeight`/`overflowY: auto`, so the header and fields scrolled along with the description instead of staying put. Restructured both modals into a flex column — header and fields grid `flexShrink: 0`, only the description region `flex: 1; minHeight: 0; overflowY: auto`, footer pinned at the bottom.
+- **Files Changed**:
+  - `kartas-app/src/index.css` — Comprehensive `.markdown-content` spacing rules
+  - `kartas-app/src/components/MarkdownEditor.jsx` — Preview tab fixed height + scroll, empty-state placeholder
+  - `kartas-app/src/pages/KanbanBoard.jsx` — Quick-view modal restructured to flex column, description-only scroll region
+  - `kartas-app/src/pages/Backlog.jsx` — Same restructure for its own quick-view modal
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-28] — Fix stale container node_modules after MD-01's `npm install` (react-markdown unresolved)
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (infrastructure fix, same class of bug as the prior `nodemailer` incident)
+- **Root Cause**: `MD-01` (Session 1) ran `npm install react-markdown remark-gfm` directly on the host inside `kartas-app/`, which correctly updated the host's `package.json`/`package-lock.json`/`node_modules`. But `docker-compose.yml`'s `app` service mounts `./kartas-app:/app` **plus a separate anonymous volume at `/app/node_modules`** — deliberately shadowing the bind mount so host-installed (possibly wrong-OS/arch) `node_modules` never leak into the container. That means the container's own `node_modules` volume never received the new packages, even though the bind-mounted `package.json` already listed them. Vite inside the container then failed with `Failed to resolve import "react-markdown" from "src/components/MarkdownRenderer.jsx"` the first time a page actually rendered `MarkdownRenderer`/`MarkdownEditor` (Session 1 verified with `npm run build` on the **host**, which uses the host's already-correct `node_modules` — so the mismatch went undetected until real browser click-through in Session 4).
+- **Fix**: `docker-compose exec -T app npm install` (reads the bind-mounted `package.json`, installs into the container's own anonymous `node_modules` volume), then cleared Vite's dependency pre-bundle cache (`rm -rf node_modules/.vite`) and `docker-compose restart app` to force a clean re-optimization. Verified via `curl http://localhost:5173/src/components/MarkdownRenderer.jsx` that the transformed module now imports `react-markdown`/`remark-gfm` from `/node_modules/.vite/deps/...` successfully, and confirmed clean logs after restart (no more unresolved-import errors).
+- **Takeaway for future sessions**: any `npm install <package>` run on the host for `kartas-app` (or `kartas-api`, which has the identical anonymous-volume pattern) must be mirrored with `docker-compose exec -T <service> npm install` before the dev container will actually have the new dependency — running the host install alone is not sufficient, and `npm run build` on the host will misleadingly still pass since it doesn't touch the container at all.
+- **Files Changed**: None (no source changes — container state fix only)
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-28] — MD-02 — Story Creation Modal Revamp
+
+- **Author**: Claude
+- **PRD Requirement**: MD-02
+- **Summary**: The create-story modal (`Backlog.jsx`, `showCreateModal`/`newStory`) stacked Type → Title → a plain `rows={5}` description textarea → Story Points vertically, capped at `max-width: 600px`, with description getting no more visual weight than any other field. Widened the modal to `850px`. Reordered so Title sits alone as a full-width row at the top, Type + Story Points sit together in a 2-column row directly below it (visually separated by a bottom border), and description — now the `MD-01` `MarkdownEditor` (Write/Preview tabs) instead of a plain textarea — takes the remaining space below with clearly more room (`rows={10}`). `handleCreateStory`'s `POST /api/stories` call is untouched — `MarkdownEditor`'s `onChange` already hands back a plain string, so `newStory.description` flows through exactly as before, just authored via markdown now.
+- **Files Changed**:
+  - `kartas-app/src/pages/Backlog.jsx` — Create-story modal widened and restructured; description field now `MarkdownEditor`
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-28] — MD-03 — Story Edit Page Revamp
+
+- **Author**: Claude
+- **PRD Requirement**: MD-03
+- **Summary**: `StoryDetail.jsx` previously packed Title/Description/Type/Status/Blocked into a left column and Story Points/Assignee/Epic/Sprints into a right column of one tall 2-column grid, with description as just another `rows="6"` textarea among them, and inherited exactly the shared 1200px `.container` width from `ProjectLayout.jsx` like every other project page. Reorganized per the PRD: Title is now its own full-width row at the top; Type, Status, Story Points, Assignee, Epic, and Blocked sit in one denser `repeat(auto-fit, minmax(160px, 1fr))` row directly below it; the existing Sprint management block (current-sprint chips + add/remove UI, functionally unchanged) sits right after that row as its own section — kept intact rather than squeezed into the compact grid, since it's a whole mini-UI, not a simple field (resolved with the user before implementation). Description is below the Sprint block, **view-mode by default** (`MarkdownRenderer` of `formData.description`) with an "Edit Description" button; clicking it swaps in the `MarkdownEditor` pre-filled with the current text, plus its own Save/Cancel. This reuses the page's single existing `handleSave`/`formData` flow rather than adding a second save path — the edit toggle is purely a display concern, `formData.description` is still the one source of truth submitted by the page's normal "Save Changes" button. "Cancel" explicitly reverts `formData.description` back to the last-fetched `story.description` (not just hiding the editor) so an abandoned edit can't be silently included in a later full-page save. For the width increase (PRD: "enlarged relative to today's inherited container width"), confirmed via research that nesting a `.container-fluid` div (as `KanbanBoard.jsx` does) does **not** actually exceed the ancestor's cap — that class is `width: 100%`, it fills the parent, it doesn't escape it; `KanbanBoard.jsx`'s own past "full width" fix only removed a redundant *inner* 1200px wrapper, it never exceeded `ProjectLayout`'s outer 1200px either. Added a new optional `wide` boolean prop to `ProjectLayout.jsx` (inline `maxWidth: '1400px'` override on its container div when set — inline style beats the class rules regardless of CSS specificity, no new CSS needed) and had `App.jsx`'s `ProjectLayoutShell` detect the Story Detail route via `useLocation().pathname.includes('/story/')` and pass `wide` accordingly — scoped to this one page, no effect on any other project route's width.
+- **Files Changed**:
+  - `kartas-app/src/pages/StoryDetail.jsx` — Field regrouping, Sprint block repositioned, description view/edit toggle
+  - `kartas-app/src/components/ProjectLayout.jsx` — New optional `wide` prop, inline max-width override
+  - `kartas-app/src/App.jsx` — `ProjectLayoutShell` detects the Story Detail route and passes `wide`
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-28] — MD-04 — Kanban & Backlog Quick-View Modal Revamp
+
+- **Author**: Claude
+- **PRD Requirement**: MD-04
+- **Summary**: Both `KanbanBoard.jsx`'s story-card-click modal and `Backlog.jsx`'s row-click modal (`selectedStory`, `max-width: 700px` each) rendered `description` as a plain `whiteSpace: 'pre-wrap'` paragraph, positioned *above* the Status/Blocked/Points/Assignee grid rather than below it, with no height cap — a long description could overflow the viewport. For both modals: widened to `850px` (matching `MD-02`), added `maxHeight: '85vh'` + `overflowY: 'auto'` directly on the card itself (previously only the outer fixed overlay scrolled, the card had no cap at all), reordered so the small-properties grid renders first and the description sits below it (correcting the pre-existing reversed order, to actually satisfy "grouped near the top, visually separated from description"), and swapped the plain paragraph for `<MarkdownRenderer content={selectedStory.description} />`. Both modals remain pure view-only, per the PRD — editing still only happens via `MD-03`'s Story Detail page; no Edit affordance was added to either.
+- **Files Changed**:
+  - `kartas-app/src/pages/KanbanBoard.jsx` — Quick-view modal widened, scrollable, reordered, markdown-rendered description
+  - `kartas-app/src/pages/Backlog.jsx` — Same treatment for its own quick-view modal
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-28] — MD-05 — Epic Description Markdown
+
+- **Author**: Claude
+- **PRD Requirement**: MD-05
+- **Summary**: `Epics.jsx`'s create/edit form used a plain `rows="4"` textarea for `formData.description`, and the epic card list rendered `epic.description` as a plain `<p className="text-muted">`. Swapped the form field for `MarkdownEditor` (no other layout changes — per the PRD, this is a lighter-touch swap, not a `MD-03`-style redesign) and the card's read-only display for `<MarkdownRenderer content={epic.description} className="text-muted" />`, preserving the existing muted visual tone by passing the class straight through. No other read-only epic-description surface exists elsewhere in the app (confirmed via research — there's no separate epic detail page).
+- **Files Changed**:
+  - `kartas-app/src/pages/Epics.jsx` — Create/edit textarea → `MarkdownEditor`; card description → `MarkdownRenderer`
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
+## [2026-07-28] — MD-06 — Sub-Item Description Markdown
+
+- **Author**: Claude
+- **PRD Requirement**: MD-06
+- **Summary**: The shared `SubItemEditModal.jsx` (used from both `StoryDetail.jsx` and `KanbanBoard.jsx`) used a plain `rows={4}` textarea for `form.description`. Swapped it for `MarkdownEditor`, a clean drop-in — confirmed via research that the modal's `mode` prop (`create`/`edit`) never branches on this field, so no conditional logic was needed. Bumped the modal's `max-width` from `600px` to `650px`, a modest increase per the PRD (explicitly not matching `MD-02`'s full widening, since sub-item descriptions are typically shorter). Confirmed via research that no page renders a sub-item's description read-only anywhere else (`StoryDetail.jsx`'s Sub-items list only shows title/status/points/assignee) — so there was nothing else to update.
+- **Files Changed**:
+  - `kartas-app/src/components/SubItemEditModal.jsx` — Description textarea → `MarkdownEditor`; modal width `600px` → `650px`
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
 ## [2026-07-28] — NAV-03 — Sidebar Project Identity Header
 
 - **Author**: Claude

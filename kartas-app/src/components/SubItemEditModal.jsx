@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import api from '../services/api';
+import MarkdownEditor from './MarkdownEditor';
 
 export const SUBITEM_TYPE_OPTIONS = [
     { value: 'sub_task', label: 'Sub-Task', icon: '🔧' },
@@ -68,7 +69,7 @@ const SubItemEditModal = ({ mode, storyId, subItem, members, onClose, onSaved })
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             zIndex: 1000, overflowY: 'auto'
         }} onClick={onClose}>
-            <div className="card" style={{ maxWidth: '600px', width: '100%', margin: 'var(--spacing-md)' }}
+            <div className="card" style={{ maxWidth: '650px', width: '100%', margin: 'var(--spacing-md)' }}
                 onClick={(e) => e.stopPropagation()}>
                 <div className="card-header">
                     <h3 className="card-title">{mode === 'edit' ? 'Edit Sub-Item' : 'Create Sub-Item'}</h3>
@@ -90,8 +91,11 @@ const SubItemEditModal = ({ mode, storyId, subItem, members, onClose, onSaved })
                     </div>
                     <div className="form-group">
                         <label className="form-label">Description</label>
-                        <textarea className="form-textarea" rows={4} value={form.description}
-                            onChange={(e) => setForm({ ...form, description: e.target.value })} />
+                        <MarkdownEditor
+                            value={form.description}
+                            onChange={(v) => setForm({ ...form, description: v })}
+                            rows={6}
+                        />
                     </div>
                     <div className="form-group">
                         <label className="form-label">Status</label>
