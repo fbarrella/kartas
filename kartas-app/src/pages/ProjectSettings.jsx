@@ -61,10 +61,10 @@ const ProjectSettings = () => {
             <Breadcrumb items={[
                 { label: 'Projects', to: '/' },
                 { label: projectName, to: `/project/${projectId}/${currentDefaultLandingPage}` },
-                { label: 'Settings' },
+                { label: 'Project Settings' },
             ]} />
             <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
-                <h2 style={{ margin: 0 }}>Settings</h2>
+                <h2 style={{ margin: 0 }}>Project Settings</h2>
             </div>
 
             {loading ? (

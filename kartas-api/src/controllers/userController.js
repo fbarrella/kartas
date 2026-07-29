@@ -111,7 +111,7 @@ export const userController = {
             const userId = req.user.userId;
 
             const result = await query(
-                `SELECT id, email, first_name, last_name, role, avatar_url, created_at
+                `SELECT id, email, first_name, last_name, role, avatar_url, theme_preference, created_at
                  FROM users WHERE id = $1`,
                 [userId]
             );
@@ -129,6 +129,7 @@ export const userController = {
                 lastName: user.last_name,
                 role: user.role,
                 avatarUrl: user.avatar_url,
+                themePreference: user.theme_preference,
                 createdAt: user.created_at
             });
         } catch (error) {
@@ -222,6 +223,32 @@ export const userController = {
             res.json({ message: 'Password changed successfully' });
         } catch (error) {
             console.error('Error changing password:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
+    // Update the current user's light/dark theme preference (DM-03)
+    async updateThemePreference(req, res) {
+        try {
+            const userId = req.user.userId;
+            const { theme } = req.body;
+
+            if (!['light', 'dark'].includes(theme)) {
+                return res.status(400).json({ error: 'Theme must be "light" or "dark"' });
+            }
+
+            const result = await query(
+                'UPDATE users SET theme_preference = $1 WHERE id = $2 RETURNING theme_preference',
+                [theme, userId]
+            );
+
+            if (result.rows.length === 0) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+
+            res.json({ themePreference: result.rows[0].theme_preference });
+        } catch (error) {
+            console.error('Error updating theme preference:', error);
             res.status(500).json({ error: 'Server error' });
         }
     },

@@ -19,6 +19,7 @@ import KanbanBoard from './pages/KanbanBoard';
 import Epics from './pages/Epics';
 import UserManagement from './pages/UserManagement';
 import UserProfile from './pages/UserProfile';
+import Settings from './pages/Settings';
 import SprintReports from './pages/SprintReports';
 import ProjectSettings from './pages/ProjectSettings';
 import UserDetail from './pages/UserDetail';
@@ -123,6 +124,14 @@ function AppRoutes() {
                 element={
                     <ProtectedRoute>
                         <UserProfile />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/settings"
+                element={
+                    <ProtectedRoute>
+                        <Settings />
                     </ProtectedRoute>
                 }
             />

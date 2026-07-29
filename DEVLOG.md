@@ -4,6 +4,82 @@ Development log for all Kartas changes, across every phase. Each entry records w
 
 ---
 
+## [2026-07-29] — Dark Mode Fix: Hardcoded White Card Backgrounds (follow-up to DM-01)
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (user-reported bug after browser-testing `6.4`)
+- **Summary**: `DM-01`'s audit of color usage covered every `var(--color-*)` reference but missed inline styles that hardcoded the literal string `'white'` instead of using a variable — those never picked up the dark-mode override, so a handful of surfaces stayed white while their text (driven by `var(--color-neutral-900)`/`var(--color-text)`, both correctly inverted to a light color in dark mode) became unreadable white-on-white. Worst offender: the Kanban board's actual story/sub-task cards, plus their right-click context menus and "Move To" submenus. Found and fixed a matching instance on the Sprint Reports page's "Average Time in Status" tiles as well. All six replaced with `var(--color-surface)`, matching every other card-style container on the same pages.
+- **Files Changed**:
+  - `kartas-app/src/pages/KanbanBoard.jsx` — 5 occurrences: story/sub-task card background, right-click context menu, "Move To" submenu, sub-task context menu, sub-task "Move To" submenu
+  - `kartas-app/src/pages/Sprints.jsx` — 1 occurrence: "Average Time in Status" tile background
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: Repo-wide grep confirmed these were the only `backgroundColor: 'white'`/`background: 'white'` literals left in `kartas-app/src` — no other pages affected. `npm run build` clean. Manual browser click-through (dark mode, Kanban board + context menus + Sprint Reports) handed off to the user.
+
+---
+
+## [2026-07-29] — DM-04 — Light/Dark Toggle UI
+
+- **Author**: Claude
+- **PRD Requirement**: DM-04
+- **Summary**: Built the actual toggle control as part of the new `Settings.jsx` page (see `DM-02` entry below) — an "Appearance" card reusing the existing `.switch`/`.switch-primary` markup verbatim (same pattern as `Backlog.jsx`'s "Show completed stories" filter), bound to `user.themePreference` and calling `DM-03`'s `updateThemePreference()` on change. The UI reflects the change immediately (no reload) since `updateThemePreference()` updates React state directly.
+- **Files Changed**:
+  - `kartas-app/src/pages/Settings.jsx` — "Appearance" section with the theme toggle
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: Included in the combined `6.4` verification pass below.
+
+---
+
+## [2026-07-29] — DM-03 — Theme Preference Persistence
+
+- **Author**: Claude
+- **PRD Requirement**: DM-03
+- **Summary**: Added a genuine per-user, per-device-independent light/dark preference. New `users.theme_preference` column (`'light'` default). New `PUT /users/theme` validates `theme` is `'light'`/`'dark'` with an explicit manual guard clause (not relying on the codebase's broken `validationResult()` pipeline flagged in a prior entry — this endpoint enforces validation correctly despite that systemic gap) and persists it. `getProfile`, `login`, and `createAdmin` all now include `themePreference` in their response so the client has it immediately without an extra round-trip. `AuthContext.jsx` gained `updateThemePreference()` (follows `changePassword`'s exact `{ ...user, x: newValue }` + `localStorage` + `setUser()` pattern) plus a shared `applyTheme()` helper called from every path that resolves a user (`login`, `createAdmin`, `checkExistingAuth`'s both success and offline-fallback branches) — it keeps a dedicated `localStorage['theme']` key and the `<html data-theme>` attribute in sync with whatever the current user's preference is. To avoid a flash of the wrong theme on load, `main.jsx` reads that cached `localStorage['theme']` key **synchronously, before `ReactDOM.createRoot().render()`** — this runs before first paint and doesn't wait on the async `/users/profile` round-trip that `checkExistingAuth()` performs later to reconcile with the server.
+- **Files Changed**:
+  - `kartas-api/src/migrations/014_add_user_theme_preference.sql` — New `theme_preference` column
+  - `kartas-api/src/controllers/userController.js` — New `updateThemePreference`; `getProfile` now selects/returns `themePreference`
+  - `kartas-api/src/routes/users.js` — New `PUT /theme` route + validator
+  - `kartas-api/src/controllers/authController.js` — `login`/`createAdmin` responses include `themePreference`
+  - `kartas-app/src/contexts/AuthContext.jsx` — New `applyTheme()` helper, `updateThemePreference()` method, wired into `login`/`createAdmin`/`checkExistingAuth`
+  - `kartas-app/src/main.jsx` — Synchronous pre-paint `localStorage` theme read
+- **Migration**: `014_add_user_theme_preference.sql`
+- **Status**: Done
+- **Verification**: Migration applied cleanly (`theme_preference` confirmed `NOT NULL DEFAULT 'light'` via `\d users`). Curl-verified with a temp user: login response included `themePreference: "light"`; `PUT /users/theme {theme:"dark"}` returned `{themePreference:"dark"}` and a follow-up `GET /users/profile` reflected it; `PUT /users/theme {theme:"neon"}` correctly returned `400` (the manual guard clause, not the broken validator pipeline); reset to `"light"` and the temp user deleted. `npm run build` clean.
+
+---
+
+## [2026-07-29] — DM-02 — System-Level "Settings" Menu
+
+- **Author**: Claude
+- **PRD Requirement**: DM-02
+- **Summary**: Added a new "Settings" item to `UserDropdown.jsx` (between "My Profile" and the admin-only "User Management" entry), routing to a new system-level `/settings` page (`Settings.jsx`, modeled directly on `UserProfile.jsx`'s standalone-page layout) visible to every user regardless of role. Resolved the naming collision flagged in the PRD: the existing per-project sidebar nav item (`Sidebar.jsx` → `ProjectSettings.jsx`, which only controls a project's default landing page) was renamed from "Settings" to "Project Settings" in both the sidebar label and the page's own heading/breadcrumb, so the two distinct concepts no longer share an identical label across two different menus.
+- **Files Changed**:
+  - `kartas-app/src/components/UserDropdown.jsx` — New "Settings" link (gear icon)
+  - `kartas-app/src/pages/Settings.jsx` — New page (also hosts `DM-04`'s toggle; `PAL-03`'s admin-only palette editor will extend this same page in `6.5`)
+  - `kartas-app/src/App.jsx` — New `/settings` route
+  - `kartas-app/src/components/Sidebar.jsx` — Project-scoped "Settings" nav label renamed to "Project Settings"
+  - `kartas-app/src/pages/ProjectSettings.jsx` — Heading/breadcrumb renamed to "Project Settings" to match
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: Included in the combined `6.4` verification pass below.
+
+---
+
+## [2026-07-29] — DM-01 — Dark Mode Theme Infrastructure
+
+- **Author**: Claude
+- **PRD Requirement**: DM-01
+- **Summary**: Added a `[data-theme="dark"]` block to `index.css` (as `:root[data-theme="dark"]`) redefining every existing `--color-*` custom property plus `--shadow-*`, applied via a `data-theme` attribute on `<html>` (set by `DM-03`'s `main.jsx`/`AuthContext.jsx` work). Because the app's CSS files and inline JS styles consume colors almost exclusively via `var(--color-*)`, this required no per-component rewrites. The neutral scale is deliberately inverted in dark mode (900 = brightest/used for headings and primary text, 50 = darkest/used for subtle surface tints) — except `--color-neutral-0`, kept at pure white in both themes since it's only ever used as text-on-saturated-color (button labels, the switch thumb), which needs to stay white regardless of theme. Fixed two pre-existing latent bugs found during Phase 6 planning research, as flagged in the PRD: three "phantom" CSS variables referenced throughout the app but never declared in `:root` (`--color-text`, `--color-danger-light`, `--shadow-xl`) now have real values in both the light and dark blocks. Also gave `avatar.js`'s hardcoded `AVATAR_PALETTE` (raw hex, doesn't derive from CSS variables and so can't follow a `:root` swap automatically) a parallel `AVATAR_PALETTE_DARK`, with `getAvatarColor()` picking between them by reading `document.documentElement`'s `data-theme` attribute at call time.
+- **Files Changed**:
+  - `kartas-app/src/index.css` — New `--color-danger-light`/`--color-text`/`--shadow-xl` in `:root`; new `:root[data-theme="dark"]` block redefining every color/shadow token
+  - `kartas-app/src/utils/avatar.js` — New `AVATAR_PALETTE_DARK`; `getAvatarColor()` now theme-aware
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean. Full manual regression click-through across page types (per PRD Section 7's explicit call-out that `DM-01`/`PAL-04` are the widest-blast-radius change in the phase) handed off to the user, alongside the rest of `6.4`.
+
+---
+
 ## [2026-07-29] — For You Widgets Stretch to Equal Row Height (follow-up to FY-05)
 
 - **Author**: Claude

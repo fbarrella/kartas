@@ -3,6 +3,19 @@ import api from '../services/api';
 
 const AuthContext = createContext(null);
 
+// DM-03: keep the cached theme + <html data-theme> attribute in sync with
+// whatever the resolved user's preference is — called from every path that
+// establishes/refreshes a user (login, admin creation, session validation).
+const applyTheme = (theme) => {
+    const resolved = theme === 'dark' ? 'dark' : 'light';
+    localStorage.setItem('theme', resolved);
+    if (resolved === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+    }
+};
+
 export const useAuth = () => {
     const context = useContext(AuthContext);
     if (!context) {
@@ -63,6 +76,7 @@ export const AuthProvider = ({ children }) => {
             const validatedUser = { ...parsedCachedUser, ...response.data };
             localStorage.setItem('user', JSON.stringify(validatedUser));
             setUser(validatedUser);
+            applyTheme(validatedUser.themePreference);
         } catch (error) {
             if (error.response) {
                 // Server confirmed the session is invalid — clear it so the
@@ -75,7 +89,9 @@ export const AuthProvider = ({ children }) => {
                 // Couldn't reach the server at all — fall back to the cached
                 // session optimistically rather than logging out on a blip.
                 try {
-                    setUser(JSON.parse(cachedUser));
+                    const fallbackUser = JSON.parse(cachedUser);
+                    setUser(fallbackUser);
+                    applyTheme(fallbackUser.themePreference);
                 } catch {
                     localStorage.removeItem('user');
                 }
@@ -100,6 +116,7 @@ export const AuthProvider = ({ children }) => {
 
             setUser(userData);
             setAdminExists(true);
+            applyTheme(userData.themePreference);
 
             return { success: true };
         } catch (error) {
@@ -121,6 +138,7 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem('user', JSON.stringify(userData));
 
             setUser(userData);
+            applyTheme(userData.themePreference);
 
             return { success: true, user: userData };
         } catch (error) {
@@ -166,6 +184,24 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const updateThemePreference = async (theme) => {
+        try {
+            await api.put('/users/theme', { theme });
+
+            const updatedUser = { ...user, themePreference: theme };
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            setUser(updatedUser);
+            applyTheme(theme);
+
+            return { success: true };
+        } catch (error) {
+            return {
+                success: false,
+                error: error.response?.data?.error || 'Failed to update theme'
+            };
+        }
+    };
+
     const value = {
         user,
         loading,
@@ -173,7 +209,8 @@ export const AuthProvider = ({ children }) => {
         createAdmin,
         login,
         logout,
-        changePassword
+        changePassword,
+        updateThemePreference
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

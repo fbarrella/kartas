@@ -43,7 +43,7 @@ export const authController = {
             const result = await query(
                 `INSERT INTO users (email, password_hash, first_name, last_name, role, first_login)
          VALUES ($1, $2, $3, $4, 'admin', FALSE)
-         RETURNING id, email, first_name, last_name, role`,
+         RETURNING id, email, first_name, last_name, role, theme_preference`,
                 [email, passwordHash, firstName, lastName]
             );
 
@@ -75,7 +75,8 @@ export const authController = {
                     email: user.email,
                     firstName: user.first_name,
                     lastName: user.last_name,
-                    role: user.role
+                    role: user.role,
+                    themePreference: user.theme_preference
                 },
                 accessToken,
                 refreshToken
@@ -142,7 +143,8 @@ export const authController = {
                     firstName: user.first_name,
                     lastName: user.last_name,
                     role: user.role,
-                    firstLogin: user.first_login
+                    firstLogin: user.first_login,
+                    themePreference: user.theme_preference
                 },
                 accessToken,
                 refreshToken
