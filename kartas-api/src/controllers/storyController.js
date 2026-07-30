@@ -1,5 +1,6 @@
 import { query } from '../config/database.js';
 import { generateNextStoryId } from '../utils/ticketPrefix.js';
+import { resolveMentionedUsers, resolveMentionedTickets } from '../utils/mentions.js';
 
 export const storyController = {
     // Create a new story
@@ -274,12 +275,31 @@ export const storyController = {
             // Get comments
             const commentsResult = await query(
                 `SELECT c.*,
-                u.first_name || ' ' || u.last_name as user_name
+                u.first_name || ' ' || u.last_name as user_name,
+                u.role as user_role,
+                u.email as user_email
          FROM comments c
          JOIN users u ON c.user_id = u.id
          WHERE c.story_id = $1
          ORDER BY c.created_at DESC`,
                 [storyId]
+            );
+
+            // Fetched once per request (not once per comment) so mention markup
+            // can be rendered client-side without extra round-trips — each comment
+            // below is checked against these same two lists.
+            const mentionCandidateUsers = await query(
+                `SELECT u.id, u.first_name, u.last_name
+         FROM project_members pm
+         JOIN users u ON u.id = pm.user_id
+         WHERE pm.project_id = $1`,
+                [story.project_id]
+            );
+            const mentionCandidateTickets = await query(
+                `SELECT id, story_id as code, 'story' as type FROM stories WHERE project_id = $1
+         UNION ALL
+         SELECT id, epic_id as code, 'epic' as type FROM epics WHERE project_id = $1`,
+                [story.project_id]
             );
 
             // Get change history
@@ -346,9 +366,17 @@ export const storyController = {
                     id: c.id,
                     userId: c.user_id,
                     userName: c.user_name,
+                    userRole: c.user_role,
+                    userEmail: c.user_email,
                     content: c.content,
                     createdAt: c.created_at,
-                    updatedAt: c.updated_at
+                    updatedAt: c.updated_at,
+                    mentions: {
+                        users: mentionCandidateUsers.rows
+                            .filter(u => c.content.includes(`@${u.first_name} ${u.last_name}`))
+                            .map(u => ({ id: u.id, firstName: u.first_name, lastName: u.last_name })),
+                        tickets: mentionCandidateTickets.rows.filter(t => c.content.includes(t.code))
+                    }
                 })),
                 history: historyResult.rows.map(h => ({
                     id: h.id,
@@ -364,6 +392,68 @@ export const storyController = {
             });
         } catch (error) {
             console.error('Error fetching story:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
+    // Paginated change history for a single story, including its sub-tasks'
+    // changes (sub-task edits already carry the parent story_id). Comment rows
+    // are excluded here since they're shown in the story's Comments section
+    // instead — field_changed is filtered rather than action_type since it has
+    // always been set as a literal, even on rows from before entity_type/
+    // action_type existed (migration 009).
+    async getStoryHistory(req, res) {
+        try {
+            const { storyId } = req.params;
+            const userId = req.user.userId;
+            const limit = Math.min(parseInt(req.query.limit) || 10, 100);
+            const offset = parseInt(req.query.offset) || 0;
+
+            const storyResult = await query('SELECT project_id FROM stories WHERE id = $1', [storyId]);
+            if (storyResult.rows.length === 0) {
+                return res.status(404).json({ error: 'Story not found' });
+            }
+
+            const accessCheck = await query(
+                'SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2',
+                [storyResult.rows[0].project_id, userId]
+            );
+            if (accessCheck.rows.length === 0 && req.user.role !== 'admin') {
+                return res.status(403).json({ error: 'Access denied' });
+            }
+
+            const result = await query(
+                `SELECT ch.id, ch.field_changed, ch.old_value, ch.new_value, ch.changed_at, ch.user_id,
+                        u.first_name || ' ' || u.last_name as user_name,
+                        COALESCE(ch.entity_type, 'story') as entity_type,
+                        COALESCE(ch.action_type, CASE WHEN ch.field_changed = 'status' THEN 'moved' ELSE 'edited' END) as action_type
+                 FROM change_history ch
+                 LEFT JOIN users u ON u.id = ch.user_id
+                 WHERE ch.story_id = $1 AND ch.field_changed != 'comment'
+                 ORDER BY ch.changed_at DESC
+                 LIMIT $2 OFFSET $3`,
+                [storyId, limit + 1, offset]
+            );
+
+            const hasMore = result.rows.length > limit;
+            const rows = result.rows.slice(0, limit);
+
+            res.json({
+                items: rows.map(row => ({
+                    id: row.id,
+                    userId: row.user_id,
+                    userName: row.user_name,
+                    actionType: row.action_type,
+                    entityType: row.entity_type,
+                    fieldChanged: row.field_changed,
+                    oldValue: row.old_value,
+                    newValue: row.new_value,
+                    changedAt: row.changed_at
+                })),
+                hasMore
+            });
+        } catch (error) {
+            console.error('Error fetching story history:', error);
             res.status(500).json({ error: 'Server error' });
         }
     },
@@ -569,6 +659,15 @@ export const storyController = {
                 [storyId, userId, content.slice(0, 200), storyResult.rows[0].project_id]
             );
 
+            const mentionedUsers = await resolveMentionedUsers(content, storyResult.rows[0].project_id);
+            for (const mentioned of mentionedUsers) {
+                if (mentioned.id === userId) continue; // no self-notifications
+                await query(
+                    'INSERT INTO comment_mentions (comment_id, mentioned_user_id) VALUES ($1, $2)',
+                    [comment.id, mentioned.id]
+                );
+            }
+
             res.status(201).json({
                 id: comment.id,
                 storyId: comment.story_id,
@@ -578,6 +677,126 @@ export const storyController = {
             });
         } catch (error) {
             console.error('Error adding comment:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
+    // Update own comment
+    async updateComment(req, res) {
+        try {
+            const { storyId, commentId } = req.params;
+            const { content } = req.body;
+            const userId = req.user.userId;
+
+            const commentResult = await query(
+                'SELECT * FROM comments WHERE id = $1 AND story_id = $2',
+                [commentId, storyId]
+            );
+
+            if (commentResult.rows.length === 0) {
+                return res.status(404).json({ error: 'Comment not found' });
+            }
+
+            if (commentResult.rows[0].user_id !== userId) {
+                return res.status(403).json({ error: 'You can only edit your own comments' });
+            }
+
+            const storyResult = await query('SELECT project_id FROM stories WHERE id = $1', [storyId]);
+
+            const updated = await query(
+                `UPDATE comments SET content = $1, updated_at = CURRENT_TIMESTAMP
+                 WHERE id = $2 RETURNING *`,
+                [content, commentId]
+            );
+
+            // Re-resolve mentions from scratch rather than diffing — reflects
+            // who is *currently* mentioned after the edit, so a removed mention
+            // stops surfacing in that user's Latest Activities feed (FY-04).
+            await query('DELETE FROM comment_mentions WHERE comment_id = $1', [commentId]);
+            const mentionedUsers = await resolveMentionedUsers(content, storyResult.rows[0].project_id);
+            for (const mentioned of mentionedUsers) {
+                if (mentioned.id === userId) continue;
+                await query(
+                    'INSERT INTO comment_mentions (comment_id, mentioned_user_id) VALUES ($1, $2)',
+                    [commentId, mentioned.id]
+                );
+            }
+
+            res.json({
+                id: updated.rows[0].id,
+                content: updated.rows[0].content,
+                updatedAt: updated.rows[0].updated_at
+            });
+        } catch (error) {
+            console.error('Error updating comment:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
+    // Delete own comment, or any comment if caller is a global admin
+    async deleteComment(req, res) {
+        try {
+            const { storyId, commentId } = req.params;
+            const userId = req.user.userId;
+
+            const commentResult = await query(
+                'SELECT * FROM comments WHERE id = $1 AND story_id = $2',
+                [commentId, storyId]
+            );
+
+            if (commentResult.rows.length === 0) {
+                return res.status(404).json({ error: 'Comment not found' });
+            }
+
+            if (commentResult.rows[0].user_id !== userId && req.user.role !== 'admin') {
+                return res.status(403).json({ error: 'You can only delete your own comments' });
+            }
+
+            // comment_mentions rows cascade-delete via their FK
+            await query('DELETE FROM comments WHERE id = $1', [commentId]);
+
+            res.json({ message: 'Comment deleted successfully' });
+        } catch (error) {
+            console.error('Error deleting comment:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
+    // Search stories and epics by code/title within a project, for the ticket
+    // half of the @mention autocomplete (CMT-03). Sub-tasks are excluded — they
+    // have no unique, user-facing short code to link them by.
+    async searchStories(req, res) {
+        try {
+            const { projectId, q } = req.query;
+            const userId = req.user.userId;
+
+            if (!projectId || !q || q.length < 2) {
+                return res.json([]);
+            }
+
+            const accessCheck = await query(
+                'SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2',
+                [projectId, userId]
+            );
+
+            if (accessCheck.rows.length === 0 && req.user.role !== 'admin') {
+                return res.status(403).json({ error: 'Access denied' });
+            }
+
+            const result = await query(
+                `SELECT id, story_id as code, title, 'story' as type FROM stories
+                 WHERE project_id = $1 AND (LOWER(story_id) LIKE LOWER($2) OR LOWER(title) LIKE LOWER($2))
+                 UNION ALL
+                 SELECT id, epic_id as code, title, 'epic' as type FROM epics
+                 WHERE project_id = $1 AND (LOWER(epic_id) LIKE LOWER($2) OR LOWER(title) LIKE LOWER($2))
+                 ORDER BY code ASC
+                 LIMIT 10`,
+                [projectId, `%${q}%`]
+            );
+
+            res.json(result.rows);
+        } catch (error) {
+            console.error('Error searching stories/epics:', error);
             res.status(500).json({ error: 'Server error' });
         }
     }

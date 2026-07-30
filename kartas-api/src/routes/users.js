@@ -20,6 +20,10 @@ const validatePasswordChange = [
     body('newPassword').isLength({ min: 8 })
 ];
 
+const validateThemeUpdate = [
+    body('theme').isIn(['light', 'dark'])
+];
+
 const validateRoleUpdate = [
     body('role').isIn(['admin', 'project_owner', 'member'])
 ];
@@ -39,6 +43,7 @@ router.get('/search', userController.searchUsers);
 router.get('/profile', userController.getProfile);
 router.put('/profile', validateProfileUpdate, userController.updateProfile);
 router.put('/password', validatePasswordChange, userController.changePassword);
+router.put('/theme', validateThemeUpdate, userController.updateThemePreference);
 router.put('/:id/role', validateRoleUpdate, userController.updateUserRole);
 router.delete('/:id', userController.deleteUser);
 

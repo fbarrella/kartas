@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useParams, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ProjectLayout from './components/ProjectLayout';
@@ -19,6 +19,7 @@ import KanbanBoard from './pages/KanbanBoard';
 import Epics from './pages/Epics';
 import UserManagement from './pages/UserManagement';
 import UserProfile from './pages/UserProfile';
+import Settings from './pages/Settings';
 import SprintReports from './pages/SprintReports';
 import ProjectSettings from './pages/ProjectSettings';
 import UserDetail from './pages/UserDetail';
@@ -29,8 +30,6 @@ import './index.css';
 // Fetches project name once per projectId and renders the layout + Outlet.
 function ProjectLayoutShell() {
     const { projectId } = useParams();
-    const location = useLocation();
-    const isStoryDetail = location.pathname.includes('/story/');
     const [projectName, setProjectName] = useState('Loading...');
     const [projectDescription, setProjectDescription] = useState('');
     const [defaultLandingPage, setDefaultLandingPage] = useState('backlog');
@@ -51,7 +50,7 @@ function ProjectLayoutShell() {
     }, [projectId]);
 
     return (
-        <ProjectLayout projectId={projectId} projectName={projectName} projectDescription={projectDescription} wide={isStoryDetail}>
+        <ProjectLayout projectId={projectId} projectName={projectName} projectDescription={projectDescription}>
             <Outlet context={{ projectName, defaultLandingPage }} />
         </ProjectLayout>
     );
@@ -125,6 +124,14 @@ function AppRoutes() {
                 element={
                     <ProtectedRoute>
                         <UserProfile />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/settings"
+                element={
+                    <ProtectedRoute>
+                        <Settings />
                     </ProtectedRoute>
                 }
             />

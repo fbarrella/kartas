@@ -4,6 +4,347 @@ Development log for all Kartas changes, across every phase. Each entry records w
 
 ---
 
+## [2026-07-29] — PAL-04 — Runtime Palette Application
+
+- **Author**: Claude
+- **PRD Requirement**: PAL-04
+- **Summary**: The admin's system palette now actually applies across the whole app, layered on top of `DM-01`'s static CSS-file defaults. `AuthContext.jsx` fetches `GET /system-settings/theme` once per session (keyed on `user?.id`, so it doesn't refire on every dark/light toggle) and caches it via `systemTheme.js`'s module-level `setCachedSystemTheme()`, which immediately applies the correct mode's derived tokens as inline `document.documentElement.style` properties (higher specificity than any CSS rule, including `DM-01`'s `:root[data-theme="dark"]` block). `applyTheme()` (the same helper `DM-03` added for the dark/light toggle) now also calls `applyRuntimePalette()` after flipping the `data-theme` attribute — necessary because an inline style on `:root` is unconditional, so the *correct* mode's derived palette has to be re-picked and re-applied every time light/dark changes, not just once on load. Before the fetch resolves (or if it fails), the cache stays empty and `applyRuntimePalette()` no-ops, so `DM-01`'s static CSS values correctly show through as the fallback.
+- **Files Changed**:
+  - `kartas-app/src/utils/systemTheme.js` — New module: color math, `deriveTokens()`, module-level cache, `applyRuntimePalette()`/`setCachedSystemTheme()`
+  - `kartas-app/src/contexts/AuthContext.jsx` — New fetch-on-session effect; `applyTheme()` now also calls `applyRuntimePalette()`
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: Included in the combined `6.5` verification pass below.
+
+---
+
+## [2026-07-29] — PAL-03 — Admin Palette Editor UI
+
+- **Author**: Claude
+- **PRD Requirement**: PAL-03
+- **Summary**: New `AdminPaletteEditor.jsx`, rendered on `Settings.jsx` (`DM-02`) only when `user.role === 'admin'`. Preset gallery: 6 thumbnails, each a rectangle split diagonally via `clip-path` polygons (one triangle = the preset's light-mode primary color, the other = its dark-mode primary) — pure CSS, no new dependency. Clicking a preset applies and persists it immediately via `PAL-01`'s `PUT`. A "Customize colors" button switches into an editing view with 18 native `<input type="color">` elements (9 `PAL-02` base categories × light/dark) — every keystroke/color pick calls a local `previewDraft()` helper that re-derives and re-applies tokens against the *actual app chrome* (not a static swatch) using the in-progress draft values, without touching the shared module cache — so "Cancel" can cleanly restore the last-saved palette via `setCachedSystemTheme(current)` instead of having to remember what it overwrote. "Save custom palette" persists the draft via the same `PUT` endpoint.
+- **Files Changed**:
+  - `kartas-app/src/components/AdminPaletteEditor.jsx` — New component
+  - `kartas-app/src/pages/Settings.jsx` — Renders it inside an admin-only "System Color Palette" card
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: Included in the combined `6.5` verification pass below.
+
+---
+
+## [2026-07-29] — PAL-02 — Curated Palette Categories & Presets
+
+- **Author**: Claude
+- **PRD Requirement**: PAL-02
+- **Summary**: Defined the 9 admin-editable base categories (Primary, Secondary, Success, Warning, Danger, Info, Neutral, Background, Text) and the HSL-based derivation rules that generate every other existing `--color-*` token from them — `deriveTokens()` in the new `systemTheme.js`. Notable design calls made while implementing this: (1) the 11-step neutral scale is generated from the "Neutral" base color's hue/saturation walked across a fixed lightness ladder (light-mode vs. dark-mode ladders, matching `DM-01`'s hand-picked values shape), except `--color-neutral-0` (always pure white, same reasoning as `DM-01`) and `--color-neutral-900` (pinned to the "Text" base value directly, so headings/body text — which read `--color-neutral-900`, not `--color-text` — stay in sync with what the admin picked as "Text" rather than silently drifting from a separately-derived "Neutral" endpoint); (2) `--color-surface` is `background` lightened by a small fixed delta, which works correctly in both directions (surfaces read lighter than the page background in both light and dark mode) without needing a mode-specific branch beyond picking the delta; (3) `--color-success-light`/`--color-danger-light`/`--color-info-light` are desaturated, mode-appropriate tints of their base hue, not fixed swatches. Defined 6 presets spanning the spectrum (Purple — matches `DM-01`'s existing default exactly — Blue, Green, Red/Rose, Orange, Teal), each with independently hand-picked light **and** dark variants rather than one hue with an inverted lightness.
+- **Files Changed**:
+  - `kartas-app/src/utils/systemTheme.js` — `BASE_CATEGORIES`, `PRESETS`, `deriveTokens()` and its HSL color-math helpers
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: Included in the combined `6.5` verification pass below.
+
+---
+
+## [2026-07-29] — PAL-01 — System Theme Settings Backend
+
+- **Author**: Claude
+- **PRD Requirement**: PAL-01
+- **Summary**: New singleton `system_theme_settings` table (`id` fixed to `1` via a `CHECK` constraint), storing the active `preset_name` (or `'custom'`) plus the resolved 9-category light/dark palettes as `JSONB`. Seeded with today's exact purple values (matching `DM-01`'s existing `:root` defaults) so the app's visual identity is unchanged until an admin actively picks something else. New `GET /api/system-settings/theme` (any authenticated user — needed so `PAL-04` can render the app's actual current colors) and `PUT /api/system-settings/theme` (`requireAdmin`-gated). Like `DM-03`'s `PUT /users/theme`, the `PUT` handler validates its input with an explicit manual guard clause (every one of the 9 categories must be present and a valid 6-digit hex string, for both `lightPalette` and `darkPalette`) rather than relying on the codebase's non-functional `validationResult()` pipeline — this endpoint correctly rejects malformed palettes with `400` despite that systemic gap.
+- **Files Changed**:
+  - `kartas-api/src/migrations/015_add_system_theme_settings.sql` — New singleton table, seeded with the current purple palette
+  - `kartas-api/src/controllers/systemSettingsController.js` — New `getTheme`/`updateTheme`
+  - `kartas-api/src/routes/systemSettings.js` — New route file (`GET` any authenticated user, `PUT` admin-only)
+  - `kartas-api/src/index.js` — Mounted at `/api/system-settings`
+- **Migration**: `015_add_system_theme_settings.sql`
+- **Status**: Done
+- **Verification**: Migration applied cleanly (confirmed the seeded row matches `DM-01`'s exact purple values via `psql`). Curl-verified with temp admin + temp member users: `GET` succeeds for any authenticated user and `401`s unauthenticated; `PUT` `403`s for a non-admin; `PUT` with an invalid hex value correctly `400`s (the manual guard, not the broken validator pipeline); `PUT` with a full valid "Blue" preset payload persists and a follow-up `GET` reflects it; reset back to the purple default (including nulling `updated_by` before deleting the temp admin, to satisfy the FK) and both temp users deleted. `npm run build` clean.
+
+---
+
+## [2026-07-29] — Dark Mode Fix: Hardcoded White Card Backgrounds (follow-up to DM-01)
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (user-reported bug after browser-testing `6.4`)
+- **Summary**: `DM-01`'s audit of color usage covered every `var(--color-*)` reference but missed inline styles that hardcoded the literal string `'white'` instead of using a variable — those never picked up the dark-mode override, so a handful of surfaces stayed white while their text (driven by `var(--color-neutral-900)`/`var(--color-text)`, both correctly inverted to a light color in dark mode) became unreadable white-on-white. Worst offender: the Kanban board's actual story/sub-task cards, plus their right-click context menus and "Move To" submenus. Found and fixed a matching instance on the Sprint Reports page's "Average Time in Status" tiles as well. All six replaced with `var(--color-surface)`, matching every other card-style container on the same pages.
+- **Files Changed**:
+  - `kartas-app/src/pages/KanbanBoard.jsx` — 5 occurrences: story/sub-task card background, right-click context menu, "Move To" submenu, sub-task context menu, sub-task "Move To" submenu
+  - `kartas-app/src/pages/Sprints.jsx` — 1 occurrence: "Average Time in Status" tile background
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: Repo-wide grep confirmed these were the only `backgroundColor: 'white'`/`background: 'white'` literals left in `kartas-app/src` — no other pages affected. `npm run build` clean. Manual browser click-through (dark mode, Kanban board + context menus + Sprint Reports) handed off to the user.
+
+---
+
+## [2026-07-29] — DM-04 — Light/Dark Toggle UI
+
+- **Author**: Claude
+- **PRD Requirement**: DM-04
+- **Summary**: Built the actual toggle control as part of the new `Settings.jsx` page (see `DM-02` entry below) — an "Appearance" card reusing the existing `.switch`/`.switch-primary` markup verbatim (same pattern as `Backlog.jsx`'s "Show completed stories" filter), bound to `user.themePreference` and calling `DM-03`'s `updateThemePreference()` on change. The UI reflects the change immediately (no reload) since `updateThemePreference()` updates React state directly.
+- **Files Changed**:
+  - `kartas-app/src/pages/Settings.jsx` — "Appearance" section with the theme toggle
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: Included in the combined `6.4` verification pass below.
+
+---
+
+## [2026-07-29] — DM-03 — Theme Preference Persistence
+
+- **Author**: Claude
+- **PRD Requirement**: DM-03
+- **Summary**: Added a genuine per-user, per-device-independent light/dark preference. New `users.theme_preference` column (`'light'` default). New `PUT /users/theme` validates `theme` is `'light'`/`'dark'` with an explicit manual guard clause (not relying on the codebase's broken `validationResult()` pipeline flagged in a prior entry — this endpoint enforces validation correctly despite that systemic gap) and persists it. `getProfile`, `login`, and `createAdmin` all now include `themePreference` in their response so the client has it immediately without an extra round-trip. `AuthContext.jsx` gained `updateThemePreference()` (follows `changePassword`'s exact `{ ...user, x: newValue }` + `localStorage` + `setUser()` pattern) plus a shared `applyTheme()` helper called from every path that resolves a user (`login`, `createAdmin`, `checkExistingAuth`'s both success and offline-fallback branches) — it keeps a dedicated `localStorage['theme']` key and the `<html data-theme>` attribute in sync with whatever the current user's preference is. To avoid a flash of the wrong theme on load, `main.jsx` reads that cached `localStorage['theme']` key **synchronously, before `ReactDOM.createRoot().render()`** — this runs before first paint and doesn't wait on the async `/users/profile` round-trip that `checkExistingAuth()` performs later to reconcile with the server.
+- **Files Changed**:
+  - `kartas-api/src/migrations/014_add_user_theme_preference.sql` — New `theme_preference` column
+  - `kartas-api/src/controllers/userController.js` — New `updateThemePreference`; `getProfile` now selects/returns `themePreference`
+  - `kartas-api/src/routes/users.js` — New `PUT /theme` route + validator
+  - `kartas-api/src/controllers/authController.js` — `login`/`createAdmin` responses include `themePreference`
+  - `kartas-app/src/contexts/AuthContext.jsx` — New `applyTheme()` helper, `updateThemePreference()` method, wired into `login`/`createAdmin`/`checkExistingAuth`
+  - `kartas-app/src/main.jsx` — Synchronous pre-paint `localStorage` theme read
+- **Migration**: `014_add_user_theme_preference.sql`
+- **Status**: Done
+- **Verification**: Migration applied cleanly (`theme_preference` confirmed `NOT NULL DEFAULT 'light'` via `\d users`). Curl-verified with a temp user: login response included `themePreference: "light"`; `PUT /users/theme {theme:"dark"}` returned `{themePreference:"dark"}` and a follow-up `GET /users/profile` reflected it; `PUT /users/theme {theme:"neon"}` correctly returned `400` (the manual guard clause, not the broken validator pipeline); reset to `"light"` and the temp user deleted. `npm run build` clean.
+
+---
+
+## [2026-07-29] — DM-02 — System-Level "Settings" Menu
+
+- **Author**: Claude
+- **PRD Requirement**: DM-02
+- **Summary**: Added a new "Settings" item to `UserDropdown.jsx` (between "My Profile" and the admin-only "User Management" entry), routing to a new system-level `/settings` page (`Settings.jsx`, modeled directly on `UserProfile.jsx`'s standalone-page layout) visible to every user regardless of role. Resolved the naming collision flagged in the PRD: the existing per-project sidebar nav item (`Sidebar.jsx` → `ProjectSettings.jsx`, which only controls a project's default landing page) was renamed from "Settings" to "Project Settings" in both the sidebar label and the page's own heading/breadcrumb, so the two distinct concepts no longer share an identical label across two different menus.
+- **Files Changed**:
+  - `kartas-app/src/components/UserDropdown.jsx` — New "Settings" link (gear icon)
+  - `kartas-app/src/pages/Settings.jsx` — New page (also hosts `DM-04`'s toggle; `PAL-03`'s admin-only palette editor will extend this same page in `6.5`)
+  - `kartas-app/src/App.jsx` — New `/settings` route
+  - `kartas-app/src/components/Sidebar.jsx` — Project-scoped "Settings" nav label renamed to "Project Settings"
+  - `kartas-app/src/pages/ProjectSettings.jsx` — Heading/breadcrumb renamed to "Project Settings" to match
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: Included in the combined `6.4` verification pass below.
+
+---
+
+## [2026-07-29] — DM-01 — Dark Mode Theme Infrastructure
+
+- **Author**: Claude
+- **PRD Requirement**: DM-01
+- **Summary**: Added a `[data-theme="dark"]` block to `index.css` (as `:root[data-theme="dark"]`) redefining every existing `--color-*` custom property plus `--shadow-*`, applied via a `data-theme` attribute on `<html>` (set by `DM-03`'s `main.jsx`/`AuthContext.jsx` work). Because the app's CSS files and inline JS styles consume colors almost exclusively via `var(--color-*)`, this required no per-component rewrites. The neutral scale is deliberately inverted in dark mode (900 = brightest/used for headings and primary text, 50 = darkest/used for subtle surface tints) — except `--color-neutral-0`, kept at pure white in both themes since it's only ever used as text-on-saturated-color (button labels, the switch thumb), which needs to stay white regardless of theme. Fixed two pre-existing latent bugs found during Phase 6 planning research, as flagged in the PRD: three "phantom" CSS variables referenced throughout the app but never declared in `:root` (`--color-text`, `--color-danger-light`, `--shadow-xl`) now have real values in both the light and dark blocks. Also gave `avatar.js`'s hardcoded `AVATAR_PALETTE` (raw hex, doesn't derive from CSS variables and so can't follow a `:root` swap automatically) a parallel `AVATAR_PALETTE_DARK`, with `getAvatarColor()` picking between them by reading `document.documentElement`'s `data-theme` attribute at call time.
+- **Files Changed**:
+  - `kartas-app/src/index.css` — New `--color-danger-light`/`--color-text`/`--shadow-xl` in `:root`; new `:root[data-theme="dark"]` block redefining every color/shadow token
+  - `kartas-app/src/utils/avatar.js` — New `AVATAR_PALETTE_DARK`; `getAvatarColor()` now theme-aware
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean. Full manual regression click-through across page types (per PRD Section 7's explicit call-out that `DM-01`/`PAL-04` are the widest-blast-radius change in the phase) handed off to the user, alongside the rest of `6.4`.
+
+---
+
+## [2026-07-29] — For You Widgets Stretch to Equal Row Height (follow-up to FY-05)
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (user-requested follow-up after browser-testing `6.3`)
+- **Summary**: The grid's `alignItems: 'start'` sized each widget `.card` to its own content height, so widgets sharing a row (e.g. a tall "My Tasks" table next to a short "Sprint Countdown") looked visually unbalanced — the shorter card's bottom edge didn't line up with its row-mates. Changed to `alignItems: 'stretch'` (CSS grid's default) — since every widget's root element is a plain `<div className="card">` with no explicit height, it now stretches to match the tallest card in its row automatically, no changes needed inside any individual widget component.
+- **Files Changed**:
+  - `kartas-app/src/pages/ForYou.jsx` — Grid `alignItems: 'start'` → `'stretch'`
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean — pure layout/CSS change, no data/logic affected. Manual browser click-through handed off to the user.
+
+---
+
+## [2026-07-29] — For You Grid Column Count (follow-up to FY-05/FY-06)
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (user-requested follow-up after browser-testing `6.3`)
+- **Summary**: `FY-05`'s grid used `repeat(auto-fit, minmax(420px, 1fr))`, which silently became 3 columns at wide viewport widths with no user control. Added an explicit 2-or-3-column choice to `FY-06`'s existing "Customize Widgets" modal (new "Layout" section, radio buttons), following the exact same independent-field partial-update pattern already established for `visibleWidgets` — a new nullable `grid_columns` column on `project_user_settings` (migration `013_add_widget_grid_columns.sql`), defaulting to 2 when unset. `ForYou.jsx`'s grid now uses `repeat(${gridColumns}, 1fr)` instead of the auto-fit rule.
+  **Discovery made while curl-verifying this change**: sending an out-of-range `gridColumns` (e.g. `5`) returned `200` instead of the expected `400` from the new `isInt({min:2,max:3})` validator. Root cause: `validationResult()` — the express-validator function that actually checks accumulated validation errors and rejects the request — is **never imported or called anywhere in the entire backend** (confirmed via a codebase-wide grep). Every `body()`/`param()` validator across every route file runs and silently attaches errors to `req`, but nothing ever reads them; requests proceed regardless of validation outcome. This is a pre-existing, systemic gap that predates this session — not a regression introduced by this change, and consistent with how every other validator in the codebase already behaved. Not fixed here (out of scope for this small follow-up — a real fix means adding a shared "check and reject" middleware and wiring it into every validated route, a much larger change than what was asked); flagged in `KICKOFF_PROMPT.md` for awareness.
+- **Files Changed**:
+  - `kartas-api/src/migrations/013_add_widget_grid_columns.sql` — New `grid_columns` column
+  - `kartas-api/src/controllers/projectController.js` — `getProjectSettings`/`updateProjectSettings` extended for `gridColumns`
+  - `kartas-api/src/routes/projects.js` — New `gridColumns` validator (decorative only, per the discovery above)
+  - `kartas-app/src/components/WidgetSettingsModal.jsx` — New "Layout" section (2/3 column radio choice), exports `DEFAULT_GRID_COLUMNS`
+  - `kartas-app/src/pages/ForYou.jsx` — Fetches/saves/applies `gridColumns`
+- **Migration**: `013_add_widget_grid_columns.sql`
+- **Status**: Done
+- **Verification**: Migration applied cleanly. Curl-verified with a temp user: default `gridColumns: 2` on a fresh settings row; `PUT {gridColumns:3}` persisted correctly; a subsequent `PUT {visibleWidgets:[...]}` (omitting `gridColumns`) left it at `3`, not reset — same partial-update guarantee as `visibleWidgets`. `npm run build` clean. Manual browser click-through handed off to the user.
+
+---
+
+## [2026-07-29] — FY-06 — Customizable "For You" Widgets
+
+- **Author**: Claude
+- **PRD Requirement**: FY-06
+- **Summary**: A "⚙️ Customize" button in the For You page header opens a new `WidgetSettingsModal.jsx` (mirroring `KanbanBoard.jsx`'s existing "Customize Columns" in-page-button-opens-modal pattern, not a dedicated settings page — this is a per-page/per-user preference, not project-wide) listing all five widgets with a checkbox each. Persistence extends `project_user_settings` (migration `012_add_widget_preferences.sql`, `visible_widgets JSONB`, `NULL` meaning "use the default set" — My Tasks + Actions History, per the PRD — rather than an empty array, so existing rows from Phase 4's default-landing-page feature aren't misread as "show nothing"). `projectController.getProjectSettings`/`updateProjectSettings` were extended (not duplicated into new endpoints) to also read/write this column — `updateProjectSettings` now resolves each field (`defaultLandingPage`, `visibleWidgets`) independently, falling back to the existing row's current value for whichever one wasn't included in a given request, so `ForYou.jsx`'s widget-only saves never clobber `ProjectSettings.jsx`'s landing-page choice and vice versa. If the saved set is empty, the page shows an empty-state placeholder pointing back at the gear icon, per the PRD.
+  Widget render order is **not** taken from the saved `visibleWidgets` array's own order (which would drift based on toggle history — e.g. re-enabling a widget moves it to the end) — `ForYou.jsx` instead filters a fixed canonical order (`WIDGET_DEFS`, exported from the new modal component) by membership in `visibleWidgets`, guaranteeing My Tasks and Actions History always read first when both are enabled, per the PRD's explicit ask.
+- **Files Changed**:
+  - `kartas-api/src/migrations/012_add_widget_preferences.sql` — New `visible_widgets` column
+  - `kartas-api/src/controllers/projectController.js` — `getProjectSettings`/`updateProjectSettings` extended for independent partial updates
+  - `kartas-api/src/routes/projects.js` — `defaultLandingPage` validator now optional, new optional `visibleWidgets` array validator
+  - `kartas-app/src/components/WidgetSettingsModal.jsx` — New; exports `WIDGET_DEFS`, `DEFAULT_WIDGETS`
+  - `kartas-app/src/pages/ForYou.jsx` — Gear icon, settings fetch/save, canonical-order widget rendering, empty-state placeholder
+- **Migration**: `012_add_widget_preferences.sql`
+- **Status**: Done
+- **Verification**: Migration applied cleanly. Curl-verified the partial-update behavior specifically (the main risk in this design): `PUT` with only `visibleWidgets` left `defaultLandingPage` at its existing value; a subsequent `PUT` with only `defaultLandingPage` left the just-saved `visibleWidgets` array completely intact rather than resetting it to `null`. `npm run build` clean. Manual browser click-through handed off to the user.
+
+---
+
+## [2026-07-29] — FY-04 — "Latest Activities" Widget
+
+- **Author**: Claude
+- **PRD Requirement**: FY-04
+- **Summary**: A new, separate widget from `ActionsHistoryWidget` (below) — per the user's explicit clarification during PRD drafting, this shows *other* people's activity, not the viewer's own. New `GET /for-you/project/:projectId/latest-activities?limit=&offset=` merges two heterogeneous sources: (1) `change_history` rows where the story/sub-task's current assignee is the caller but the actor isn't (someone else changed *my* item — resolved via a `sub_tasks` join keyed on `COALESCE(ch.entity_id, ch.story_id)` gated by `entity_type = 'sub_task'`, since a sub-task's own assignee can differ from its parent story's), and (2) `comment_mentions` rows (`CMT-04`, previously unconsumed) where the caller is the mentioned user. Since two different queries can't share one SQL `LIMIT`/`OFFSET` cleanly, both are fetched in full (capped at 200 rows each — this is a small-scale team tool, not a firehose) and merged/sorted/paginated in JS.
+  New `describeLatestActivity()` (`kartas-app/src/utils/activity.js`) narrates in third person ("John moved X to Y", "Jane mentioned you in a comment on X") — deliberately a different function from `ActionsHistoryWidget`'s `describeActivity` (first-person/imperative, "Moved X to Y"), since the two widgets describe different actors. Clicking a mention item links to `/project/:projectId/story/:storyId#comment-{commentId}` — `StoryDetail.jsx` (from `6.2`'s Comments section) already had the `id="comment-{id}"` anchor, but needed a new `useEffect` to actually scroll to and briefly highlight it, since comments render asynchronously after `fetchStory()` resolves and native browser anchor-scrolling doesn't reliably fire against a hash target that didn't exist yet at navigation time.
+- **Files Changed**:
+  - `kartas-api/src/controllers/forYouController.js` — New `getLatestActivities`
+  - `kartas-api/src/routes/forYou.js` — New `GET /project/:projectId/latest-activities` route
+  - `kartas-app/src/utils/activity.js` — New `describeLatestActivity`
+  - `kartas-app/src/components/LatestActivitiesWidget.jsx` — New
+  - `kartas-app/src/pages/StoryDetail.jsx` — New scroll-to-and-highlight-comment `useEffect`
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: Curl-verified end-to-end with two temp DB-seeded users and one fully throwaway story (created via the real API, assigned to user A, deleted at the end — its `ON DELETE CASCADE` FKs cleaned up every dependent `comments`/`change_history`/`comment_mentions` row in one shot, so real stories 4/5 were never touched, confirmed by re-checking their `assignee_id`/`status` unchanged after cleanup): user B edited the throwaway story's status and posted a comment mentioning user A → user A's `latest-activities` correctly showed both the status-change and the mention, newest-first; user B's own `latest-activities` (the actor, not the target) correctly showed neither. `npm run build` clean. Manual browser click-through handed off to the user.
+
+---
+
+## [2026-07-29] — FY-01, FY-02 — Team Workload & Sprint Countdown Widgets
+
+- **Author**: Claude
+- **PRD Requirement**: FY-01, FY-02
+- **Summary**: Two new data-visualization widgets for the active sprint, both showing the same placeholder ("There will only be data here once there's an active sprint") when `GET .../active` or the new team-workload endpoint 404s — matching the existing convention `getActiveSprint`/`getKanbanBoard` already use for "no active sprint."
+  **`FY-01` "Team Workload"**: New `GET /for-you/project/:projectId/team-workload`, grouping the active sprint's stories/sub-tasks by assignee and status (unassigned items excluded — nothing to chart them under). New `TeamWorkloadChart.jsx` renders it as a `recharts` stacked vertical bar graph (one bar per assignee, segmented by status color) — `recharts` was already a project dependency (used by `TimeInStatusChart.jsx`/`BurndownChart.jsx` in `SprintReports.jsx`), whose existing `ResponsiveContainer`/`Tooltip`/status-color-map conventions this new chart follows.
+  **`FY-02` "Sprint Countdown"**: No new backend — reuses the existing `GET /sprints/project/:projectId/active` endpoint. The widget itself reuses `KanbanBoard.jsx`'s Elapsed Time bar markup verbatim (the same visual pattern from `6.1`'s `KAN-01`), just under a more descriptive name per the PRD's explicit ask for "a good widget name."
+- **Files Changed**:
+  - `kartas-api/src/controllers/forYouController.js` — New `getTeamWorkload`
+  - `kartas-api/src/routes/forYou.js` — New `GET /project/:projectId/team-workload` route
+  - `kartas-app/src/components/TeamWorkloadChart.jsx` — New `recharts` chart
+  - `kartas-app/src/components/TeamWorkloadWidget.jsx`, `SprintCountdownWidget.jsx` — New
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: Curl-verified `team-workload` against the project's real active sprint (Sprint 1, project 4) — correctly grouped two real assignees' items by status, matching the sprint's actual story/sub-task assignments (read-only query, nothing mutated). `npm run build` clean. Manual browser click-through handed off to the user.
+
+---
+
+## [2026-07-29] — FY-05, FY-03 — Grid Layout & Widget Extraction, "Actions History" Rename
+
+- **Author**: Claude
+- **PRD Requirement**: FY-05, FY-03
+- **Summary**: `ForYou.jsx` was a single stacked-layout component with two inline sections (My Tasks table, Activity feed). With up to five widgets in this sub-phase, extracted each into its own component (`MyTasksWidget.jsx`, `ActionsHistoryWidget.jsx`) and rebuilt the page around a CSS grid (`repeat(auto-fit, minmax(420px, 1fr))`) that all widgets — including the three new ones landing later in this same sub-phase — render into as uniform `.card` items. This was done first, foundational to the rest of `6.3`, per the PRD's suggested order.
+  `FY-03`'s rename happened as part of the same extraction: `ActionsHistoryWidget.jsx` is the old "Activity" section verbatim (same `getMyActivity` query, same `describeActivity`/`activityLink` logic) — renamed to "Actions History" and its page size reduced from 20 to 10, per the PRD. Its data/behavior is otherwise byte-for-byte unchanged, per the user's explicit clarification during PRD drafting that this is **not** the same thing as the new `FY-04` "Latest Activities" widget (a separate entry, below) — this one still shows only the viewer's own actions.
+- **Files Changed**:
+  - `kartas-app/src/components/MyTasksWidget.jsx`, `ActionsHistoryWidget.jsx` — New, extracted from the old `ForYou.jsx`
+  - `kartas-app/src/pages/ForYou.jsx` — Rebuilt around a CSS grid; old inline My Tasks/Activity JSX removed
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean. Manual browser click-through handed off to the user.
+
+---
+
+## [2026-07-29] — HIST-02 — Story Detail History Section
+
+- **Author**: Claude
+- **PRD Requirement**: HIST-02
+- **Summary**: Added a "History" section to `StoryDetail.jsx` — the last section on the page, below Comments, per the PRD's explicit ordering. Consumes sub-phase 6.1's `HIST-01` endpoint (`GET /stories/:storyId/history`), fetched once on mount alongside the page's other data. Renders each entry via new `describeHistoryEntry()`/`formatRelativeTime()` helpers (new `kartas-app/src/utils/activity.js`) and a "Load more" button appends the next page (`offset = historyItems.length`) when `hasMore` is true. `describeHistoryEntry` is deliberately a lighter function than `ForYou.jsx`'s `describeActivity` — it never needs to describe or link to a *different* entity (the page itself already is the entity), so it skips the cross-entity-type/link branching that function needs. `formatRelativeTime` is genuinely shared logic though, and since this same page's new Comments section (`CMT-02`, below) also needed a relative-time formatter, extracting it now (rather than writing a third near-identical copy alongside `ForYou.jsx`'s and `UserDetail.jsx`'s existing ones) was the natural point to stop compounding that duplication — flagged as worth doing in the PRD's `FY-04` Design Note and in the prior sub-phase's kickoff prompt.
+- **Files Changed**:
+  - `kartas-app/src/utils/activity.js` — New `formatRelativeTime`, `describeHistoryEntry`
+  - `kartas-app/src/pages/StoryDetail.jsx` — History section, `fetchHistory` with offset pagination
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean. Backend endpoint already curl-verified in `HIST-01`'s entry above; no new backend surface here. Manual browser click-through handed off to the user.
+
+---
+
+## [2026-07-29] — CMT-02, CMT-03 — Comment Section UI & @Mention Autocomplete
+
+- **Author**: Claude
+- **PRD Requirement**: CMT-02, CMT-03
+- **Summary**: Added a "Comments" section to `StoryDetail.jsx`, below Sub-items — the `comments` array `GET /stories/:storyId` already returned (confirmed unused by any frontend before this) is now rendered: avatar (`AssigneeAvatarWithHoverCard`, same component used everywhere else), name, relative timestamp (with "(edited)" when `updatedAt != createdAt`), content, and Edit/Delete controls gated the same way `CMT-01`'s backend permissions are (Edit: author only; Delete: author or global admin). A plain `<textarea>` (not `MarkdownEditor` — deliberately, per the PRD's "simple text input" requirement) composes new comments.
+  New `MentionTextarea.jsx` component (mounted for both the new-comment composer and inline comment editing) implements `CMT-03`'s single-`@`-trigger autocomplete: on `@`, a regex (`/@([A-Za-z0-9][\w.\- ]{0,40})$/`) captures the in-progress term from the textarea up to the cursor, debounced 300ms (matching `UserSelect.jsx`'s existing pattern), searching `GET /users/search` and a new `GET /stories/search?projectId=&q=` in parallel and merging results into one dropdown (reusing the existing `.search-dropdown`/`.search-result-item` CSS, no new styling needed). Selecting an entry inserts plain text at the cursor — `@First Last` for a person, the bare ticket code (e.g. `RES-0002`) for a ticket — exactly as typed, no hidden markup.
+  **Scope adjustment discovered during implementation**: the PRD's ticket-mention pattern assumed all three entity types (stories/epics/sub-tasks) have a stable short code, but `sub_tasks` has no such column in the schema (only `stories.story_id` and `epics.epic_id` do). Ticket mentions/search are scoped to **stories and epics only** — sub-tasks have no stable, unique, user-facing code to link them by, and inventing one (or a permalink/anchor system for sub-items) was judged out of scope for this already-large sub-phase. New backend `GET /stories/search?projectId=&q=` (`storyController.searchStories`, registered *before* `/:storyId` in `routes/stories.js` — required, since Express would otherwise route `/search` into the `:storyId` wildcard) searches both tables by code/title, mirroring `userController.searchUsers`'s existing `ILIKE`-both-sides pattern.
+  Rendering resolved mentions as links: `getStory` now also fetches the project's members and story/epic codes once per request (not once per comment) and attaches a `mentions: { users, tickets }` array to each comment in its response — the frontend trusts this backend-resolved metadata rather than re-deriving it, so a person's name only becomes a link if they're an actual project member and a ticket code only links if it's a real ticket in this project. New `kartas-app/src/utils/mentions.jsx`'s `renderCommentContent()` turns a comment's plain text into text/link segments using that metadata (person mentions link to `UD-02`'s User Details page; story mentions to Story Detail; epic mentions to `/backlog?epic=:id`, matching the existing epic-badge-link convention used elsewhere in the app).
+- **Files Changed**:
+  - `kartas-api/src/controllers/storyController.js` — New `searchStories`; `getStory`'s comments query extended with `user_role`/`user_email` and per-comment `mentions` metadata
+  - `kartas-api/src/routes/stories.js` — New `GET /search` route (before `/:storyId`)
+  - `kartas-app/src/components/MentionTextarea.jsx` — New shared mention-autocomplete textarea
+  - `kartas-app/src/utils/mentions.jsx` — New `renderCommentContent()`
+  - `kartas-app/src/pages/StoryDetail.jsx` — Comments section, compose/edit/delete handlers
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean. `GET /stories/search?projectId=4&q=RES` curl-verified returning both story and epic matches by code/title; `q` under 2 chars returns `[]`. Manual browser click-through (typing `@`, selecting a person/ticket, posting/editing/deleting a comment) handed off to the user.
+
+---
+
+## [2026-07-29] — CMT-01, CMT-04 — Comment Edit/Delete & Mention Notifications
+
+- **Author**: Claude
+- **PRD Requirement**: CMT-01, CMT-04
+- **Summary**: New `PUT`/`DELETE /stories/:storyId/comments/:commentId` — `PUT` is author-only (403 otherwise); `DELETE` allows the author **or** a global admin (per `nextsteps.txt`'s explicit "only admins should be able to delete any comment" — no project-owner exception). Both follow the existing `addComment`'s access-check shape.
+  New `comment_mentions` table (migration `011_add_comment_mentions.sql`) tracks who was `@mentioned` in a comment, deliberately **not** reusing `change_history` — that table's `user_id` column means "who performed the action" everywhere else it's used (activity feeds, story history), and repurposing it for "who was mentioned" would invert that meaning for every other consumer. New `kartas-api/src/utils/mentions.js` exports `resolveMentionedUsers(content, projectId)` (checks project members' `"@First Last"` against the raw comment text — matching `CMT-03`'s plain-text, no-hidden-token approach) and `resolveMentionedTickets(content, projectId)`, used by `addComment` (insert `comment_mentions` rows for each newly-mentioned member, excluding self-mentions) and the new `updateComment` (deletes and fully re-resolves `comment_mentions` for that comment on every edit, rather than diffing — reflects who is *currently* mentioned, so removing an `@mention` by editing stops it from surfacing in that person's future "Latest Activities" feed, `FY-04`, which is a later sub-phase and has no consumer of this table yet). `deleteComment` needs no manual `comment_mentions` cleanup — the FK cascades.
+- **Files Changed**:
+  - `kartas-api/src/migrations/011_add_comment_mentions.sql` — New `comment_mentions` table
+  - `kartas-api/src/utils/mentions.js` — New `resolveMentionedUsers`, `resolveMentionedTickets`
+  - `kartas-api/src/controllers/storyController.js` — New `updateComment`, `deleteComment`; `addComment` extended to insert mention rows
+  - `kartas-api/src/routes/stories.js` — New `PUT`/`DELETE /:storyId/comments/:commentId` routes
+- **Migration**: `011_add_comment_mentions.sql`
+- **Status**: Done
+- **Verification**: Migration applied cleanly (`docker-compose exec api npm run migrate`). Curl-verified end-to-end via two temp DB-seeded users on a real project: user A posted a comment mentioning user B by name and a ticket by code → `comment_mentions` row created for user B; user B (non-author, non-admin) got 403 on both `PUT` and `DELETE`; user A edited the comment to remove the mention → `comment_mentions` row correctly deleted; user B temporarily promoted to `admin` → successfully deleted user A's comment (200); user A successfully deleted their own separate comment (200). All seeded users, `project_members`/`comments`/`comment_mentions`/`change_history` rows cleaned up afterward — story 4's `comments`/`change_history` counts confirmed back to baseline (0 and 11 respectively).
+
+---
+
+## [2026-07-29] — HIST-01 — Story-Scoped History Endpoint
+
+- **Author**: Claude
+- **PRD Requirement**: HIST-01
+- **Summary**: New `GET /stories/:storyId/history?limit=&offset=` returns a story's `change_history`, including its sub-tasks' changes (sub-task edits already carry the parent story's `story_id`, so no schema change was needed), paginated with the same `limit+1`-row `hasMore` pattern already used by `forYouController.getMyActivity` (default/initial page size 10, per the PRD, vs. that endpoint's 20). Comment entries are excluded — `HIST-02` (sub-phase 6.2) will show comments in their own section directly above history on the same page, so including them here would duplicate the same event. Filtered on `ch.field_changed != 'comment'` rather than `action_type != 'commented'`, since `field_changed = 'comment'` has always been set as a literal in `addComment`'s INSERT, even on rows predating migration 009's `entity_type`/`action_type` columns — more reliable than a `COALESCE`-derived default. Access-gated the same way as `GET /stories/:storyId` (project membership or global admin). No frontend UI yet — that's `HIST-02`.
+- **Files Changed**:
+  - `kartas-api/src/controllers/storyController.js` — New `getStoryHistory` method
+  - `kartas-api/src/routes/stories.js` — New `GET /:storyId/history` route
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: Curl-verified end-to-end via a temp DB-seeded test user (bcrypt-hashed, added to a real project's `project_members`, logged in for real via `POST /api/auth/login`): `GET /stories/4/history?limit=5` returned exactly 5 items ordered newest-first with `hasMore: true` against an 11-row story; a throwaway `field_changed='comment'` row inserted directly (newest `changed_at` of all rows for that story) was confirmed absent from the response even at `limit=1`, proving the exclusion filter works regardless of recency; unauthenticated request → 401; nonexistent story → 404. All seeded/inserted rows (temp user, `project_members` row, the throwaway `change_history` row) were deleted afterward — story 4's `change_history` count confirmed back to its original 11.
+
+---
+
+## [2026-07-29] — KAN-01, KAN-02, KAN-03 — Kanban Board Polish
+
+- **Author**: Claude
+- **PRD Requirement**: KAN-01, KAN-02, KAN-03
+- **Summary**: Three related `KanbanBoard.jsx` fixes/additions, implemented together since all three touch the same modals/cards.
+  **KAN-03**: Left-clicking a sub-task card previously opened `SubItemEditModal` directly in edit mode (`setSelectedSubtask`), unlike story cards which open a read-only view first. Changed the click handler to `setViewSubtask(item)` instead, matching story-card behavior — the existing read-only "View Sub-Item" modal (previously only reachable via right-click) is now also the left-click destination.
+  **KAN-02**: Added an "Edit Story" link to the read-only Story View modal's footer (navigates to `/project/:projectId/story/:storyId`, same destination as the existing right-click "Edit Story" item) and an "Edit Sub-task" link to the Sub-Item View modal's footer — this one deep-links to `/project/:projectId/story/:parentStoryId?editSubItem=:subItemId`. `StoryDetail.jsx` now reads that `editSubItem` query param (via a new `useSearchParams` hook) once `fetchStory()` resolves, looks up the matching entry in the freshly-fetched `story.subTasks` (not the Kanban-shaped object passed across pages — avoids any cross-page shape mismatch), and opens `SubItemEditModal` in edit mode via the page's existing `openEditSubItem` handler — the same path its own per-row "Edit" button already uses. The query param is stripped immediately after use (`searchParams.delete` + `setSearchParams(..., { replace: true })`) so a later refetch (e.g. after saving) or a manual page refresh doesn't reopen the modal. Together, `KAN-02`+`KAN-03` mean sub-task edit access is preserved after `KAN-03`'s view-first change — just one extra click via the new button.
+  **KAN-01**: The active-sprint header's "Elapsed Time" bar was a standalone `maxWidth: 280px` block with no siblings. Added a horizontal avatar row to its right, showing everyone currently assigned to at least one story/sub-task in the active sprint — derived client-side from the already-fetched `columns` board data (`columns.flatMap(col => col.stories)`, deduped by `assigneeId` via a `Map`), no new endpoint needed. Reuses the existing `AssigneeAvatarWithHoverCard` component unmodified, so hovering a participant shows the same name/role/email card used everywhere else in the app. Empty-participant sprints simply omit the avatar row.
+- **Files Changed**:
+  - `kartas-app/src/pages/KanbanBoard.jsx` — Sub-task card click handler, Edit buttons on both View modals, `participants` derivation + avatar row next to the Elapsed Time bar
+  - `kartas-app/src/pages/StoryDetail.jsx` — `useSearchParams`-based auto-open of `SubItemEditModal` from `?editSubItem=`
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean. Manual browser click-through handed off to the user (sub-task card → view not edit; both modals' new Edit buttons navigate correctly, including the deep-link auto-opening the right sub-item's edit modal; sprint header shows participant avatars with working hover cards).
+
+---
+
+## [2026-07-29] — UI-01 — Uniform Lateral Margins
+
+- **Author**: Claude
+- **PRD Requirement**: UI-01
+- **Summary**: The 1200px-vs-1400px width difference between Story Detail and every other project page was controlled by a single conditional: `App.jsx`'s `ProjectLayoutShell` computed `isStoryDetail` from the URL and passed it as `ProjectLayout`'s `wide` prop, which conditionally applied `maxWidth: '1400px'`. Removed the conditional entirely — `ProjectLayout.jsx`'s container now always uses `maxWidth: '1400px'`, and the now-dead `isStoryDetail`/`wide` plumbing (including the `useLocation` import, since it had no other use in the file) was deleted from both files rather than left as unused code. Every page under `ProjectLayoutShell` (Backlog, Epics, Sprints, Kanban, Reports, Team, For You, Story Detail) now shares the same lateral margins; pages outside a project (`Dashboard.jsx`, `UserManagement.jsx`, `UserProfile.jsx`) are unaffected since they never render `ProjectLayout`.
+- **Files Changed**:
+  - `kartas-app/src/App.jsx` — Removed `isStoryDetail`/`useLocation`, removed `wide` prop pass
+  - `kartas-app/src/components/ProjectLayout.jsx` — Removed `wide` prop, hardcoded `maxWidth: '1400px'`
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean. Manual browser click-through handed off to the user (confirm no layout breakage — overflowing tables, mis-sized modals — across all affected pages at the new width).
+
+---
+
+## [2026-07-29] — Phase 6 Kickoff — PRD Created
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (planning)
+- **Summary**: Phase 5 is complete (see the summary entry immediately below, and `.planning/PRD_PHASE5.md`, archived from `.planning/PRD.md`). Drafted the Phase 6 PRD (`.planning/PRD.md`) from `.planning/nextsteps.txt`, covering seven areas: Kanban polish (sprint-participant avatars, View/Edit modal parity between stories and sub-tasks, a sub-task-card-click fix), a new story comment system with `@`-mention autocomplete for people and tickets, a story change-history section, a "For You" page overhaul (two new widgets — a bar-graph "Team Workload" view and a "Sprint Countdown" elapsed-time widget — a split activity feed, a grid layout, and full per-user widget customization), a per-user dark mode reachable from a new system-level "Settings" menu, an admin-only system-wide color palette with curated presets, and uniform lateral margins across all project pages. Research pass (three parallel `Explore` agents covering Kanban/For-You internals, comments/history/activity infrastructure, and the theming/layout system) confirmed: `recharts` and `@floating-ui/react` are already dependencies (no new packages needed this phase), the `comments` table and its `POST` endpoint already exist but are completely unwired in the frontend, `change_history` already links sub-task edits to their parent story via `story_id` (no new schema needed for story-scoped history to include sub-item changes), and the app's CSS-custom-property-driven styling (consumed via `var(--color-*)` in both CSS files and inline JS styles) makes a `data-theme`-attribute theme-swap architecturally low-risk. Four design ambiguities were resolved with the user via targeted questions before finalizing: `@`-mentions use a single auto-detected trigger rather than separate syntax for people vs. tickets; "Actions History" (renamed, unchanged data) and "Latest Activities" (new: others' actions on my items + mentions of me) are two separate widgets, not one broadened feed; admin palette customization targets a curated ~9-category set with derived shades rather than every individual CSS token; and the story history section includes sub-task changes, not just story-entity ones. Four migrations anticipated (`011`–`014`, for comment mentions, widget preferences, per-user theme preference, and system-wide theme settings); requirement IDs use new prefixes (`KAN-*`, `CMT-*`, `HIST-*`, `FY-*`, `DM-*`, `PAL-*`, `UI-*`) to avoid colliding with earlier phases'.
+- **Files Changed**:
+  - `.planning/PRD.md` — Rewritten as the Phase 6 PRD (prior Phase 5 content moved to `.planning/PRD_PHASE5.md`)
+- **Migration**: N/A
+- **Status**: Done
+
+---
+
 ## [2026-07-29] — Phase 5 Complete — All PRD Requirements Delivered
 
 - **Author**: Claude

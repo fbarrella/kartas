@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import SubItemEditModal, { SUBITEM_TYPE_OPTIONS, SUBITEM_STATUS_OPTIONS } from '../components/SubItemEditModal';
 import Breadcrumb from '../components/Breadcrumb';
 import MarkdownEditor from '../components/MarkdownEditor';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import AssigneeAvatarWithHoverCard from '../components/AssigneeAvatarWithHoverCard';
+import MentionTextarea from '../components/MentionTextarea';
+import { useAuth } from '../contexts/AuthContext';
+import { renderCommentContent } from '../utils/mentions.jsx';
+import { formatRelativeTime, describeHistoryEntry } from '../utils/activity';
 import '../components/navigation.css';
 
 
@@ -29,6 +33,8 @@ const TYPE_OPTIONS = [
 const StoryDetail = () => {
     const { projectId, storyId } = useParams();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const { user } = useAuth();
 
     const [project, setProject] = useState(null);
     const [story, setStory] = useState(null);
@@ -42,6 +48,12 @@ const StoryDetail = () => {
     const [showSubItemModal, setShowSubItemModal] = useState(false);
     const [editingSubItem, setEditingSubItem] = useState(null); // null = create mode
     const [isEditingDescription, setIsEditingDescription] = useState(false);
+    const [newComment, setNewComment] = useState('');
+    const [editingCommentId, setEditingCommentId] = useState(null);
+    const [editCommentText, setEditCommentText] = useState('');
+    const [historyItems, setHistoryItems] = useState([]);
+    const [historyHasMore, setHistoryHasMore] = useState(false);
+    const HISTORY_PAGE_SIZE = 10;
 
     const [formData, setFormData] = useState({
         title: '',
@@ -60,7 +72,24 @@ const StoryDetail = () => {
         fetchMembers();
         fetchEpics();
         fetchSprints();
+        fetchHistory(0);
     }, [projectId, storyId]);
+
+    // FY-04's "Latest Activities" widget links directly to a comment
+    // (#comment-{id}). Native browser anchor-scrolling doesn't reliably fire
+    // here since comments render asynchronously after fetchStory() resolves —
+    // by the time the hash target exists in the DOM, the initial navigation's
+    // scroll attempt has already happened (or never found the element).
+    useEffect(() => {
+        if (!story || !window.location.hash.startsWith('#comment-')) return;
+        const el = document.querySelector(window.location.hash);
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.style.transition = 'background-color 0.3s ease';
+        el.style.backgroundColor = 'var(--color-info-light)';
+        const timeout = setTimeout(() => { el.style.backgroundColor = ''; }, 2000);
+        return () => clearTimeout(timeout);
+    }, [story]);
 
     const fetchProject = async () => {
         try {
@@ -75,6 +104,18 @@ const StoryDetail = () => {
         try {
             const response = await api.get(`/stories/${storyId}`);
             setStory(response.data);
+
+            const editSubItemId = searchParams.get('editSubItem');
+            if (editSubItemId) {
+                const item = response.data.subTasks?.find(st => st.id === parseInt(editSubItemId));
+                if (item) {
+                    setEditingSubItem(item);
+                    setShowSubItemModal(true);
+                }
+                searchParams.delete('editSubItem');
+                setSearchParams(searchParams, { replace: true });
+            }
+
             setFormData({
                 title: response.data.title || '',
                 description: response.data.description || '',
@@ -117,6 +158,53 @@ const StoryDetail = () => {
             setSprints(response.data.filter(s => s.status !== 'completed'));
         } catch (error) {
             console.error('Error fetching sprints:', error);
+        }
+    };
+
+    const fetchHistory = async (offset) => {
+        try {
+            const response = await api.get(`/stories/${storyId}/history?limit=${HISTORY_PAGE_SIZE}&offset=${offset}`);
+            setHistoryItems(prev => offset === 0 ? response.data.items : [...prev, ...response.data.items]);
+            setHistoryHasMore(response.data.hasMore);
+        } catch (error) {
+            console.error('Error fetching history:', error);
+        }
+    };
+
+    const handlePostComment = async () => {
+        if (!newComment.trim()) return;
+        try {
+            await api.post(`/stories/${storyId}/comments`, { content: newComment.trim() });
+            setNewComment('');
+            await fetchStory();
+        } catch (error) {
+            setError(error.response?.data?.error || 'Failed to post comment');
+        }
+    };
+
+    const openEditComment = (comment) => {
+        setEditingCommentId(comment.id);
+        setEditCommentText(comment.content);
+    };
+
+    const handleSaveCommentEdit = async (commentId) => {
+        try {
+            await api.put(`/stories/${storyId}/comments/${commentId}`, { content: editCommentText.trim() });
+            setEditingCommentId(null);
+            setEditCommentText('');
+            await fetchStory();
+        } catch (error) {
+            setError(error.response?.data?.error || 'Failed to update comment');
+        }
+    };
+
+    const handleDeleteComment = async (commentId) => {
+        if (!confirm('Delete this comment?')) return;
+        try {
+            await api.delete(`/stories/${storyId}/comments/${commentId}`);
+            await fetchStory();
+        } catch (error) {
+            setError(error.response?.data?.error || 'Failed to delete comment');
         }
     };
 
@@ -547,6 +635,134 @@ const StoryDetail = () => {
                     })
                 ) : (
                     <div className="text-small text-muted">No sub-items yet</div>
+                )}
+            </div>
+
+            {/* Comments Section */}
+            <div className="card mt-md">
+                <div className="card-header">
+                    <h3 className="card-title">Comments</h3>
+                </div>
+
+                {story.comments && story.comments.length > 0 ? (
+                    story.comments.map(comment => (
+                        <div
+                            key={comment.id}
+                            id={`comment-${comment.id}`}
+                            className="flex flex-gap-sm mb-md"
+                            style={{ alignItems: 'flex-start' }}
+                        >
+                            <AssigneeAvatarWithHoverCard
+                                assigneeId={comment.userId}
+                                assigneeName={comment.userName}
+                                assigneeRole={comment.userRole}
+                                assigneeEmail={comment.userEmail}
+                                projectId={projectId}
+                            />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <div className="flex flex-between" style={{ alignItems: 'center' }}>
+                                    <span style={{ fontWeight: 'var(--font-weight-semibold)' }}>{comment.userName}</span>
+                                    <span className="text-muted" style={{ fontSize: 'var(--font-size-xs)' }}>
+                                        {formatRelativeTime(comment.updatedAt)}
+                                        {comment.updatedAt !== comment.createdAt && ' (edited)'}
+                                    </span>
+                                </div>
+
+                                {editingCommentId === comment.id ? (
+                                    <div className="mt-xs">
+                                        <MentionTextarea
+                                            value={editCommentText}
+                                            onChange={setEditCommentText}
+                                            projectId={projectId}
+                                            rows={2}
+                                        />
+                                        <div className="flex flex-gap-sm mt-xs">
+                                            <button onClick={() => handleSaveCommentEdit(comment.id)} className="btn btn-primary btn-sm">
+                                                Save
+                                            </button>
+                                            <button onClick={() => setEditingCommentId(null)} className="btn btn-secondary btn-sm">
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="mt-xs" style={{ whiteSpace: 'pre-wrap' }}>
+                                            {renderCommentContent(comment.content, comment.mentions?.users, comment.mentions?.tickets, projectId)}
+                                        </div>
+                                        {(comment.userId === user?.id || user?.role === 'admin') && (
+                                            <div className="flex flex-gap-sm mt-xs">
+                                                {comment.userId === user?.id && (
+                                                    <button onClick={() => openEditComment(comment)} className="btn btn-secondary btn-sm">
+                                                        Edit
+                                                    </button>
+                                                )}
+                                                <button onClick={() => handleDeleteComment(comment.id)} className="btn btn-danger btn-sm">
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    ))
+                ) : (
+                    <div className="text-small text-muted mb-md">No comments yet</div>
+                )}
+
+                <div className="mt-md" style={{ borderTop: '1px solid var(--color-border)', paddingTop: 'var(--spacing-md)' }}>
+                    <MentionTextarea
+                        value={newComment}
+                        onChange={setNewComment}
+                        projectId={projectId}
+                        placeholder="Write a comment... use @ to mention a person or ticket"
+                        rows={2}
+                    />
+                    <button
+                        onClick={handlePostComment}
+                        disabled={!newComment.trim()}
+                        className="btn btn-primary btn-sm mt-sm"
+                    >
+                        Post Comment
+                    </button>
+                </div>
+            </div>
+
+            {/* History Section */}
+            <div className="card mt-md">
+                <div className="card-header">
+                    <h3 className="card-title">History</h3>
+                </div>
+
+                {historyItems.length > 0 ? (
+                    historyItems.map(item => (
+                        <div
+                            key={item.id}
+                            className="flex flex-between mb-sm"
+                            style={{
+                                padding: 'var(--spacing-sm) 0',
+                                borderBottom: '1px solid var(--color-border)',
+                                alignItems: 'center'
+                            }}
+                        >
+                            <span>{describeHistoryEntry(item)}</span>
+                            <span className="text-muted" style={{ fontSize: 'var(--font-size-xs)', flexShrink: 0, marginLeft: 'var(--spacing-md)' }}>
+                                {formatRelativeTime(item.changedAt)}
+                            </span>
+                        </div>
+                    ))
+                ) : (
+                    <div className="text-small text-muted">No history yet</div>
+                )}
+
+                {historyHasMore && (
+                    <button
+                        onClick={() => fetchHistory(historyItems.length)}
+                        className="btn btn-secondary btn-sm mt-sm"
+                    >
+                        Load more
+                    </button>
                 )}
             </div>
 

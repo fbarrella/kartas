@@ -210,7 +210,7 @@ const SprintWithMetrics = ({ sprint, projectId, onEnd, navigate }) => {
                                 {metrics.timeInStatus.map((item) => (
                                     <div key={item.status} style={{
                                         padding: 'var(--spacing-sm)',
-                                        backgroundColor: 'white',
+                                        backgroundColor: 'var(--color-surface)',
                                         borderRadius: 'var(--radius-sm)',
                                         border: '1px solid var(--color-border)'
                                     }}>

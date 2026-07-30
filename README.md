@@ -70,6 +70,15 @@ A modern, comprehensive alternative to Jira for agile team management, built wit
 - **Assignee Management**: Stories and sub-tasks can be unassigned (cleared back to "Unassigned") from every editor, plus a dedicated "Remove Assignee" action in the Kanban board's right-click menus, which also gained full "View"/"Edit" sub-item actions and viewport-aware positioning (menus flip to stay on-screen near screen edges)
 - **Filter UI Polish**: The Backlog's and Epics' "Show completed" toggles now match the app's lever-switch styling used elsewhere, and the Backlog's filter bar is reorganized into a denser, less cluttered layout
 
+### Phase 6 Additions
+- **Kanban Polish**: Sprint-participant avatars next to the active-sprint header's elapsed-time bar; "View"/"Edit" parity between story and sub-task quick-view modals; clicking a sub-task card now opens a read-only view first (matching story cards) instead of jumping straight to edit
+- **Story Comments & Mentions**: A comment section on the Story Detail page — post, edit (author-only), and delete (author or admin) — with a single `@`-trigger autocomplete for both people and tickets (stories/epics). Mentioned users and referenced tickets render as clickable links; mentioning someone surfaces it in their "Latest Activities" feed
+- **Story Change History**: A paginated "History" section on the Story Detail page showing the story's (and its sub-tasks') full change trail, excluding comments (which have their own section)
+- **"For You" Page Overhaul**: A customizable widget grid (2 or 3 columns, admin's choice) with a gear-icon settings modal — "My Tasks", "Actions History" (your own actions, renamed from "Activity"), the new "Latest Activities" (others' actions on your items, plus mentions of you), "Team Workload" (a per-assignee stacked bar chart for the active sprint), and "Sprint Countdown" (the Kanban elapsed-time bar, as its own widget)
+- **Dark Mode**: A per-user light/dark preference, reachable from a new system-level "Settings" page (linked from the user dropdown menu), applied instantly with no flash of the wrong theme on load
+- **Admin-Customizable Color Palette**: A system-wide, admin-only color scheme editor on the same Settings page — 6 curated presets (Purple, Blue, Green, Red/Rose, Orange, Teal) with hand-picked light and dark variants, or a fully custom palette across 9 base categories per mode, with live preview against the actual app before saving
+- **UI Consistency**: Every in-project page now shares the same wider (1400px) content margin that Story Detail introduced in an earlier phase
+
 ### Additional Features
 - **Story Detail Page**: Full-page view with all story information
 - **Team Collaboration**: Assign stories to team members
@@ -181,6 +190,7 @@ This project is being developed in phases:
 - **Phase 3**: ✅ UI/UX improvements, epic enhancements, and advanced features
 - **Phase 4**: ✅ Critical fixes & UI polish · ✅ Backlog/epic hardening · ✅ Kanban header context · ✅ Sub-tasks system · ✅ Access control refinements · ✅ Email invitations & admin-created users · ✅ "For You" personal dashboard
 - **Phase 5**: ✅ Navigation overhaul (top bar, breadcrumbs, sidebar project header) · ✅ Markdown descriptions (stories, epics, sub-items) · ✅ People-centric Kanban (avatar assignees, hover cards) · ✅ Per-project User Details page · ✅ Assignee management (unassign, Kanban context-menu parity) · ✅ Filter UI polish
+- **Phase 6**: ✅ Kanban polish (participant avatars, view/edit modal parity) · ✅ Story comments & @mentions (people and tickets) · ✅ Story change history · ✅ "For You" page overhaul (customizable widget grid, Team Workload chart, Sprint Countdown, Latest Activities) · ✅ Dark mode · ✅ Admin-customizable system color palette · ✅ Uniform page margins
 
 See [`DEVLOG.md`](./DEVLOG.md) for the detailed, dated changelog of every change, across every phase.
 

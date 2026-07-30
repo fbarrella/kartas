@@ -22,7 +22,9 @@ const validateAddMember = [
 ];
 
 const validateSettingsUpdate = [
-    body('defaultLandingPage').isIn(['for-you', 'backlog', 'epics', 'sprints', 'kanban', 'reports', 'team'])
+    body('defaultLandingPage').optional().isIn(['for-you', 'backlog', 'epics', 'sprints', 'kanban', 'reports', 'team']),
+    body('visibleWidgets').optional().isArray(),
+    body('gridColumns').optional().isInt({ min: 2, max: 3 })
 ];
 
 // All routes require authentication
