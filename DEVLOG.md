@@ -60,6 +60,20 @@ Development log for all Kartas changes, across every phase. Each entry records w
 
 ---
 
+## [2026-07-30] — Fix: CLONE-01 Assignee Not Reset (follow-up to CLONE-01)
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (user-reported spec gap after browser-testing `7.2`)
+- **Summary**: The user found that cloning a story kept the original assignee on both the cloned story and any cloned sub-tasks. This traced back to a gap in the original `CLONE-01` requirement itself (the user's own oversight when it was written) — the PRD explicitly said the story's `assigneeId` should be copied and sub-task assignees carried over, rather than reset. Confirmed with the user this should be unassigned across the board: both the cloned story and every cloned sub-task now come out with no assignee, a genuine "clean slate" clone rather than a partial one. `.planning/PRD.md`'s `CLONE-01` acceptance criteria updated to match the corrected behavior, so the planning doc stays accurate.
+- **Files Changed**:
+  - `kartas-api/src/controllers/storyController.js` — `cloneStory`'s story INSERT now hardcodes `assignee_id` to `NULL` instead of binding the source's value; the sub-task copy's `SELECT` list does the same for its `assignee_id` column
+  - `.planning/PRD.md` — `CLONE-01`'s acceptance criteria corrected
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: Curl-verified with a temp user: created a source story with an assignee and an assigned sub-task, cloned with `includeSubtasks: true`, confirmed the response's `assigneeId` is `null` and the cloned sub-task's `assignee_id` is `NULL` in the database. All seeded test data cleaned up afterward.
+
+---
+
 ## [2026-07-30] — Fix: Migrate Modal Stuck Open After Success (follow-up to MIG-02)
 
 - **Author**: Claude

@@ -106,12 +106,12 @@ export const storyController = {
                     story_id, project_id, epic_id, type, title, description,
                     story_points, assignee_id, creator_id, status, is_blocked
                 )
-                VALUES ($1, $2, NULL, $3, $4, $5, $6, $7, $8, 'backlog', false)
+                VALUES ($1, $2, NULL, $3, $4, $5, $6, NULL, $7, 'backlog', false)
                 RETURNING *`,
                 [
                     newStoryCode, source.project_id, source.type,
                     `[CLONE] ${source.title}`, source.description,
-                    source.story_points, source.assignee_id, userId
+                    source.story_points, userId
                 ]
             );
             const clone = insertResult.rows[0];
@@ -125,7 +125,7 @@ export const storyController = {
             if (includeSubtasks) {
                 await query(
                     `INSERT INTO sub_tasks (story_id, type, title, description, status, assignee_id, story_points)
-                     SELECT $1, type, title, description, 'backlog', assignee_id, story_points
+                     SELECT $1, type, title, description, 'backlog', NULL, story_points
                      FROM sub_tasks WHERE story_id = $2`,
                     [clone.id, source.id]
                 );
