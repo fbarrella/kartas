@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useOutletContext, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import Breadcrumb from '../components/Breadcrumb';
+import CloneStoryModal from '../components/CloneStoryModal';
 import ColorDropdown from '../components/ColorDropdown';
 import MarkdownEditor from '../components/MarkdownEditor';
 import MarkdownRenderer from '../components/MarkdownRenderer';
@@ -41,6 +42,7 @@ const Backlog = () => {
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [selectedStory, setSelectedStory] = useState(null);
+    const [showCloneModal, setShowCloneModal] = useState(false);
     const [selectedStories, setSelectedStories] = useState([]);
     const [selectedSprint, setSelectedSprint] = useState('');
     const [selectedAssignee, setSelectedAssignee] = useState('');
@@ -1013,6 +1015,12 @@ const Backlog = () => {
 
                         <div className="mt-lg flex flex-gap-sm" style={{ justifyContent: 'flex-end', flexShrink: 0 }}>
                             <button
+                                onClick={() => setShowCloneModal(true)}
+                                className="btn btn-secondary"
+                            >
+                                Clone
+                            </button>
+                            <button
                                 onClick={() => setSelectedStory(null)}
                                 className="btn btn-secondary"
                             >
@@ -1021,6 +1029,18 @@ const Backlog = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {showCloneModal && selectedStory && (
+                <CloneStoryModal
+                    story={selectedStory}
+                    onClose={() => setShowCloneModal(false)}
+                    onCloned={(newStory) => {
+                        setStories([newStory, ...stories]);
+                        setShowCloneModal(false);
+                        setSelectedStory(null);
+                    }}
+                />
             )}
         </>
     );

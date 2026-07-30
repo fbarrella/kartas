@@ -4,6 +4,75 @@ Development log for all Kartas changes, across every phase. Each entry records w
 
 ---
 
+## [2026-07-30] — CLONE-01 — Clone Story Backend
+
+- **Author**: Claude
+- **PRD Requirement**: CLONE-01
+- **Summary**: New `POST /stories/:storyId/clone`, body `{ includeSubtasks }`. Creates a new story in the same project — `title` prefixed `"[CLONE] "`, `description`/`type`/`storyPoints`/`assigneeId` copied, `epicId`/`status`/`isBlocked` reset to defaults (`NULL`/`'backlog'`/`false`), a fresh `story_id` generated via the existing `generateNextStoryId`, and `creatorId` set to whoever clicked Clone (not carried over from the source, matching `createStory`'s own precedent). Tags carry over (first-ever `INSERT INTO story_tags` in the codebase — only reads existed before). When `includeSubtasks` is true, every sub-task is copied with its status reset to `backlog`. No sprint/comment/history rows carry over — the clone gets its own fresh `change_history` "created" row instead, exactly like any other new story. `isBlocked` is deliberately included in the response, correcting a pre-existing inconsistency where `createStory`'s own response omits it despite the column existing.
+- **Files Changed**:
+  - `kartas-api/src/controllers/storyController.js` — new `cloneStory` method
+  - `kartas-api/src/routes/stories.js` — new `POST /:storyId/clone` route + `validateStoryClone`
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: Curl-verified end-to-end with a temp project member: cloned a real story (with a sub-task and a tag attached) with `includeSubtasks: true` — confirmed the new story's fields, the sub-task copied with status reset to `backlog`, the tag copied, and a fresh `creation` `change_history` row, with no `sprint_stories` rows. Also verified `includeSubtasks: false` skips the sub-task copy, an invalid `includeSubtasks` type correctly `400`s (the manual guard, not the non-functional `validationResult()` pipeline), a nonexistent story `404`s, and a non-project-member `403`s. All seeded test data (2 temp users, 3 temp stories, 1 temp tag) cleaned up afterward. Known pre-existing `generateNextStoryId` race condition (no row lock) is inherited as-is, consistent with `createStory`'s existing risk — not addressed in this requirement. Frontend UI (`CLONE-02`) not yet built — no browser click-through possible yet for this piece.
+
+---
+
+## [2026-07-30] — CLONE-02 — Clone Story UI
+
+- **Author**: Claude
+- **PRD Requirement**: CLONE-02
+- **Summary**: New shared `CloneStoryModal.jsx` — a Yes/No prompt ("include sub-tasks?") calling `CLONE-01`'s endpoint, with two explicit choice buttons rather than a checkbox + single confirm, per the PRD's "not a silent default." Reused across both trigger points rather than duplicating the modal in two already-large page files. Added a "Clone" button to `StoryDetail.jsx`'s existing actions toolbar (next to "Save Changes") and to `Backlog.jsx`'s existing Story Details Modal footer (next to "Close") — the latter avoids adding a new table column or action menu, neither of which exists anywhere in the app today, and mirrors the Phase 6 `KAN-02` precedent of adding an action to an existing quick-view modal. Post-clone behavior differs correctly by context: from `Backlog.jsx` (same route), the new `[CLONE]` story is prepended directly into local `stories` state — mirroring `handleCreateStory`'s existing exact pattern — with zero refetch or navigation; from `StoryDetail.jsx` (different route), `navigate()`s to the Backlog page, which mounts fresh and fetches the new clone automatically.
+- **Files Changed**:
+  - `kartas-app/src/components/CloneStoryModal.jsx` — new component
+  - `kartas-app/src/pages/StoryDetail.jsx` — "Clone" button + modal wiring
+  - `kartas-app/src/pages/Backlog.jsx` — "Clone" button in the Story Details Modal footer + modal wiring, prepends the new story into local state on success
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean; confirmed via `docker-compose logs app` that Vite HMR picked up all files with no errors. No browser-automation tool available this session — manual click-through (clone from both Story Detail and a Backlog row's quick-view modal, confirm the Yes/No sub-task prompt, confirm the new `[CLONE]` story lands in the Backlog's general table in both cases) handed off to the user.
+
+---
+
+## [2026-07-30] — MIG-01 — Migrate Story to Another Project Backend
+
+- **Author**: Claude
+- **PRD Requirement**: MIG-01
+- **Summary**: New `POST /stories/:storyId/migrate`, body `{ targetProjectId }`. Confirmed via prior investigation that `updateStory` never reads/writes `project_id` — this is genuinely new ground, not extending existing logic. Requires the requester to be `project_owner`/`admin` of the **source** project (the same project-scoped owner-check pattern already established in `epicController.js`'s `createEpic`/`updateEpic`/`deleteEpic`) and a plain member of the **target** project. On success: generates a new `story_id` under the target's ticket prefix (the old code is meaningless there), resets `epic_id` to `NULL`, deletes all `sprint_stories` rows for the story (sprints are project-scoped), and writes a `change_history` audit row (`field_changed: 'project'`, old/new project names, `action_type: 'migrated'`) — using the **target** project's id on that row, so the migration event surfaces in the destination's activity feed going forward (`forYouController.js`'s feed prefers the stored `change_history.project_id` via `COALESCE`). Prior `change_history` rows keep their original source `project_id`, per the requirement's explicit "leave history untouched" — an accepted side effect is that the source project's own activity feed keeps showing this story's pre-migration history indefinitely, even after it's moved. `sub_tasks`/`comments`/prior history stay correctly attached since they key on the story's numeric `id`, not its project-scoped code. Unlike every other multi-statement flow in this codebase (which are all un-transacted), the three mutating statements here run inside a real `BEGIN`/`COMMIT`/`ROLLBACK` transaction — a deliberate, scoped exception, since a partial failure here (e.g. the project move succeeding but the sprint cleanup failing) would leave a materially worse cross-project inconsistency than anything else in the app risks today.
+- **Files Changed**:
+  - `kartas-api/src/controllers/storyController.js` — new `migrateStory` method, new `pool` import (for the transaction)
+  - `kartas-api/src/routes/stories.js` — new `POST /:storyId/migrate` route + `validateStoryMigrate`
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: Curl-verified end-to-end with two temp users across two real projects: successful migration confirmed the new story code under the target's prefix, `epicId` reset, `sprint_stories` cleared, and both the untouched original `creation` history row (source project_id) and the new `migrated` row (target project_id) present. Verified rejections: same-project migration (`400`), missing `targetProjectId` (`400`), nonexistent story (`404`), nonexistent target project (`404`), a plain member (not owner) of the source project (`403`), and an owner of the source who isn't a member of the target (`403`). All seeded test data (3 temp users, 2 temp stories, project memberships) cleaned up afterward. Frontend UI (`MIG-02`) not yet built. Note: the response's `storyId` field is the new human-readable code, **not** the identifier the frontend should navigate with — the URL route needs the unchanged numeric `id` field instead, flagged here for whoever implements `MIG-02` next.
+
+---
+
+## [2026-07-30] — MIG-02 — Migrate Story to Another Project UI
+
+- **Author**: Claude
+- **PRD Requirement**: MIG-02
+- **Summary**: New "Migrate to another project" button in `StoryDetail.jsx`'s actions toolbar, visible only when `canMigrate` — the current user is `owner`/`admin` of the current project (same `myRole`/`canManageMembers` idiom already used in `ProjectView.jsx`/`Epics.jsx`, reusing `project.members` already fetched by the page's existing `fetchProject()`, no new per-project fetch needed) **and** belongs to at least one other project (a new `fetchOtherProjects()` call added to the page's existing initial-fetch `useEffect`, hitting `GET /projects` and filtering out the current one). The modal (inline state, matching this page's existing convention of keeping its own modals local rather than extracted components) offers a target-project `<select>`, an explicit warning that epic assignment and sprint membership will be cleared, and a disabled-until-selected "Migrate" button. On success, navigates using the response's `id` (the unchanged numeric primary key) and `projectId` (the new target) — **not** the response's `storyId` field, which is the new human-readable code and not what the `/project/:projectId/story/:storyId` route actually expects in its `:storyId` segment (flagged explicitly in `MIG-01`'s own DEVLOG entry as a gotcha for this piece).
+- **Files Changed**:
+  - `kartas-app/src/pages/StoryDetail.jsx` — new `otherProjects`/`showMigrateModal`/`migrateTargetId`/`migrating`/`migrateError` state, `fetchOtherProjects()`, `handleMigrate()`, `myRole`/`canMigrate` gate, conditional toolbar button, and the migrate modal
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean; confirmed via `docker-compose logs app`/`api` that both containers picked up all changes with no errors. No browser-automation tool available this session — manual click-through (confirm the button is hidden for a plain member or for an owner with only one project, confirm it appears for a qualifying owner/admin, pick a target project, confirm the warning text, confirm a successful migrate lands on the story's new URL under the target project) handed off to the user.
+
+---
+
+## [2026-07-30] — Fix: Migrate Modal Stuck Open After Success (follow-up to MIG-02)
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (user-reported bug after browser-testing `7.2`)
+- **Summary**: The user reported that after a successful migration, the page correctly navigated to the story's new URL under the target project, but the "Migrating..." modal stayed stuck open on top of it, requiring a manual page refresh. Root cause: `handleMigrate`'s post-success `navigate()` call only changes the `:projectId`/`:storyId` **params** of the same route (`/project/:projectId/story/:storyId` → `<StoryDetail />`) — React Router does not unmount/remount a component when only its own route's params change, it just re-renders with new `useParams()` values. This component's local state (`showMigrateModal`, `migrating`) therefore survived the navigation untouched, since nothing had ever reset it (the assumption in the original implementation was that navigating to a "different" URL would remount the page, which is only true when the *route itself* differs — as it correctly does for `CLONE-02`'s clone-then-navigate-to-Backlog case, an unrelated route). Fixed by explicitly resetting `showMigrateModal`/`migrating`/`migrateTargetId` right before the `navigate()` call in the success branch, rather than relying on a remount that was never actually happening.
+- **Files Changed**:
+  - `kartas-app/src/pages/StoryDetail.jsx` — `handleMigrate`'s success branch now explicitly closes/resets migrate-modal state before navigating
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean; confirmed via `docker-compose logs app` that Vite HMR picked up the change with no errors. Manual re-check of a successful migration (confirm the modal closes cleanly and the page is immediately usable with no refresh needed) handed off to the user.
+
+---
+
 ## [2026-07-30] — Dark Mode Fix: Tooltip White-on-White (follow-up to TT-01)
 
 - **Author**: Claude

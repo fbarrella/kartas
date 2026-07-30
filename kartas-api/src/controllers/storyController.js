@@ -1,4 +1,5 @@
 import { query } from '../config/database.js';
+import pool from '../config/database.js';
 import { generateNextStoryId } from '../utils/ticketPrefix.js';
 import { resolveMentionedUsers, resolveMentionedTickets } from '../utils/mentions.js';
 
@@ -67,6 +68,205 @@ export const storyController = {
             });
         } catch (error) {
             console.error('Error creating story:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
+    // Clone a story (CLONE-01) — copies main properties/description into a new
+    // story in the same project; resets sprint/epic/status history, since the
+    // clone is a genuinely new entity, not a copy of the source's activity.
+    async cloneStory(req, res) {
+        try {
+            const { storyId } = req.params;
+            const { includeSubtasks } = req.body;
+            const userId = req.user.userId;
+
+            if (includeSubtasks !== undefined && typeof includeSubtasks !== 'boolean') {
+                return res.status(400).json({ error: 'includeSubtasks must be a boolean' });
+            }
+
+            const sourceResult = await query('SELECT * FROM stories WHERE id = $1', [storyId]);
+            if (sourceResult.rows.length === 0) {
+                return res.status(404).json({ error: 'Story not found' });
+            }
+            const source = sourceResult.rows[0];
+
+            const accessCheck = await query(
+                'SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2',
+                [source.project_id, userId]
+            );
+            if (accessCheck.rows.length === 0 && req.user.role !== 'admin') {
+                return res.status(403).json({ error: 'Access denied' });
+            }
+
+            const newStoryCode = await generateNextStoryId(source.project_id);
+
+            const insertResult = await query(
+                `INSERT INTO stories (
+                    story_id, project_id, epic_id, type, title, description,
+                    story_points, assignee_id, creator_id, status, is_blocked
+                )
+                VALUES ($1, $2, NULL, $3, $4, $5, $6, $7, $8, 'backlog', false)
+                RETURNING *`,
+                [
+                    newStoryCode, source.project_id, source.type,
+                    `[CLONE] ${source.title}`, source.description,
+                    source.story_points, source.assignee_id, userId
+                ]
+            );
+            const clone = insertResult.rows[0];
+
+            await query(
+                `INSERT INTO story_tags (story_id, tag_id)
+                 SELECT $1, tag_id FROM story_tags WHERE story_id = $2`,
+                [clone.id, source.id]
+            );
+
+            if (includeSubtasks) {
+                await query(
+                    `INSERT INTO sub_tasks (story_id, type, title, description, status, assignee_id, story_points)
+                     SELECT $1, type, title, description, 'backlog', assignee_id, story_points
+                     FROM sub_tasks WHERE story_id = $2`,
+                    [clone.id, source.id]
+                );
+            }
+
+            await query(
+                `INSERT INTO change_history (story_id, user_id, field_changed, old_value, new_value, entity_type, entity_id, project_id, action_type)
+                 VALUES ($1, $2, 'creation', NULL, $3, 'story', $1, $4, 'created')`,
+                [clone.id, userId, clone.title, clone.project_id]
+            );
+
+            res.status(201).json({
+                id: clone.id,
+                storyId: clone.story_id,
+                projectId: clone.project_id,
+                epicId: clone.epic_id,
+                type: clone.type,
+                status: clone.status,
+                title: clone.title,
+                description: clone.description,
+                storyPoints: clone.story_points,
+                assigneeId: clone.assignee_id,
+                creatorId: clone.creator_id,
+                isBlocked: clone.is_blocked,
+                createdAt: clone.created_at,
+                updatedAt: clone.updated_at
+            });
+        } catch (error) {
+            console.error('Error cloning story:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
+    // Migrate a story to another project (MIG-01). Restricted to a
+    // project_owner/admin of the SOURCE project who is also a member of the
+    // TARGET project. Resets sprint history and epic — both are project-scoped
+    // concepts that don't carry meaning across projects — everything else
+    // (sub-tasks, comments, prior change_history, tags) moves as-is since they
+    // key on the story's numeric id, not its project-scoped human-readable code.
+    async migrateStory(req, res) {
+        const { storyId } = req.params;
+        const { targetProjectId } = req.body;
+        const userId = req.user.userId;
+        const isAdmin = req.user.role === 'admin';
+
+        if (!targetProjectId || !Number.isInteger(Number(targetProjectId))) {
+            return res.status(400).json({ error: 'targetProjectId is required' });
+        }
+
+        try {
+            const sourceResult = await query(
+                `SELECT s.*, p.name as project_name FROM stories s JOIN projects p ON s.project_id = p.id WHERE s.id = $1`,
+                [storyId]
+            );
+            if (sourceResult.rows.length === 0) {
+                return res.status(404).json({ error: 'Story not found' });
+            }
+            const source = sourceResult.rows[0];
+
+            if (Number(targetProjectId) === source.project_id) {
+                return res.status(400).json({ error: 'Story is already in that project' });
+            }
+
+            // Source project: owner/admin only (same pattern as epicController's createEpic)
+            const ownerCheck = await query(
+                `SELECT pm.role FROM project_members pm WHERE pm.project_id = $1 AND pm.user_id = $2 AND pm.role = 'owner'`,
+                [source.project_id, userId]
+            );
+            if (ownerCheck.rows.length === 0 && !isAdmin) {
+                return res.status(403).json({ error: 'Only project owners can migrate stories' });
+            }
+
+            const targetResult = await query('SELECT name FROM projects WHERE id = $1', [targetProjectId]);
+            if (targetResult.rows.length === 0) {
+                return res.status(404).json({ error: 'Target project not found' });
+            }
+
+            // Target project: plain membership required
+            const targetMemberCheck = await query(
+                'SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2',
+                [targetProjectId, userId]
+            );
+            if (targetMemberCheck.rows.length === 0 && !isAdmin) {
+                return res.status(403).json({ error: 'Access denied to target project' });
+            }
+
+            const newStoryCode = await generateNextStoryId(targetProjectId);
+
+            // Transaction: this is the one deliberate exception to the codebase's
+            // otherwise-universal no-transaction convention. A partial failure here
+            // (e.g. the UPDATE succeeds but the sprint_stories delete throws) would
+            // leave a story legitimately in the target project while still holding a
+            // sprint_stories row pointing at one of the source project's sprints — a
+            // state nothing else in the app (Sprints, sprint reports, burndown)
+            // expects or can reconcile, unlike the more cosmetic partial-failure risk
+            // of e.g. cloneStory's un-transacted copy steps.
+            const client = await pool.connect();
+            let migrated;
+            try {
+                await client.query('BEGIN');
+
+                const updateResult = await client.query(
+                    `UPDATE stories SET project_id = $1, story_id = $2, epic_id = NULL WHERE id = $3 RETURNING *`,
+                    [targetProjectId, newStoryCode, storyId]
+                );
+                migrated = updateResult.rows[0];
+
+                await client.query('DELETE FROM sprint_stories WHERE story_id = $1', [storyId]);
+
+                await client.query(
+                    `INSERT INTO change_history (story_id, user_id, field_changed, old_value, new_value, entity_type, entity_id, project_id, action_type)
+                     VALUES ($1, $2, 'project', $3, $4, 'story', $1, $5, 'migrated')`,
+                    [storyId, userId, source.project_name, targetResult.rows[0].name, targetProjectId]
+                );
+
+                await client.query('COMMIT');
+            } catch (txError) {
+                await client.query('ROLLBACK');
+                throw txError;
+            } finally {
+                client.release();
+            }
+
+            res.json({
+                id: migrated.id,
+                storyId: migrated.story_id,
+                projectId: migrated.project_id,
+                epicId: migrated.epic_id,
+                type: migrated.type,
+                status: migrated.status,
+                title: migrated.title,
+                description: migrated.description,
+                storyPoints: migrated.story_points,
+                assigneeId: migrated.assignee_id,
+                creatorId: migrated.creator_id,
+                isBlocked: migrated.is_blocked,
+                createdAt: migrated.created_at,
+                updatedAt: migrated.updated_at
+            });
+        } catch (error) {
+            console.error('Error migrating story:', error);
             res.status(500).json({ error: 'Server error' });
         }
     },
