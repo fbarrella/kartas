@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import UserDropdown from '../components/UserDropdown';
 import Breadcrumb from '../components/Breadcrumb';
+import AdminPaletteEditor from '../components/AdminPaletteEditor';
 import '../components/navigation.css';
 import kartasLogoWhite from '../assets/kartas-logo-white.png';
 
@@ -69,6 +70,16 @@ const Settings = () => {
                         <small className="text-muted" style={{ display: 'block', marginTop: 'var(--spacing-sm)' }}>This applies across every project and device you log in from.</small>
                     </div>
                 </div>
+
+                {user?.role === 'admin' && (
+                    <div className="card mt-xl">
+                        <h2>System Color Palette</h2>
+                        <p className="text-muted mb-md" style={{ fontSize: 'var(--font-size-sm)' }}>
+                            Admin-only. This changes the color scheme for every user, across the whole app.
+                        </p>
+                        <AdminPaletteEditor />
+                    </div>
+                )}
             </div>
         </div>
     );

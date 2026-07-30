@@ -4,6 +4,63 @@ Development log for all Kartas changes, across every phase. Each entry records w
 
 ---
 
+## [2026-07-29] — PAL-04 — Runtime Palette Application
+
+- **Author**: Claude
+- **PRD Requirement**: PAL-04
+- **Summary**: The admin's system palette now actually applies across the whole app, layered on top of `DM-01`'s static CSS-file defaults. `AuthContext.jsx` fetches `GET /system-settings/theme` once per session (keyed on `user?.id`, so it doesn't refire on every dark/light toggle) and caches it via `systemTheme.js`'s module-level `setCachedSystemTheme()`, which immediately applies the correct mode's derived tokens as inline `document.documentElement.style` properties (higher specificity than any CSS rule, including `DM-01`'s `:root[data-theme="dark"]` block). `applyTheme()` (the same helper `DM-03` added for the dark/light toggle) now also calls `applyRuntimePalette()` after flipping the `data-theme` attribute — necessary because an inline style on `:root` is unconditional, so the *correct* mode's derived palette has to be re-picked and re-applied every time light/dark changes, not just once on load. Before the fetch resolves (or if it fails), the cache stays empty and `applyRuntimePalette()` no-ops, so `DM-01`'s static CSS values correctly show through as the fallback.
+- **Files Changed**:
+  - `kartas-app/src/utils/systemTheme.js` — New module: color math, `deriveTokens()`, module-level cache, `applyRuntimePalette()`/`setCachedSystemTheme()`
+  - `kartas-app/src/contexts/AuthContext.jsx` — New fetch-on-session effect; `applyTheme()` now also calls `applyRuntimePalette()`
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: Included in the combined `6.5` verification pass below.
+
+---
+
+## [2026-07-29] — PAL-03 — Admin Palette Editor UI
+
+- **Author**: Claude
+- **PRD Requirement**: PAL-03
+- **Summary**: New `AdminPaletteEditor.jsx`, rendered on `Settings.jsx` (`DM-02`) only when `user.role === 'admin'`. Preset gallery: 6 thumbnails, each a rectangle split diagonally via `clip-path` polygons (one triangle = the preset's light-mode primary color, the other = its dark-mode primary) — pure CSS, no new dependency. Clicking a preset applies and persists it immediately via `PAL-01`'s `PUT`. A "Customize colors" button switches into an editing view with 18 native `<input type="color">` elements (9 `PAL-02` base categories × light/dark) — every keystroke/color pick calls a local `previewDraft()` helper that re-derives and re-applies tokens against the *actual app chrome* (not a static swatch) using the in-progress draft values, without touching the shared module cache — so "Cancel" can cleanly restore the last-saved palette via `setCachedSystemTheme(current)` instead of having to remember what it overwrote. "Save custom palette" persists the draft via the same `PUT` endpoint.
+- **Files Changed**:
+  - `kartas-app/src/components/AdminPaletteEditor.jsx` — New component
+  - `kartas-app/src/pages/Settings.jsx` — Renders it inside an admin-only "System Color Palette" card
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: Included in the combined `6.5` verification pass below.
+
+---
+
+## [2026-07-29] — PAL-02 — Curated Palette Categories & Presets
+
+- **Author**: Claude
+- **PRD Requirement**: PAL-02
+- **Summary**: Defined the 9 admin-editable base categories (Primary, Secondary, Success, Warning, Danger, Info, Neutral, Background, Text) and the HSL-based derivation rules that generate every other existing `--color-*` token from them — `deriveTokens()` in the new `systemTheme.js`. Notable design calls made while implementing this: (1) the 11-step neutral scale is generated from the "Neutral" base color's hue/saturation walked across a fixed lightness ladder (light-mode vs. dark-mode ladders, matching `DM-01`'s hand-picked values shape), except `--color-neutral-0` (always pure white, same reasoning as `DM-01`) and `--color-neutral-900` (pinned to the "Text" base value directly, so headings/body text — which read `--color-neutral-900`, not `--color-text` — stay in sync with what the admin picked as "Text" rather than silently drifting from a separately-derived "Neutral" endpoint); (2) `--color-surface` is `background` lightened by a small fixed delta, which works correctly in both directions (surfaces read lighter than the page background in both light and dark mode) without needing a mode-specific branch beyond picking the delta; (3) `--color-success-light`/`--color-danger-light`/`--color-info-light` are desaturated, mode-appropriate tints of their base hue, not fixed swatches. Defined 6 presets spanning the spectrum (Purple — matches `DM-01`'s existing default exactly — Blue, Green, Red/Rose, Orange, Teal), each with independently hand-picked light **and** dark variants rather than one hue with an inverted lightness.
+- **Files Changed**:
+  - `kartas-app/src/utils/systemTheme.js` — `BASE_CATEGORIES`, `PRESETS`, `deriveTokens()` and its HSL color-math helpers
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: Included in the combined `6.5` verification pass below.
+
+---
+
+## [2026-07-29] — PAL-01 — System Theme Settings Backend
+
+- **Author**: Claude
+- **PRD Requirement**: PAL-01
+- **Summary**: New singleton `system_theme_settings` table (`id` fixed to `1` via a `CHECK` constraint), storing the active `preset_name` (or `'custom'`) plus the resolved 9-category light/dark palettes as `JSONB`. Seeded with today's exact purple values (matching `DM-01`'s existing `:root` defaults) so the app's visual identity is unchanged until an admin actively picks something else. New `GET /api/system-settings/theme` (any authenticated user — needed so `PAL-04` can render the app's actual current colors) and `PUT /api/system-settings/theme` (`requireAdmin`-gated). Like `DM-03`'s `PUT /users/theme`, the `PUT` handler validates its input with an explicit manual guard clause (every one of the 9 categories must be present and a valid 6-digit hex string, for both `lightPalette` and `darkPalette`) rather than relying on the codebase's non-functional `validationResult()` pipeline — this endpoint correctly rejects malformed palettes with `400` despite that systemic gap.
+- **Files Changed**:
+  - `kartas-api/src/migrations/015_add_system_theme_settings.sql` — New singleton table, seeded with the current purple palette
+  - `kartas-api/src/controllers/systemSettingsController.js` — New `getTheme`/`updateTheme`
+  - `kartas-api/src/routes/systemSettings.js` — New route file (`GET` any authenticated user, `PUT` admin-only)
+  - `kartas-api/src/index.js` — Mounted at `/api/system-settings`
+- **Migration**: `015_add_system_theme_settings.sql`
+- **Status**: Done
+- **Verification**: Migration applied cleanly (confirmed the seeded row matches `DM-01`'s exact purple values via `psql`). Curl-verified with temp admin + temp member users: `GET` succeeds for any authenticated user and `401`s unauthenticated; `PUT` `403`s for a non-admin; `PUT` with an invalid hex value correctly `400`s (the manual guard, not the broken validator pipeline); `PUT` with a full valid "Blue" preset payload persists and a follow-up `GET` reflects it; reset back to the purple default (including nulling `updated_by` before deleting the temp admin, to satisfy the FK) and both temp users deleted. `npm run build` clean.
+
+---
+
 ## [2026-07-29] — Dark Mode Fix: Hardcoded White Card Backgrounds (follow-up to DM-01)
 
 - **Author**: Claude

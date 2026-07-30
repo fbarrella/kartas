@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import api from '../services/api';
+import { applyRuntimePalette, setCachedSystemTheme } from '../utils/systemTheme';
 
 const AuthContext = createContext(null);
 
@@ -14,6 +15,10 @@ const applyTheme = (theme) => {
     } else {
         document.documentElement.removeAttribute('data-theme');
     }
+    // PAL-04: the admin's system palette is applied as inline overrides on top of
+    // whichever mode's static CSS defaults just became active above — the light/dark
+    // split has to be re-derived every time the attribute changes, not just once.
+    applyRuntimePalette();
 };
 
 export const useAuth = () => {
@@ -98,6 +103,21 @@ export const AuthProvider = ({ children }) => {
             }
         }
     };
+
+    // PAL-04: load the system-wide admin palette once per session and apply it on top
+    // of DM-01's static CSS defaults. GET /system-settings/theme requires auth, so this
+    // only fires once a user is resolved — until then the static CSS file values show
+    // through as the correct fallback.
+    useEffect(() => {
+        if (!user?.id) return;
+        let cancelled = false;
+        api.get('/system-settings/theme')
+            .then((response) => {
+                if (!cancelled) setCachedSystemTheme(response.data);
+            })
+            .catch((error) => console.error('Error fetching system theme settings:', error));
+        return () => { cancelled = true; };
+    }, [user?.id]);
 
     const createAdmin = async (email, password, firstName, lastName) => {
         try {
