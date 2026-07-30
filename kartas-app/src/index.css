@@ -622,6 +622,9 @@ a:hover {
 }
 
 /* Custom tooltip for faster display */
+/* Deliberately a fixed dark chip in both themes, not var(--color-neutral-900) —
+   that variable is intentionally inverted in dark mode for text/heading use
+   (DM-01), which made this tooltip render white-on-near-white there. */
 .story-type-cell::after {
   content: attr(data-tooltip);
   position: absolute;
@@ -629,7 +632,7 @@ a:hover {
   left: 50%;
   transform: translateX(-50%);
   padding: 4px 8px;
-  background-color: var(--color-neutral-900);
+  background-color: #172B4D;
   color: white;
   font-size: var(--font-size-sm);
   white-space: nowrap;
