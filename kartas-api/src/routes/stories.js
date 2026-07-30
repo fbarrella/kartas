@@ -41,6 +41,14 @@ const validateSubTaskCreation = [
     body('status').optional().isIn(['backlog', 'refining', 'ready', 'in_development', 'review', 'test', 'done', 'cancelled'])
 ];
 
+const validateStoryClone = [
+    body('includeSubtasks').optional().isBoolean()
+];
+
+const validateStoryMigrate = [
+    body('targetProjectId').isInt()
+];
+
 // All routes require authentication
 router.use(authenticateToken);
 
@@ -56,5 +64,7 @@ router.put('/:storyId/comments/:commentId', validateComment, storyController.upd
 router.delete('/:storyId/comments/:commentId', storyController.deleteComment);
 router.get('/:storyId/history', storyController.getStoryHistory);
 router.post('/:storyId/sub-tasks', validateSubTaskCreation, subTaskController.createSubTask);
+router.post('/:storyId/clone', validateStoryClone, storyController.cloneStory);
+router.post('/:storyId/migrate', validateStoryMigrate, storyController.migrateStory);
 
 export default router;

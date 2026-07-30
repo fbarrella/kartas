@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import SubItemEditModal, { SUBITEM_TYPE_OPTIONS, SUBITEM_STATUS_OPTIONS } from '../components/SubItemEditModal';
+import CloneStoryModal from '../components/CloneStoryModal';
 import Breadcrumb from '../components/Breadcrumb';
 import MarkdownEditor from '../components/MarkdownEditor';
 import MarkdownRenderer from '../components/MarkdownRenderer';
@@ -46,6 +47,12 @@ const StoryDetail = () => {
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
     const [showSubItemModal, setShowSubItemModal] = useState(false);
+    const [showCloneModal, setShowCloneModal] = useState(false);
+    const [otherProjects, setOtherProjects] = useState([]);
+    const [showMigrateModal, setShowMigrateModal] = useState(false);
+    const [migrateTargetId, setMigrateTargetId] = useState('');
+    const [migrating, setMigrating] = useState(false);
+    const [migrateError, setMigrateError] = useState('');
     const [editingSubItem, setEditingSubItem] = useState(null); // null = create mode
     const [isEditingDescription, setIsEditingDescription] = useState(false);
     const [newComment, setNewComment] = useState('');
@@ -73,6 +80,7 @@ const StoryDetail = () => {
         fetchEpics();
         fetchSprints();
         fetchHistory(0);
+        fetchOtherProjects();
     }, [projectId, storyId]);
 
     // FY-04's "Latest Activities" widget links directly to a comment
@@ -97,6 +105,42 @@ const StoryDetail = () => {
             setProject(response.data);
         } catch (error) {
             console.error('Error fetching project:', error);
+        }
+    };
+
+    // MIG-02: needed to populate the "migrate to another project" target
+    // picker and to gate whether the migrate action is shown at all.
+    const fetchOtherProjects = async () => {
+        try {
+            const response = await api.get('/projects');
+            setOtherProjects(response.data.filter(p => p.id !== parseInt(projectId)));
+        } catch (error) {
+            console.error('Error fetching projects:', error);
+        }
+    };
+
+    const handleMigrate = async () => {
+        if (!migrateTargetId) return;
+        setMigrating(true);
+        setMigrateError('');
+        try {
+            const response = await api.post(`/stories/${storyId}/migrate`, {
+                targetProjectId: parseInt(migrateTargetId)
+            });
+            // Navigating here only changes this route's params (same route
+            // element), so React Router does NOT unmount/remount this
+            // component — this component's own state (the modal, `migrating`)
+            // would otherwise survive the navigation and get stuck. Reset it
+            // explicitly before navigating rather than relying on a remount.
+            setShowMigrateModal(false);
+            setMigrating(false);
+            setMigrateTargetId('');
+            // The response's `storyId` is the new human-readable code — the
+            // route itself needs the unchanged numeric `id` instead.
+            navigate(`/project/${response.data.projectId}/story/${response.data.id}`);
+        } catch (error) {
+            setMigrateError(error.response?.data?.error || 'Failed to migrate story');
+            setMigrating(false);
         }
     };
 
@@ -307,6 +351,11 @@ const StoryDetail = () => {
         );
     }
 
+    // MIG-02: "migrate to another project" is only offered to an owner/admin
+    // of THIS project who actually has somewhere else to migrate the story to.
+    const myRole = project?.members?.find(m => m.id === user?.id)?.role;
+    const canMigrate = (myRole === 'owner' || user?.role === 'admin') && otherProjects.length > 0;
+
     return (
         <>
             <Breadcrumb items={[
@@ -327,6 +376,20 @@ const StoryDetail = () => {
                     )}
                 </h2>
                 <div className="flex" style={{ gap: 'var(--spacing-sm)' }}>
+                    <button
+                        onClick={() => setShowCloneModal(true)}
+                        className="btn btn-secondary"
+                    >
+                        Clone
+                    </button>
+                    {canMigrate && (
+                        <button
+                            onClick={() => setShowMigrateModal(true)}
+                            className="btn btn-secondary"
+                        >
+                            Migrate to another project
+                        </button>
+                    )}
                     <button
                         onClick={handleSave}
                         disabled={saving}
@@ -775,6 +838,73 @@ const StoryDetail = () => {
                     onClose={() => setShowSubItemModal(false)}
                     onSaved={fetchStory}
                 />
+            )}
+
+            {showCloneModal && (
+                <CloneStoryModal
+                    story={story}
+                    onClose={() => setShowCloneModal(false)}
+                    onCloned={() => navigate(`/project/${projectId}/backlog`)}
+                />
+            )}
+
+            {showMigrateModal && (
+                <div
+                    style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+                    }}
+                    onClick={() => !migrating && setShowMigrateModal(false)}
+                >
+                    <div
+                        className="card"
+                        style={{ maxWidth: '500px', width: '100%', margin: 'var(--spacing-md)' }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="card-header">
+                            <h3 className="card-title">Migrate to Another Project</h3>
+                        </div>
+                        <p>
+                            Move <strong>{story.storyId}</strong> to a different project's backlog.
+                        </p>
+                        <div className="form-group mt-md">
+                            <label className="form-label">Target project</label>
+                            <select
+                                className="form-select"
+                                value={migrateTargetId}
+                                onChange={(e) => setMigrateTargetId(e.target.value)}
+                            >
+                                <option value="">Select a project...</option>
+                                {otherProjects.map(p => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="form-error mt-md">
+                            <strong>Warning:</strong> This will clear the story's epic assignment and remove it from any sprint. Sub-tasks, comments, and history will move with it.
+                        </div>
+                        {migrateError && (
+                            <div className="form-error mt-md">{migrateError}</div>
+                        )}
+                        <div className="flex flex-gap-sm mt-lg" style={{ justifyContent: 'flex-end' }}>
+                            <button
+                                onClick={() => setShowMigrateModal(false)}
+                                disabled={migrating}
+                                className="btn btn-secondary"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleMigrate}
+                                disabled={!migrateTargetId || migrating}
+                                className="btn btn-primary"
+                            >
+                                {migrating ? 'Migrating...' : 'Migrate'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </>
     );
