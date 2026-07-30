@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useOutletContext, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import Breadcrumb from '../components/Breadcrumb';
+import ColorDropdown from '../components/ColorDropdown';
 import MarkdownEditor from '../components/MarkdownEditor';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import AssigneeAvatarWithHoverCard from '../components/AssigneeAvatarWithHoverCard';
@@ -493,19 +494,15 @@ const Backlog = () => {
                         ))}
                     </select>
 
-                    <select
-                        className="form-select"
+                    <ColorDropdown
+                        options={[
+                            { value: '', label: 'All Epics', color: null },
+                            { value: 'none', label: 'No Epic', color: null },
+                            ...epics.map(epic => ({ value: epic.id.toString(), label: epic.title, color: epic.color }))
+                        ]}
                         value={filterEpic}
-                        onChange={(e) => setFilterEpic(e.target.value)}
-                    >
-                        <option value="">All Epics</option>
-                        <option value="none">No Epic</option>
-                        {epics.map(epic => (
-                            <option key={epic.id} value={epic.id}>
-                                {epic.title}
-                            </option>
-                        ))}
-                    </select>
+                        onChange={setFilterEpic}
+                    />
 
                     <select
                         className="form-select"
@@ -598,20 +595,17 @@ const Backlog = () => {
 
                         {/* Assign to Epic */}
                         <div className="flex flex-gap-sm">
-                            <select
-                                className="form-select"
-                                value={selectedEpic}
-                                onChange={(e) => setSelectedEpic(e.target.value)}
-                                style={{ flex: 1 }}
-                            >
-                                <option value="">Assign to epic...</option>
-                                <option value="none">No Epic</option>
-                                {epics.map(epic => (
-                                    <option key={epic.id} value={epic.id}>
-                                        {epic.title}
-                                    </option>
-                                ))}
-                            </select>
+                            <div style={{ flex: 1 }}>
+                                <ColorDropdown
+                                    options={[
+                                        { value: '', label: 'Assign to epic...', color: null },
+                                        { value: 'none', label: 'No Epic', color: null },
+                                        ...epics.map(epic => ({ value: epic.id.toString(), label: epic.title, color: epic.color }))
+                                    ]}
+                                    value={selectedEpic}
+                                    onChange={setSelectedEpic}
+                                />
+                            </div>
                             <button
                                 onClick={handleBulkEpicAssign}
                                 disabled={!selectedEpic}

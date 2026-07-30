@@ -4,6 +4,64 @@ Development log for all Kartas changes, across every phase. Each entry records w
 
 ---
 
+## [2026-07-30] — Dark Mode Fix: Tooltip White-on-White (follow-up to TT-01)
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (user-reported bug after browser-testing `7.1`)
+- **Summary**: The user reported the new collapsed-sidebar tooltip (`TT-01`) showed white text on a white background in dark mode, making it unreadable. Root cause: both the new sidebar tooltip and the pre-existing `.story-type-cell::after` tooltip it was modeled on set `background-color: var(--color-neutral-900)` with hardcoded `color: white` — but `--color-neutral-900` is *deliberately inverted* in dark mode (`DM-01`, Phase 6: 900 becomes the brightest shade, used for text/headings there), so the "dark" background variable resolves to near-white (`#F4F5F7`) in dark mode while the text stays hardcoded white. This was a latent bug in `.story-type-cell::after` too (Backlog's story-type icon tooltip) that had gone unnoticed until the new sidebar tooltip made the same underlying issue visible. Fixed both by using a fixed, theme-invariant dark chip color (`#172B4D`, light mode's current neutral-900 value) instead of the inverting variable — a tooltip chip is meant to look the same dark scrim in both themes, unlike page text/surfaces, so tracking the inverting scale was the wrong variable choice from the start.
+- **Files Changed**:
+  - `kartas-app/src/index.css` — `.story-type-cell::after`'s `background-color` changed from `var(--color-neutral-900)` to a fixed `#172B4D`
+  - `kartas-app/src/components/navigation.css` — same fix for `.sidebar.collapsed .sidebar-item[data-tooltip]::after`
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean; confirmed via `docker-compose logs app` that Vite HMR picked up both files with no errors. Manual re-check of both tooltips in dark mode handed off to the user (the original light-mode appearance is unchanged, since `#172B4D` matches light mode's existing neutral-900 value exactly).
+
+---
+
+## [2026-07-30] — EPF-01 — Colored Epic Filter Badges
+
+- **Author**: Claude
+- **PRD Requirement**: EPF-01
+- **Summary**: The Backlog's epic filter was a native `<select>`, which can't render a background color inside an `<option>` — unlike the in-table Epic badge cell, which already showed each epic's color correctly. Built a new generic `ColorDropdown` component (mirroring `UserDropdown.jsx`'s exact outside-click-to-close pattern: a `useRef`-tracked wrapper + `mousedown` listener) that renders a trigger button and option list each showing a small colored dot alongside the label, reusing the existing `.dropdown-item` row styling. Added an `Escape`-to-close handler as a small accessibility improvement beyond the pattern it copies. Applied it to both the epic filter dropdown and, as a low-cost bonus (marked optional in the PRD), the "Assign to epic" bulk-action dropdown, since the component is fully generic and reused with zero new logic in either place. While reusing `.dropdown-item`, found and fixed a real pre-existing dark-mode bug: the class hardcoded `color: #1a1a1a !important` instead of `var(--color-text)`, which would render this text nearly unreadable against `.user-dropdown-menu`'s/`.color-dropdown-menu`'s dark-mode surface color — fixed since the new dropdown would otherwise have inherited the same bug on day one.
+- **Files Changed**:
+  - `kartas-app/src/components/ColorDropdown.jsx` — new component
+  - `kartas-app/src/components/navigation.css` — new `.color-dropdown-menu` rule; fixed `.dropdown-item`'s hardcoded text color to `var(--color-text)`
+  - `kartas-app/src/pages/Backlog.jsx` — epic filter and "Assign to epic" bulk-action now use `ColorDropdown` instead of a native `<select>`; both wired to the existing `filterEpic`/`selectedEpic` string state with no other logic changes (`epic.id.toString()` used explicitly, since `ColorDropdown` doesn't implicitly coerce numeric values to strings the way a native `<select>` did)
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean; confirmed via `docker-compose logs app` that Vite HMR picked up all changes with no errors. No browser-automation tool available this session — manual click-through (open the filter dropdown and confirm each epic's color dot, select one and confirm the table filters correctly and the trigger reflects the selection, click an in-table epic badge and confirm the dropdown's shown selection updates to match, test long epic titles for truncation, confirm `Escape` closes the dropdown, and re-check dark mode readability on the fixed `.dropdown-item` text) handed off to the user.
+
+---
+
+## [2026-07-30] — TT-01 — Collapsed Sidebar Tooltips
+
+- **Author**: Claude
+- **PRD Requirement**: TT-01
+- **Summary**: When the sidebar is collapsed, nav item labels are hidden purely via CSS (`opacity:0; width:0`) with no fallback, so hovering a collapsed icon showed nothing. Added a `data-tooltip` attribute (the nav item's own label) to each `.sidebar-item`, plus new CSS reusing the app's existing lightweight CSS-only tooltip convention (`index.css`'s `.story-type-cell::after` pattern) — but positioned to the right of the icon instead of above it, since the sidebar sits at the screen's left edge. The tooltip rule is scoped entirely under `.sidebar.collapsed`, so it never renders in expanded mode (where the real label is already visible). Found and fixed a real clipping issue during implementation: `.sidebar` and `.sidebar-nav` both have `overflow-y: auto`, which per the CSS overflow spec forces `overflow-x` to also compute as `auto` — this would have clipped the right-positioned tooltip at the collapsed sidebar's 64px edge. Fixed by setting `overflow: visible` on both, scoped to `.sidebar.collapsed` only, so expanded mode's scroll behavior (needed for long content) is untouched.
+- **Files Changed**:
+  - `kartas-app/src/components/Sidebar.jsx` — added `data-tooltip={item.label}` to each nav `<Link>`
+  - `kartas-app/src/components/navigation.css` — new tooltip `::after`/`:hover::after` rules, `position: relative` on `.sidebar-item`, `overflow: visible` on `.sidebar.collapsed` and `.sidebar.collapsed .sidebar-nav`
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean; confirmed via `docker-compose logs app` that Vite HMR picked up both files with no errors. No browser-automation tool available this session — manual click-through (collapse sidebar, hover each of the 8 nav icons, confirm tooltip shows to the right with no clipping and disappears when expanded; quick check on a short viewport that removing `.sidebar-nav`'s scroll doesn't cause icon overflow) handed off to the user.
+
+---
+
+## [2026-07-30] — DND-01 — Migrate react-beautiful-dnd to @hello-pangea/dnd
+
+- **Author**: Claude
+- **PRD Requirement**: DND-01
+- **Summary**: `react-beautiful-dnd` (the app's only drag-and-drop dependency, used exclusively in `KanbanBoard.jsx`) is deprecated/archived upstream and doesn't officially support React 18. Migrated to `@hello-pangea/dnd`, a maintained, API-compatible fork — confirmed via investigation that `KanbanBoard.jsx`'s `DragDropContext`/`Droppable`/`Draggable` usage and `handleDragEnd` rely only on the standard render-prop API, so the only required change was the import statement. This unblocks `SPR-04` (Backlog drag-and-drop, later in Phase 7), which needs equivalent drag-and-drop functionality and shouldn't be built on a dead dependency. Also updated a stale comment in `main.jsx` that referenced the old library's React 18 StrictMode incompatibility (now fixed by the new fork) — re-enabling StrictMode itself is intentionally deferred as a separate follow-up, since its regression surface is the whole app, not just Kanban.
+- **Files Changed**:
+  - `kartas-app/package.json` / `package-lock.json` — `react-beautiful-dnd` removed, `@hello-pangea/dnd@18.0.1` added
+  - `kartas-app/src/pages/KanbanBoard.jsx` — import statement only (`DragDropContext`/`Droppable`/`Draggable` now from `@hello-pangea/dnd`)
+  - `kartas-app/src/main.jsx` — updated comment explaining why StrictMode is still disabled
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean. Container's separate `node_modules` volume (`docker-compose.yml`'s `/app/node_modules` anonymous volume) synced via `docker-compose exec app npm ci`, then `docker-compose restart app` to clear Vite's dependency pre-bundle cache — confirmed clean startup with no resolution errors in `docker-compose logs app`. No browser-automation tool was available this session (consistent with every prior session) — manual click-through (drag a story between kanban columns, drag a sub-task card, confirm optimistic update + revert-on-error still work) handed off to the user.
+
+---
+
 ## [2026-07-29] — PAL-04 — Runtime Palette Application
 
 - **Author**: Claude

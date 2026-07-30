@@ -144,6 +144,7 @@ const Sidebar = ({ projectId, projectName, projectDescription }) => {
                         key={item.path}
                         to={item.path}
                         className={`sidebar-item ${isActive(item.path) ? 'active' : ''}`}
+                        data-tooltip={item.label}
                     >
                         <div className="sidebar-icon">{item.icon}</div>
                         <span className="sidebar-label">{item.label}</span>
