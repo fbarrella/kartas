@@ -14,7 +14,8 @@ const validateStoryCreation = [
     body('title').trim().notEmpty().isLength({ max: 255 }),
     body('description').optional().trim(),
     body('storyPoints').optional().isInt({ min: 0 }),
-    body('assigneeId').optional({ nullable: true }).isInt()
+    body('assigneeId').optional({ nullable: true }).isInt(),
+    body('sprintId').optional().isInt()
 ];
 
 const validateStoryUpdate = [

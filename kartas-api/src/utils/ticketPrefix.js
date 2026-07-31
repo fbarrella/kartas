@@ -84,22 +84,25 @@ export async function generateNextStoryId(projectId) {
 
     const ticketPrefix = projectResult.rows[0].ticket_prefix;
 
-    // Get the highest story number for this project
+    // Get every story number currently used in this project. MIG-01 broke the
+    // assumption "highest internal id == highest sequence number": a migrated
+    // story keeps its original (possibly old/low) id while getting a fresh
+    // sequence number in its new project, so `ORDER BY id DESC LIMIT 1` can
+    // return a row whose number is NOT actually the highest one in use here —
+    // must scan every row's parsed number and take the true max.
     const storyResult = await query(
-        `SELECT story_id FROM stories 
-     WHERE project_id = $1 
-     ORDER BY id DESC 
-     LIMIT 1`,
+        `SELECT story_id FROM stories WHERE project_id = $1`,
         [projectId]
     );
 
     let nextNumber = 1;
 
     if (storyResult.rows.length > 0) {
-        // Extract number from last story ID (e.g., "GGY-0042" -> 42)
-        const lastStoryId = storyResult.rows[0].story_id;
-        const lastNumber = parseInt(lastStoryId.split('-').pop());
-        nextNumber = lastNumber + 1;
+        const highestNumber = storyResult.rows.reduce((max, row) => {
+            const n = parseInt(row.story_id.split('-').pop(), 10);
+            return Number.isNaN(n) ? max : Math.max(max, n);
+        }, 0);
+        nextNumber = highestNumber + 1;
     }
 
     // Format with leading zeros (4 digits)

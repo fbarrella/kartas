@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useOutletContext, Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import api from '../services/api';
 import Breadcrumb from '../components/Breadcrumb';
 import CloneStoryModal from '../components/CloneStoryModal';
@@ -27,6 +28,209 @@ const TYPE_OPTIONS = [
     { value: 'bug', label: 'Bug', icon: '🐛' }
 ];
 
+// SPR-02: extracted so the same row-rendering logic can be reused for both
+// the general backlog table and every active/planned sprint's own block,
+// without duplicating ~140 lines of JSX per table. SPR-04: droppableId turns
+// each instance into its own @hello-pangea/dnd drop target, with rows as
+// drag sources.
+const StoryTable = ({
+    droppableId,
+    stories,
+    epics,
+    selectedStories,
+    onToggleStory,
+    onToggleAllInTable,
+    onUpdateStoryStatus,
+    onFilterByEpic,
+    onOpenDetails,
+    getStatusBadgeClass,
+    projectId,
+    navigate
+}) => {
+    // SPR-04: a dragged <tr>'s column widths can visually collapse mid-drag,
+    // since the table's auto layout recomputes as other rows in the list
+    // reflow. Capture each row's rendered cell widths while at rest, then
+    // reapply them directly (imperative DOM, not React state, to avoid a
+    // re-render on every drag frame) while that row is being dragged.
+    const cellWidthsRef = useRef({});
+
+    const rowRef = (story) => (el) => {
+        if (!el) return;
+        cellWidthsRef.current[story.id] = Array.from(el.children).map(td => td.getBoundingClientRect().width);
+    };
+
+    return (
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+                <tr style={{ borderBottom: '2px solid var(--color-border)' }}>
+                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left', width: '40px' }}>
+                        <input
+                            type="checkbox"
+                            checked={stories.length > 0 && stories.every(s => selectedStories.includes(s.id))}
+                            onChange={() => onToggleAllInTable(stories)}
+                        />
+                    </th>
+                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Type</th>
+                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>ID</th>
+                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Title</th>
+                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Epic</th>
+                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Status</th>
+                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Points</th>
+                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Assignee</th>
+                </tr>
+            </thead>
+            <Droppable droppableId={droppableId}>
+                {(droppableProvided) => (
+                    <tbody ref={droppableProvided.innerRef} {...droppableProvided.droppableProps}>
+                        {stories.map((story, index) => (
+                            <Draggable key={story.id} draggableId={`story-${story.id}`} index={index}>
+                                {(draggableProvided, snapshot) => (
+                                    <tr
+                                        ref={(el) => {
+                                            draggableProvided.innerRef(el);
+                                            if (el && snapshot.isDragging) {
+                                                const widths = cellWidthsRef.current[story.id];
+                                                if (widths) {
+                                                    Array.from(el.children).forEach((td, i) => {
+                                                        td.style.width = `${widths[i]}px`;
+                                                    });
+                                                }
+                                            } else {
+                                                rowRef(story)(el);
+                                            }
+                                        }}
+                                        {...draggableProvided.draggableProps}
+                                        {...draggableProvided.dragHandleProps}
+                                        style={{
+                                            ...draggableProvided.draggableProps.style,
+                                            display: snapshot.isDragging ? 'table' : undefined,
+                                            borderBottom: '1px solid var(--color-border)',
+                                            backgroundColor: selectedStories.includes(story.id) ? 'var(--color-neutral-100)' : 'var(--color-surface)',
+                                            boxShadow: snapshot.isDragging ? 'var(--shadow-lg)' : undefined
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (!selectedStories.includes(story.id)) {
+                                                e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)';
+                                            }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (!selectedStories.includes(story.id)) {
+                                                e.currentTarget.style.backgroundColor = 'var(--color-surface)';
+                                            }
+                                        }}
+                                    >
+                                        <td style={{ padding: 'var(--spacing-sm)' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedStories.includes(story.id)}
+                                                onChange={() => onToggleStory(story.id)}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </td>
+                                        <td
+                                            style={{ padding: 'var(--spacing-sm)', cursor: 'help', position: 'relative' }}
+                                            className="story-type-cell"
+                                            data-tooltip={TYPE_OPTIONS.find(t => t.value === story.type)?.label || story.type}
+                                        >
+                                            {TYPE_OPTIONS.find(t => t.value === story.type)?.icon || story.type}
+                                        </td>
+                                        <td
+                                            style={{ padding: 'var(--spacing-sm)', cursor: 'pointer' }}
+                                            onClick={() => navigate(`/project/${projectId}/story/${story.id}`)}
+                                        >
+                                            <strong>{story.storyId}</strong>
+                                        </td>
+                                        <td
+                                            style={{ padding: 'var(--spacing-sm)', cursor: 'pointer' }}
+                                            onClick={() => navigate(`/project/${projectId}/story/${story.id}`)}
+                                        >
+                                            {story.title}
+                                            {story.isBlocked && (
+                                                <span className="badge badge-danger" style={{ marginLeft: '6px', fontSize: '10px', padding: '2px 6px' }}>
+                                                    🚫 Blocked
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td style={{ padding: 'var(--spacing-sm)' }}>
+                                            {story.epicTitle && (
+                                                <span
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onFilterByEpic(story.epicId.toString());
+                                                    }}
+                                                    style={{
+                                                        padding: '2px 8px',
+                                                        fontSize: 'var(--font-size-sm)',
+                                                        backgroundColor: epics.find(e => e.id === story.epicId)?.color || '#0052CC',
+                                                        color: 'white',
+                                                        borderRadius: 'var(--radius-sm)',
+                                                        fontWeight: '500',
+                                                        whiteSpace: 'nowrap',
+                                                        display: 'inline-block',
+                                                        cursor: 'pointer',
+                                                        transition: 'opacity 0.2s'
+                                                    }}
+                                                    onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+                                                    onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                                                    title="Click to filter by this epic"
+                                                >
+                                                    {story.epicTitle}
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td style={{ padding: 'var(--spacing-sm)' }}>
+                                            <select
+                                                value={story.status}
+                                                onChange={(e) => {
+                                                    e.stopPropagation();
+                                                    onUpdateStoryStatus(story.id, e.target.value);
+                                                }}
+                                                className="form-select"
+                                                style={{
+                                                    padding: '4px 8px',
+                                                    fontSize: 'var(--font-size-sm)',
+                                                    borderColor: getStatusBadgeClass(story.status)
+                                                }}
+                                            >
+                                                {STATUS_OPTIONS.map(option => (
+                                                    <option key={option.value} value={option.value}>
+                                                        {option.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </td>
+                                        <td
+                                            style={{ padding: 'var(--spacing-sm)', cursor: 'pointer' }}
+                                            onClick={() => onOpenDetails(story)}
+                                        >
+                                            {story.storyPoints || '-'}
+                                        </td>
+                                        <td
+                                            style={{ padding: 'var(--spacing-sm)', fontSize: 'var(--font-size-sm)', cursor: 'pointer' }}
+                                            onClick={() => onOpenDetails(story)}
+                                        >
+                                            <span onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex' }}>
+                                                <AssigneeAvatarWithHoverCard
+                                                    assigneeId={story.assigneeId}
+                                                    assigneeName={story.assigneeName}
+                                                    assigneeRole={story.assigneeRole}
+                                                    assigneeEmail={story.assigneeEmail}
+                                                    projectId={projectId}
+                                                />
+                                            </span>
+                                        </td>
+                                    </tr>
+                                )}
+                            </Draggable>
+                        ))}
+                        {droppableProvided.placeholder}
+                    </tbody>
+                )}
+            </Droppable>
+        </table>
+    );
+};
+
 const Backlog = () => {
     const { projectId } = useParams();
     const { projectName, defaultLandingPage } = useOutletContext();
@@ -37,10 +241,11 @@ const Backlog = () => {
 
     const [project, setProject] = useState(null);
     const [stories, setStories] = useState([]);
-    const [sprints, setSprints] = useState([]);
+    const [allSprints, setAllSprints] = useState([]);
     const [members, setMembers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [createStorySprintId, setCreateStorySprintId] = useState(null);
     const [selectedStory, setSelectedStory] = useState(null);
     const [showCloneModal, setShowCloneModal] = useState(false);
     const [selectedStories, setSelectedStories] = useState([]);
@@ -110,7 +315,7 @@ const Backlog = () => {
     const fetchSprints = async () => {
         try {
             const response = await api.get(`/sprints/project/${projectId}`);
-            setSprints(response.data.filter(s => s.status !== 'completed'));
+            setAllSprints(response.data);
         } catch (error) {
             console.error('Error fetching sprints:', error);
         }
@@ -141,10 +346,20 @@ const Backlog = () => {
         try {
             const response = await api.post('/stories', {
                 ...newStory,
-                storyPoints: newStory.storyPoints ? parseInt(newStory.storyPoints) : null
+                storyPoints: newStory.storyPoints ? parseInt(newStory.storyPoints) : null,
+                ...(createStorySprintId ? { sprintId: createStorySprintId } : {})
             });
-            setStories([response.data, ...stories]);
+            // SPR-03: createStory's response has no `sprints` array (unlike
+            // getProjectStories'), so a created-into-sprint story would
+            // incorrectly render in the general table until reload if just
+            // spliced in locally — refetch instead for that path only.
+            if (createStorySprintId) {
+                fetchStories();
+            } else {
+                setStories([response.data, ...stories]);
+            }
             setShowCreateModal(false);
+            setCreateStorySprintId(null);
             setNewStory({
                 title: '',
                 description: '',
@@ -176,12 +391,14 @@ const Backlog = () => {
         );
     };
 
-    const handleToggleAll = () => {
-        if (selectedStories.length === stories.length) {
-            setSelectedStories([]);
-        } else {
-            setSelectedStories(stories.map(s => s.id));
-        }
+    // SPR-02: table-scoped — each StoryTable's own "select all" only ever
+    // toggles its own visible rows, not every story on the whole page.
+    const handleToggleAllInTable = (tableStories) => {
+        const ids = tableStories.map(s => s.id);
+        const allSelected = ids.length > 0 && ids.every(id => selectedStories.includes(id));
+        setSelectedStories(prev =>
+            allSelected ? prev.filter(id => !ids.includes(id)) : [...new Set([...prev, ...ids])]
+        );
     };
 
     const handleAddToSprint = async () => {
@@ -197,6 +414,7 @@ const Backlog = () => {
             });
             setSuccessMessage(`Successfully added ${selectedStories.length} ${selectedStories.length === 1 ? 'story' : 'stories'} to sprint`);
             setSelectedStories([]);
+            fetchStories();
             setTimeout(() => setSuccessMessage(''), 3000);
         } catch (error) {
             setError(error.response?.data?.error || 'Failed to add stories to sprint');
@@ -339,7 +557,10 @@ const Backlog = () => {
             if (filterEpic !== 'none' && story.epicId !== parseInt(filterEpic)) return false;
         }
 
-        // Sprint filter
+        // Sprint filter — only "No Sprint" or a completed sprint are meaningful
+        // here now (SPR-02): a story in an active/planned sprint never appears
+        // in the general table at all, so filtering by one of those would
+        // always return empty.
         if (filterSprint) {
             if (filterSprint === 'none' && story.sprints && story.sprints.length > 0) return false;
             if (filterSprint !== 'none' && (!story.sprints || !story.sprints.find(s => s.id === parseInt(filterSprint)))) return false;
@@ -347,6 +568,66 @@ const Backlog = () => {
 
         return true;
     });
+
+    // SPR-02: active/planned sprints (blocks) and completed sprints (still
+    // meaningful for the filter dropdown) derived from the single fetch.
+    const activeOrPlannedSprints = allSprints.filter(s => s.status !== 'completed');
+    const completedSprints = allSprints.filter(s => s.status === 'completed');
+
+    const storiesForSprint = (sprintId) =>
+        filteredStories.filter(story => story.sprints?.some(s => s.id === sprintId));
+
+    // The general table excludes anything currently in an active/planned
+    // sprint — those stories live exclusively in their sprint's block now.
+    // A story with only completed-sprint history, or none at all, is
+    // unaffected and still shows here.
+    const generalStories = filteredStories.filter(story =>
+        !story.sprints?.some(s => s.status === 'active' || s.status === 'planned')
+    );
+
+    // SPR-04: drag a row between the Backlog table ("backlog") and a sprint
+    // block ("sprint-<id>") to add/remove its sprint association.
+    const handleDragEnd = async (result) => {
+        const { source, destination, draggableId } = result;
+        if (!destination) return;
+        if (source.droppableId === destination.droppableId) return; // no persisted row order — same-block drops are a no-op
+
+        const storyId = parseInt(draggableId.replace('story-', ''));
+        const sourceId = source.droppableId;
+        const destId = destination.droppableId;
+
+        // Explicitly unsupported: dragging directly between two different
+        // sprint blocks. SPR-01's backend constraint would reject it anyway
+        // (the story is still in its source sprint at the moment of the
+        // drop) — skip the API call rather than firing a doomed request.
+        if (sourceId.startsWith('sprint-') && destId.startsWith('sprint-')) return;
+
+        // Optimistic local update — patch just this story's `sprints` field;
+        // block membership is a *derived* view (storiesForSprint/
+        // generalStories), so it "moves" automatically once the source array
+        // is patched, no per-column array splicing needed.
+        setStories(stories.map(s => {
+            if (s.id !== storyId) return s;
+            if (destId === 'backlog') {
+                const sourceSprintId = parseInt(sourceId.replace('sprint-', ''));
+                return { ...s, sprints: (s.sprints || []).filter(sp => sp.id !== sourceSprintId) };
+            }
+            const destSprintId = parseInt(destId.replace('sprint-', ''));
+            const destSprint = activeOrPlannedSprints.find(sp => sp.id === destSprintId);
+            return { ...s, sprints: [...(s.sprints || []), { id: destSprintId, status: destSprint?.status, name: destSprint?.name }] };
+        }));
+
+        try {
+            if (destId.startsWith('sprint-')) {
+                await api.post(`/sprints/${destId.replace('sprint-', '')}/stories`, { storyIds: [storyId] });
+            } else {
+                await api.delete(`/sprints/${sourceId.replace('sprint-', '')}/stories/${storyId}`);
+            }
+        } catch (err) {
+            setError(err.response?.data?.error || 'Failed to move story');
+            fetchStories(); // revert-on-error via full refetch — same pattern as KanbanBoard.jsx
+        }
+    };
 
     // Quick filter presets
     const applyQuickFilter = (preset) => {
@@ -405,7 +686,7 @@ const Backlog = () => {
                     )}
                 </h2>
                 <button
-                    onClick={() => setShowCreateModal(true)}
+                    onClick={() => { setCreateStorySprintId(null); setShowCreateModal(true); }}
                     className="btn btn-primary"
                 >
                     + Create Story
@@ -513,7 +794,7 @@ const Backlog = () => {
                     >
                         <option value="">All Sprints</option>
                         <option value="none">No Sprint</option>
-                        {sprints.map(sprint => (
+                        {completedSprints.map(sprint => (
                             <option key={sprint.id} value={sprint.id}>
                                 {sprint.name}
                             </option>
@@ -627,7 +908,7 @@ const Backlog = () => {
                                 style={{ flex: 1 }}
                             >
                                 <option value="">Add to sprint...</option>
-                                {sprints.map(sprint => (
+                                {activeOrPlannedSprints.map(sprint => (
                                     <option key={sprint.id} value={sprint.id}>
                                         {sprint.name} ({sprint.status})
                                     </option>
@@ -680,158 +961,76 @@ const Backlog = () => {
                         Create your first user story to get started
                     </p>
                 </div>
-            ) : filteredStories.length === 0 ? (
-                <div className="card text-center">
-                    <h3>No Matching Stories</h3>
-                    <p className="text-muted mt-md">
-                        No stories match the selected filter
-                    </p>
-                </div>
             ) : (
-                <div className="card">
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                            <tr style={{ borderBottom: '2px solid var(--color-border)' }}>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left', width: '40px' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedStories.length === filteredStories.length && filteredStories.length > 0}
-                                        onChange={handleToggleAll}
-                                    />
-                                </th>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Type</th>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>ID</th>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Title</th>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Epic</th>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Status</th>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Points</th>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Assignee</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredStories.map((story) => (
-                                <tr
-                                    key={story.id}
-                                    style={{
-                                        borderBottom: '1px solid var(--color-border)',
-                                        backgroundColor: selectedStories.includes(story.id) ? 'var(--color-neutral-100)' : 'transparent'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (!selectedStories.includes(story.id)) {
-                                            e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (!selectedStories.includes(story.id)) {
-                                            e.currentTarget.style.backgroundColor = 'transparent';
-                                        }
-                                    }}
+                <DragDropContext onDragEnd={handleDragEnd}>
+                    {/* SPR-02: one block per active/planned sprint, each showing
+                        only that sprint's own stories — these stories no longer
+                        appear in the general Backlog table below. SPR-04: drag a
+                        row between the Backlog table and a sprint block to move
+                        it (dragging directly between two different sprint
+                        blocks isn't supported — drag back to Backlog first). */}
+                    {activeOrPlannedSprints.map(sprint => (
+                        <div key={sprint.id} className="card mb-md">
+                            <div className="card-header flex flex-between" style={{ alignItems: 'center' }}>
+                                <h3 className="card-title">
+                                    {sprint.name}
+                                    <span
+                                        className="badge"
+                                        style={{
+                                            marginLeft: 'var(--spacing-sm)',
+                                            fontSize: '10px',
+                                            padding: '2px 6px',
+                                            backgroundColor: sprint.status === 'active' ? 'var(--color-success)' : 'var(--color-neutral-400)',
+                                            color: 'white'
+                                        }}
+                                    >
+                                        {sprint.status}
+                                    </span>
+                                </h3>
+                                <button
+                                    onClick={() => { setCreateStorySprintId(sprint.id); setShowCreateModal(true); }}
+                                    className="btn btn-secondary btn-sm"
                                 >
-                                    <td style={{ padding: 'var(--spacing-sm)' }}>
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedStories.includes(story.id)}
-                                            onChange={() => handleToggleStory(story.id)}
-                                            onClick={(e) => e.stopPropagation()}
-                                        />
-                                    </td>
-                                    <td
-                                        style={{ padding: 'var(--spacing-sm)', cursor: 'help', position: 'relative' }}
-                                        className="story-type-cell"
-                                        data-tooltip={TYPE_OPTIONS.find(t => t.value === story.type)?.label || story.type}
-                                    >
-                                        {TYPE_OPTIONS.find(t => t.value === story.type)?.icon || story.type}
-                                    </td>
-                                    <td
-                                        style={{ padding: 'var(--spacing-sm)', cursor: 'pointer' }}
-                                        onClick={() => navigate(`/project/${projectId}/story/${story.id}`)}
-                                    >
-                                        <strong>{story.storyId}</strong>
-                                    </td>
-                                    <td
-                                        style={{ padding: 'var(--spacing-sm)', cursor: 'pointer' }}
-                                        onClick={() => navigate(`/project/${projectId}/story/${story.id}`)}
-                                    >
-                                        {story.title}
-                                        {story.isBlocked && (
-                                            <span className="badge badge-danger" style={{ marginLeft: '6px', fontSize: '10px', padding: '2px 6px' }}>
-                                                🚫 Blocked
-                                            </span>
-                                        )}
-                                    </td>
-                                    <td style={{ padding: 'var(--spacing-sm)' }}>
-                                        {story.epicTitle && (
-                                            <span
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setFilterEpic(story.epicId.toString());
-                                                }}
-                                                style={{
-                                                    padding: '2px 8px',
-                                                    fontSize: 'var(--font-size-sm)',
-                                                    backgroundColor: epics.find(e => e.id === story.epicId)?.color || '#0052CC',
-                                                    color: 'white',
-                                                    borderRadius: 'var(--radius-sm)',
-                                                    fontWeight: '500',
-                                                    whiteSpace: 'nowrap',
-                                                    display: 'inline-block',
-                                                    cursor: 'pointer',
-                                                    transition: 'opacity 0.2s'
-                                                }}
-                                                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
-                                                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-                                                title="Click to filter by this epic"
-                                            >
-                                                {story.epicTitle}
-                                            </span>
-                                        )}
-                                    </td>
-                                    <td style={{ padding: 'var(--spacing-sm)' }}>
-                                        <select
-                                            value={story.status}
-                                            onChange={(e) => {
-                                                e.stopPropagation();
-                                                handleUpdateStoryStatus(story.id, e.target.value);
-                                            }}
-                                            className="form-select"
-                                            style={{
-                                                padding: '4px 8px',
-                                                fontSize: 'var(--font-size-sm)',
-                                                borderColor: getStatusBadgeClass(story.status)
-                                            }}
-                                        >
-                                            {STATUS_OPTIONS.map(option => (
-                                                <option key={option.value} value={option.value}>
-                                                    {option.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </td>
-                                    <td
-                                        style={{ padding: 'var(--spacing-sm)', cursor: 'pointer' }}
-                                        onClick={() => setSelectedStory(story)}
-                                    >
-                                        {story.storyPoints || '-'}
-                                    </td>
-                                    <td
-                                        style={{ padding: 'var(--spacing-sm)', fontSize: 'var(--font-size-sm)', cursor: 'pointer' }}
-                                        onClick={() => setSelectedStory(story)}
-                                    >
-                                        <span onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex' }}>
-                                            <AssigneeAvatarWithHoverCard
-                                                assigneeId={story.assigneeId}
-                                                assigneeName={story.assigneeName}
-                                                assigneeRole={story.assigneeRole}
-                                                assigneeEmail={story.assigneeEmail}
-                                                projectId={projectId}
-                                            />
-                                        </span>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                                    + Create story into sprint
+                                </button>
+                            </div>
+                            <StoryTable
+                                droppableId={`sprint-${sprint.id}`}
+                                stories={storiesForSprint(sprint.id)}
+                                epics={epics}
+                                selectedStories={selectedStories}
+                                onToggleStory={handleToggleStory}
+                                onToggleAllInTable={handleToggleAllInTable}
+                                onUpdateStoryStatus={handleUpdateStoryStatus}
+                                onFilterByEpic={setFilterEpic}
+                                onOpenDetails={setSelectedStory}
+                                getStatusBadgeClass={getStatusBadgeClass}
+                                projectId={projectId}
+                                navigate={navigate}
+                            />
+                        </div>
+                    ))}
+
+                    <div className="card mb-md">
+                        <div className="card-header">
+                            <h3 className="card-title">Backlog</h3>
+                        </div>
+                        <StoryTable
+                            droppableId="backlog"
+                            stories={generalStories}
+                            epics={epics}
+                            selectedStories={selectedStories}
+                            onToggleStory={handleToggleStory}
+                            onToggleAllInTable={handleToggleAllInTable}
+                            onUpdateStoryStatus={handleUpdateStoryStatus}
+                            onFilterByEpic={setFilterEpic}
+                            onOpenDetails={setSelectedStory}
+                            getStatusBadgeClass={getStatusBadgeClass}
+                            projectId={projectId}
+                            navigate={navigate}
+                        />
+                    </div>
+                </DragDropContext>
             )}
 
             {/* Create Story Modal */}
@@ -848,7 +1047,7 @@ const Backlog = () => {
                     justifyContent: 'center',
                     zIndex: 1000,
                     overflowY: 'auto'
-                }} onClick={() => setShowCreateModal(false)}>
+                }} onClick={() => { setShowCreateModal(false); setCreateStorySprintId(null); }}>
                     <div className="card" style={{ maxWidth: '850px', width: '100%', margin: 'var(--spacing-md)' }}
                         onClick={(e) => e.stopPropagation()}>
                         <div className="card-header">
@@ -922,7 +1121,7 @@ const Backlog = () => {
                             <div className="flex flex-gap-sm" style={{ justifyContent: 'flex-end' }}>
                                 <button
                                     type="button"
-                                    onClick={() => setShowCreateModal(false)}
+                                    onClick={() => { setShowCreateModal(false); setCreateStorySprintId(null); }}
                                     className="btn btn-secondary"
                                 >
                                     Cancel
