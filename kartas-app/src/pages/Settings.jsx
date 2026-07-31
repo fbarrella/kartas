@@ -5,6 +5,7 @@ import UserDropdown from '../components/UserDropdown';
 import Breadcrumb from '../components/Breadcrumb';
 import AdminPaletteEditor from '../components/AdminPaletteEditor';
 import AdminEmailSettings from '../components/AdminEmailSettings';
+import AdminBackupSettings from '../components/AdminBackupSettings';
 import '../components/navigation.css';
 import kartasLogoWhite from '../assets/kartas-logo-white.png';
 
@@ -116,6 +117,14 @@ const Settings = () => {
                                 Admin-only. Controls how invite emails are sent. Fields set via environment variables take precedence and can't be edited here.
                             </p>
                             <AdminEmailSettings />
+                        </div>
+
+                        <div className="card mt-lg">
+                            <h2>Backups</h2>
+                            <p className="text-muted mb-md" style={{ fontSize: 'var(--font-size-sm)' }}>
+                                Admin-only. Configure automatic database backups, trigger one on demand, and restore from a previous backup.
+                            </p>
+                            <AdminBackupSettings />
                         </div>
                     </>
                 )}

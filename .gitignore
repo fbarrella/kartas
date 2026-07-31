@@ -10,3 +10,4 @@ coverage/
 *.swp
 *.swo
 .planning/
+kartas-api/backups/
