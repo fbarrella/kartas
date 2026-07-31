@@ -21,6 +21,7 @@ import searchRoutes from './routes/search.js';
 
 // Import database
 import pool from './config/database.js';
+import { initScheduler } from './services/backupService.js';
 
 dotenv.config();
 
@@ -76,6 +77,9 @@ app.use((err, req, res, next) => {
 const server = app.listen(PORT, () => {
     console.log(`🚀 Kartas API server running on port ${PORT}`);
     console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
+    // BKP-02: re-initializes the cron schedule from persisted settings so a
+    // restart doesn't silently drop it. Fire-and-forget — must not delay startup.
+    initScheduler().catch((err) => console.error('Failed to initialize backup scheduler:', err));
 });
 
 // Graceful shutdown
