@@ -513,6 +513,27 @@ export const sprintController = {
                 return res.status(403).json({ error: 'Access denied' });
             }
 
+            // SPR-01: reject any story already in a DIFFERENT active/planned
+            // sprint. endSprint never deletes sprint_stories rows (only stamps
+            // snapshot_status), so row existence alone isn't enough — must join
+            // sprints and filter status.
+            const conflictCheck = await query(
+                `SELECT ss.story_id, s.name as conflicting_sprint_name
+                 FROM sprint_stories ss
+                 JOIN sprints s ON ss.sprint_id = s.id
+                 WHERE ss.story_id = ANY($1)
+                   AND ss.sprint_id != $2
+                   AND s.status IN ('active', 'planned')`,
+                [storyIds, sprintId]
+            );
+
+            if (conflictCheck.rows.length > 0) {
+                const conflict = conflictCheck.rows[0];
+                return res.status(400).json({
+                    error: `Story ${conflict.story_id} is already in sprint "${conflict.conflicting_sprint_name}"`
+                });
+            }
+
             // Add stories to sprint (using ON CONFLICT to handle duplicates)
             const values = storyIds.map((storyId, index) =>
                 `($1, $${index + 2})`

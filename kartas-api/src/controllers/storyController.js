@@ -14,7 +14,8 @@ export const storyController = {
                 title,
                 description,
                 storyPoints,
-                assigneeId
+                assigneeId,
+                sprintId
             } = req.body;
 
             const userId = req.user.userId;
@@ -29,27 +30,67 @@ export const storyController = {
                 return res.status(403).json({ error: 'Access denied' });
             }
 
+            // SPR-03: "create story into sprint" — validate the sprint before
+            // doing any writes.
+            if (sprintId) {
+                const sprintResult = await query('SELECT * FROM sprints WHERE id = $1', [sprintId]);
+                if (sprintResult.rows.length === 0) {
+                    return res.status(404).json({ error: 'Sprint not found' });
+                }
+                const sprint = sprintResult.rows[0];
+                if (sprint.project_id !== parseInt(projectId)) {
+                    return res.status(400).json({ error: 'Sprint does not belong to this project' });
+                }
+                if (sprint.status === 'completed') {
+                    return res.status(400).json({ error: 'Cannot add story to a completed sprint' });
+                }
+            }
+
             // Generate story ID
             const storyId = await generateNextStoryId(projectId);
 
-            // Create story
-            const result = await query(
-                `INSERT INTO stories (
-          story_id, project_id, epic_id, type, title, description, 
-          story_points, assignee_id, creator_id, status
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'backlog')
-        RETURNING *`,
-                [storyId, projectId, epicId, type, title, description, storyPoints, assigneeId, userId]
-            );
+            // SPR-03: story insert + optional sprint_stories insert run in a
+            // transaction — unlike cloneStory's non-transactional style, a
+            // partial failure here would silently strand a brand-new story in
+            // the general backlog when the user explicitly asked for it to
+            // land in a sprint (the same "state nothing else expects" class of
+            // problem migrateStory's transaction guards against).
+            const client = await pool.connect();
+            let story;
+            try {
+                await client.query('BEGIN');
 
-            const story = result.rows[0];
+                const result = await client.query(
+                    `INSERT INTO stories (
+              story_id, project_id, epic_id, type, title, description,
+              story_points, assignee_id, creator_id, status
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'backlog')
+            RETURNING *`,
+                    [storyId, projectId, epicId, type, title, description, storyPoints, assigneeId, userId]
+                );
+                story = result.rows[0];
 
-            await query(
-                `INSERT INTO change_history (story_id, user_id, field_changed, old_value, new_value, entity_type, entity_id, project_id, action_type)
-                 VALUES ($1, $2, 'creation', NULL, $3, 'story', $1, $4, 'created')`,
-                [story.id, userId, title, projectId]
-            );
+                if (sprintId) {
+                    await client.query(
+                        `INSERT INTO sprint_stories (sprint_id, story_id) VALUES ($1, $2) ON CONFLICT (sprint_id, story_id) DO NOTHING`,
+                        [sprintId, story.id]
+                    );
+                }
+
+                await client.query(
+                    `INSERT INTO change_history (story_id, user_id, field_changed, old_value, new_value, entity_type, entity_id, project_id, action_type)
+                     VALUES ($1, $2, 'creation', NULL, $3, 'story', $1, $4, 'created')`,
+                    [story.id, userId, title, projectId]
+                );
+
+                await client.query('COMMIT');
+            } catch (txError) {
+                await client.query('ROLLBACK');
+                throw txError;
+            } finally {
+                client.release();
+            }
 
             res.status(201).json({
                 id: story.id,
