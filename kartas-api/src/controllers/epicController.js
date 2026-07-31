@@ -60,13 +60,15 @@ export const epicController = {
             const result = await query(
                 `SELECT e.*,
                         u.first_name || ' ' || u.last_name as creator_name,
+                        u.role as creator_role,
+                        u.email as creator_email,
                         COUNT(s.id) as story_count,
                         COUNT(s.id) FILTER (WHERE s.status = 'done') as done_story_count
                  FROM epics e
                  LEFT JOIN users u ON e.created_by = u.id
                  LEFT JOIN stories s ON e.id = s.epic_id
                  WHERE e.id = $1
-                 GROUP BY e.id, u.first_name, u.last_name`,
+                 GROUP BY e.id, u.first_name, u.last_name, u.role, u.email`,
                 [epicId]
             );
 
@@ -90,6 +92,22 @@ export const epicController = {
             if (accessCheck.rows.length === 0 && req.user.role !== 'admin') {
                 return res.status(403).json({ error: 'Access denied' });
             }
+
+            // EPD-01: associated stories, for the Epic Detail page's read-only
+            // story list — unpaginated, matching StoryDetail.jsx's own
+            // sub-items list convention.
+            const storiesResult = await query(
+                `SELECT s.id, s.story_id, s.title, s.status, s.story_points, s.assignee_id,
+                        u2.first_name || ' ' || u2.last_name as assignee_name,
+                        u2.role as assignee_role,
+                        u2.email as assignee_email
+                 FROM stories s
+                 LEFT JOIN users u2 ON s.assignee_id = u2.id
+                 WHERE s.epic_id = $1
+                 ORDER BY s.created_at`,
+                [epicId]
+            );
+            epic.stories = storiesResult.rows;
 
             res.json(epic);
         } catch (error) {

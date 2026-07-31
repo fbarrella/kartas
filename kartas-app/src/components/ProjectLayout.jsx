@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import UserDropdown from './UserDropdown';
+import ProjectSearch from './ProjectSearch';
 import { useSidebarCollapsed } from '../hooks/useSidebarCollapsed';
 import './navigation.css';
 import kartasLogoWhite from '../assets/kartas-logo-white.png';
@@ -30,7 +31,10 @@ const ProjectLayout = ({ projectId, projectName, projectDescription, children })
                             <span style={{ color: 'white', fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-semibold)' }}>Kartas</span>
                         </Link>
                     </div>
-                    <UserDropdown />
+                    <div className="flex flex-gap-md" style={{ alignItems: 'center' }}>
+                        <ProjectSearch projectId={projectId} />
+                        <UserDropdown />
+                    </div>
                 </div>
             </header>
 

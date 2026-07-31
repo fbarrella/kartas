@@ -17,6 +17,7 @@ import userRoutes from './routes/users.js';
 import sprintMetricsRoutes from './routes/sprintMetrics.js';
 import forYouRoutes from './routes/forYou.js';
 import systemSettingsRoutes from './routes/systemSettings.js';
+import searchRoutes from './routes/search.js';
 
 // Import database
 import pool from './config/database.js';
@@ -53,6 +54,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/metrics', sprintMetricsRoutes);
 app.use('/api/for-you', forYouRoutes);
 app.use('/api/system-settings', systemSettingsRoutes);
+app.use('/api/search', searchRoutes);
 app.use('/api', epicRoutes);
 
 // 404 handler

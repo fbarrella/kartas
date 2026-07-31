@@ -4,6 +4,109 @@ Development log for all Kartas changes, across every phase. Each entry records w
 
 ---
 
+## [2026-07-31] — Fix: Sub-Task Search Results Didn't Open the Sub-Item Modal (follow-up to SRCH-02)
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (user-reported gap after a second round of manual testing)
+- **Summary**: Clicking a sub-task search result correctly landed on the parent story's page (after the previous fix) but stopped there — the sub-item itself never opened. `StoryDetail.jsx` already has exactly this signal built in from an earlier phase (`KAN-02`): it reads a `?editSubItem=<id>` query param on mount and, once `fetchStory()` resolves, opens that sub-item's edit modal automatically. `navigateToResult` was navigating to the plain story URL for `sub_task` results without ever passing this param. Fixed by appending `?editSubItem=${item.id}` (the sub-task's own numeric id — distinct from `item.storyId`, the parent story's id used for the base URL) specifically for the `sub_task` case, reusing the existing mechanism rather than building a new one.
+- **Files Changed**:
+  - `kartas-app/src/components/ProjectSearch.jsx` — `navigateToResult`'s `sub_task` case now appends `?editSubItem=<id>`
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean; confirmed via `docker-compose logs app` that the dev container picked up the change (one harmless, already-noted dev-only Vite Fast Refresh limitation on this file, unrelated to correctness). Manual re-check (click a sub-task search result, confirm the story page loads with that sub-item's edit modal already open) handed off to the user.
+
+---
+
+## [2026-07-30] — Fix: Search Results Linked to the Wrong Story URL + Top-Bar Layout (follow-up to SRCH-01/SRCH-02)
+
+- **Author**: Claude
+- **PRD Requirement**: N/A (user-reported bugs after browser-testing `7.4`)
+- **Summary**: Two issues reported together after manual testing.
+  1. **Broken story/sub-task links**: clicking a story or sub-task search result navigated to `/project/4/story/RES-0002` instead of the real route shape `/project/4/story/5`. Root cause: `SRCH-01`'s uniform row shape exposed a `storyCode` field (the human-readable code) that `navigateToResult` used directly for navigation — but the `/story/:storyId` route actually keys on the story's **numeric** id, not its code (an established convention already documented in `MIG-01`'s DEVLOG entry, missed here). Worse, for a `sub_task` row there was no numeric id available at all for the *parent* story (only its code) — a sub-task has no page of its own, so navigation needs the parent's numeric id, which `searchController.js` never selected. Fixed by adding a proper `story_id_num` column to every arm of the search UNION (the story's own numeric id for `story` rows, the parent's numeric id — via the existing join — for `sub_task` rows, `NULL` for epic/user), exposed to the frontend as `storyId`, and updated `navigateToResult` to use it instead of the code.
+  2. **Top-bar layout**: the new search input rendered visually centered in the header instead of next to the user dropdown on the right, since the header's outer container uses `justify-content: space-between` and the search input had been added as a third top-level child (logo / search / dropdown), which space-between spreads evenly rather than grouping the last two together. Fixed by wrapping `ProjectSearch`/`UserDropdown` in one shared flex sub-container, so the outer container goes back to exactly two children (logo group, and the search+dropdown group) — search now sits immediately left of the dropdown, both flush right.
+- **Files Changed**:
+  - `kartas-api/src/controllers/searchController.js` — every section query gains a `story_id_num` column; `toRow()` exposes it as `storyId`
+  - `kartas-app/src/components/ProjectSearch.jsx` — `navigateToResult` uses `item.storyId` instead of the removed `item.storyCode`
+  - `kartas-app/src/components/ProjectLayout.jsx` — `ProjectSearch`/`UserDropdown` now share one flex wrapper on the right side of the header
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: Curl-verified with a temp project member: a story result for `RES-0002` (numeric id 5) now returns `storyId: 5`; a sub-task result belonging to story `RES-0003` (numeric id 6) returns `storyId: 6` — the parent's id, not the sub-task's own id (3); epic/user results correctly carry `storyId: null` (unused for those types, and the mixed-type `UNION ALL` resolves cleanly with an explicit `NULL::integer` cast on those arms); full/paginated mode re-verified unaffected. `npm run build` clean; both containers reloaded with no errors (one harmless dev-only Vite Fast Refresh notice on `ProjectSearch.jsx`, since it mixes a default component export with plain utility exports — falls back to a full module reload instead of true hot-swap, doesn't affect correctness or the production build). All seeded test data cleaned up.
+
+---
+
+## [2026-07-30] — SRCH-03 — Full Search Results Page
+
+- **Author**: Claude
+- **PRD Requirement**: SRCH-03
+- **Summary**: New `/project/:projectId/search?q=` page for when the top-bar dropdown's 4-result cap isn't enough — reads `q` from `useSearchParams()`, renders four independently-paginated sections (Epics/Stories/Sub-tasks/Team Members), each following the established `{items, hasMore}` + "Load more" pattern already used by `StoryDetail.jsx`'s history section and the `ForYou` widgets (offset passed on click is simply `items.length`, no separately-tracked offset state). Reuses `ProjectSearch.jsx`'s exported `SearchResultRow`/`navigateToResult` so result rendering and per-type navigation aren't duplicated between the dropdown and this page.
+- **Files Changed**:
+  - `kartas-app/src/pages/SearchResults.jsx` — new page
+  - `kartas-app/src/App.jsx` — new `search` route + import
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean; confirmed via `docker-compose logs app` that Vite HMR picked up both files with no errors. No browser-automation tool available this session — manual click-through (click "See more results" from the top-bar dropdown, confirm all four sections load independently, confirm each section's own "Load more" only extends that section, confirm each result type navigates the same way it does from the dropdown) handed off to the user. **This completes sub-phase 7.4** (`EPD-01`, `EPD-02`, `SRCH-01`, `SRCH-02`, `SRCH-03`).
+
+---
+
+## [2026-07-30] — SRCH-02 — Top-Bar Search Input & Dropdown
+
+- **Author**: Claude
+- **PRD Requirement**: SRCH-02
+- **Summary**: New `ProjectSearch.jsx`, mirroring `UserSelect.jsx`'s exact, already-proven pattern (300ms-debounced `useEffect`, `wrapperRef` + `mousedown`-outside-click-close), added as a new sibling between the logo and `UserDropdown` in `ProjectLayout.jsx`'s header — kept as its own component rather than inline state in `ProjectLayout.jsx`, which is a deliberately stateless shared shell mounted across every project page (matching the existing precedent that `UserDropdown` is also its own file, not inlined). Dropdown shows up to 4 results (type icon + code/title + context line, new hand-authored inline SVGs per type since no icon library or magnifying-glass icon exists anywhere in this codebase) reusing the existing `.search-container`/`.search-dropdown`/`.search-result-item`/`.user-info` CSS classes verbatim (built for `UserSelect.jsx`, already theme-aware). Selecting a story or sub-task navigates to the parent story's page; an epic navigates to `EPD-02`'s new Epic Detail page; a user navigates to their User Details page. A "See more results" row appears exactly when `hasMore === true` from `SRCH-01`'s capped response, navigating to `/project/:projectId/search?q=<text>` (`SRCH-03`, next). `navigateToResult`/`TypeIcon`/`SearchResultRow` are exported from this file so `SearchResults.jsx` can reuse the identical rendering/navigation logic without duplicating it.
+- **Files Changed**:
+  - `kartas-app/src/components/ProjectSearch.jsx` — new component
+  - `kartas-app/src/components/ProjectLayout.jsx` — renders `<ProjectSearch projectId={projectId} />` in the header
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean; confirmed via `docker-compose logs app` that Vite HMR picked up both files with no errors. No browser-automation tool available this session — manual click-through (type a query in the top bar on any project page, confirm the debounced dropdown appears with correct type icons/context, confirm selecting each result type navigates correctly, confirm "See more results" appears only when there are genuinely more than 4 matches, confirm outside-click closes the dropdown) handed off to the user.
+
+---
+
+## [2026-07-30] — SRCH-01 — Combined Project Search Backend
+
+- **Author**: Claude
+- **PRD Requirement**: SRCH-01
+- **Summary**: New `GET /api/search/project/:projectId?q=` — a single, project-scoped, relevance-ranked search across epics, stories, sub-tasks, and users (project members only), blended into one list capped at 4 total (per the resolved design decision — not 4 per category). Deliberately new and separate from `storyController.js`'s existing `searchStories` (still used by `CMT-03`'s @mention autocomplete) and `userController.js`'s existing `searchUsers` (still used elsewhere, and not project-scoped) — neither existing endpoint was touched. New migration `016_add_search_trigram_indexes.sql` adds `pg_trgm` (first use in this codebase) plus GIN trigram indexes on `stories.title`/`epics.title`/`sub_tasks.title` and an **expression** index on `users`' concatenated full name (a plain per-column index can't accelerate a query matching the concatenated expression). `similarity()` drives relevance ranking (with a boost so an exact/prefix code match on `story_id`/`epic_id` always outranks a fuzzy title hit), fetching one extra row past the cap to derive `hasMore` without a second `COUNT(*)` round-trip — response shape `{ items, hasMore }`, matching the codebase's established pagination convention. A `full=true&section=<type>` mode (required `section` since `SRCH-03`'s results are grouped-by-type with independent per-section pagination, not one shared offset across the blend) serves the full search-results page, mirroring exactly how `ActionsHistoryWidget.jsx`/`LatestActivitiesWidget.jsx` already do independent per-widget "Load more."
+- **Bug found and fixed during verification**: initially used `pg_trgm`'s `%` operator (whole-string similarity threshold) as the match filter — this incorrectly excluded valid substring matches like `q="DEV"` against `"[DEV] Modal de aviso de canal de texto +18"`, since a 3-character query's *overall* similarity against a 40+-character title falls well below the default 0.3 threshold despite being a clear, obvious substring hit. Fixed by matching with `title ILIKE '%q%'` (accelerated by the new GIN trigram indexes — this is what trigram indexes are actually for, per the original PRD research) and using `similarity()` only in `ORDER BY` for ranking, never as the inclusion filter.
+- **Files Changed**:
+  - `kartas-api/src/migrations/016_add_search_trigram_indexes.sql` — new
+  - `kartas-api/src/controllers/searchController.js` — new
+  - `kartas-api/src/routes/search.js` — new
+  - `kartas-api/src/index.js` — mounted `/api/search`
+- **Migration**: `016_add_search_trigram_indexes.sql`
+- **Status**: Done
+- **Verification**: Migration applied cleanly (`pg_trgm` extension + all 4 indexes confirmed present via `psql`). Curl-verified extensively against real project data (temp members, not seeded fixtures): epic title match, story code-prefix match, sub-task match (with correct parent-story context and correct project-scoping — a same-titled sub-task belonging to a different project's story was correctly excluded), user name match, the `full=true` per-section paginated mode (including `hasMore` across a page boundary), missing/invalid `section` `400`s, a non-project-member `403`s, and a sub-2-character query returns an empty result with no error. All seeded test data cleaned up afterward. Frontend (`SRCH-02`/`SRCH-03`) not yet built.
+
+---
+
+## [2026-07-30] — EPD-02 — Epic Detail Frontend
+
+- **Author**: Claude
+- **PRD Requirement**: EPD-02
+- **Summary**: New `EpicDetail.jsx` page at `/project/:projectId/epic/:epicId`, modeled closely on `StoryDetail.jsx`: editable Title/Status/Start-End Date/Color (disabled for non-managers, matching the existing `canManageEpics` gate), a description field using the exact `StoryDetail.jsx` view/edit-toggle pattern (`MarkdownEditor` when editing, `MarkdownRenderer` when viewing, Cancel discards local changes without an API call), and a read-only "Associated Stories" table (code, title, status, points, assignee avatar) sourced from `EPD-01`'s new `epic.stories` array — each row links to that story's own detail page, no create/edit/delete affordance on this list per the explicit "just for visualization" scope. Saves reuse the existing `PUT /api/epics/:epicId` unchanged. Deliberately excludes a comments/history section — not requested, and building one would need genuinely new backend work (`updateEpic` doesn't do per-field diffing the way `updateStory` does). `Epics.jsx`'s card now links to this new page instead of a filtered Backlog view (superseded by the page's own story list); the redundant "Edit" button is removed since the whole card already opens the page where editing happens; the create/edit modal narrows to create-only, with its dead edit-mode branch removed rather than left unreachable.
+- **Files Changed**:
+  - `kartas-app/src/pages/EpicDetail.jsx` — new page
+  - `kartas-app/src/App.jsx` — new `epic/:epicId` route + import
+  - `kartas-app/src/pages/Epics.jsx` — card `<Link>` repointed to the new page; "Edit" button removed; modal/`handleOpenModal`/`handleSubmit` narrowed to create-only, `editingEpic` state removed entirely
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean; confirmed via `docker-compose logs app` that Vite HMR picked up all files with no errors. Curl-verified the exact `PUT` body shape `EpicDetail.jsx`'s Save sends against a temporary test epic — confirmed every field (title, description, status, dates, color) updates correctly and a follow-up `GET` reflects them alongside the enriched `creator_role`/`creator_email`/`stories` fields from `EPD-01`; confirmed the date format returned (`2026-08-01T00:00:00.000Z`) is compatible with `<input type="date">` via the page's `.substring(0,10)` handling. Temp epic/user cleaned up afterward. No browser-automation tool available this session — manual click-through (open an epic from the Epics list, confirm it lands on the new page instead of filtered Backlog, edit each field as an owner/admin and confirm Save persists, confirm a non-manager sees read-only fields and no Edit-Description button, confirm the associated stories list links correctly to each story) handed off to the user.
+
+---
+
+## [2026-07-30] — EPD-01 — Epic Detail Backend
+
+- **Author**: Claude
+- **PRD Requirement**: EPD-01
+- **Summary**: New requirement, added mid-`7.4` design: while designing `SRCH-02` (the top search bar's epic-navigation), it became clear epics had nowhere dedicated to link to — no `epic/:epicId` route or detail page exists, only a flat list with an edit modal. The user chose to build a real Epic Detail page (`EPD-02`, next), so this extends the existing `getEpic` (`GET /api/epics/:epicId`) rather than adding a new endpoint: gained `creator_role`/`creator_email` (parity with `getEpics`, which already selects these for its own card's `AssigneeAvatarWithHoverCard`) and a new unpaginated `stories` array (each associated story's code, title, status, points, and assignee info) for the detail page's read-only story list. `updateEpic` needed no changes — it already supports partial updates to every editable field via `COALESCE`.
+- **Files Changed**:
+  - `kartas-api/src/controllers/epicController.js` — `getEpic` gains `creator_role`/`creator_email` in its query, plus a second query attaching `epic.stories`
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: Curl-verified with a temp project member against a real epic with 3 real associated stories: confirmed `creator_role`/`creator_email` present and the `stories` array correctly populated (code, title, status, points, assignee name/role/email per story). Nonexistent epic still `404`s (unchanged code path). Temp user/membership cleaned up afterward. Frontend (`EPD-02`) not yet built.
+
+---
+
 ## [2026-07-30] — Fix: generateNextStoryId Miscounts After a Migration (follow-up to MIG-01)
 
 - **Author**: Claude
