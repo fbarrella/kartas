@@ -1,0 +1,100 @@
+{
+    "statusLabels": {
+        "backlog": "Backlog",
+        "refining": "Refining",
+        "ready": "Ready",
+        "in_development": "In Development",
+        "review": "Review",
+        "test": "Test",
+        "done": "Done",
+        "cancelled": "Cancelled"
+    },
+    "dashboardPage": {
+        "breadcrumbProjects": "Projects",
+        "yourProjects": "Your Projects",
+        "createProject": "+ Create Project",
+        "loadingProjects": "Loading projects...",
+        "noProjectsTitle": "No Projects Yet",
+        "noProjectsOwnerText": "Create your first project to get started",
+        "noProjectsMemberText": "You are not assigned to any projects yet",
+        "createdBy": "Created by {{name}}",
+        "unknownAuthor": "Unknown",
+        "createModalTitle": "Create New Project",
+        "projectNameLabel": "Project Name",
+        "descriptionOptionalLabel": "Description (Optional)",
+        "createFailed": "Failed to create project",
+        "createProjectSubmit": "Create Project"
+    },
+    "forYouPage": {
+        "breadcrumbLabel": "For You",
+        "heading": "For You",
+        "customizeTooltip": "Customize widgets",
+        "customizeButton": "⚙️ Customize",
+        "loading": "Loading...",
+        "emptyTitle": "Your For You page is empty",
+        "emptyText": "Click ⚙️ Customize above to choose which widgets to show here."
+    },
+    "myTasksWidget": {
+        "title": "My Tasks",
+        "loading": "Loading tasks...",
+        "empty": "You don't have any tasks assigned in this project",
+        "columnTask": "Task",
+        "columnEpic": "Epic",
+        "columnSprint": "Sprint",
+        "columnStatus": "Status",
+        "columnPoints": "Points",
+        "subItemBadge": "Sub-item"
+    },
+    "actionsHistoryWidget": {
+        "title": "Actions History",
+        "empty": "Your recent actions in this project will show up here",
+        "loadMore": "Load More",
+        "createdStory": "Created story {{code}} — {{title}}",
+        "commentedOnStory": "Commented on {{code}}: \"{{comment}}\"",
+        "movedStoryFromTo": "Moved {{code}} from {{from}} to {{to}}",
+        "movedStoryTo": "Moved {{code}} to {{to}}",
+        "updatedFieldOnStory": "Updated {{field}} on {{code}}",
+        "addedSubItem": "Added sub-item \"{{title}}\" on {{code}}",
+        "movedSubItemFromTo": "Moved a sub-item on {{code}} from {{from}} to {{to}}",
+        "movedSubItemTo": "Moved a sub-item on {{code}} to {{to}}",
+        "updatedSubItem": "Updated a sub-item on {{code}}",
+        "createdEpic": "Created epic \"{{title}}\"",
+        "updatedEpic": "Updated epic \"{{title}}\"",
+        "createdSprint": "Created sprint \"{{title}}\"",
+        "sprintStatusChanged": "Sprint status changed to {{status}}",
+        "updatedSprint": "Updated sprint \"{{title}}\"",
+        "genericActivity": "{{actionType}} {{entityType}}",
+        "defaultFieldChanged": "a field"
+    },
+    "latestActivitiesWidget": {
+        "title": "Latest Activities",
+        "empty": "Activity from teammates on your items, and mentions of you, will show up here",
+        "loadMore": "Load More",
+        "mentioned": "{{user}} mentioned you in a comment on {{storyCode}}",
+        "subItemTarget": "a sub-item on {{storyCode}}",
+        "created": "{{user}} created {{target}}",
+        "movedFrom": "{{user}} moved {{target}} from {{from}} to {{to}}",
+        "movedTo": "{{user}} moved {{target}} to {{to}}",
+        "updatedField": "{{user}} updated {{field}} on {{target}}"
+    },
+    "sprintCountdownWidget": {
+        "title": "Sprint Countdown",
+        "noActiveSprint": "There will only be data here once there's an active sprint",
+        "elapsedTime": "Elapsed Time"
+    },
+    "teamWorkloadWidget": {
+        "title": "Team Workload",
+        "noActiveSprint": "There will only be data here once there's an active sprint"
+    },
+    "widgetSettingsModal": {
+        "title": "Customize Widgets",
+        "description": "Choose which widgets show on your For You page.",
+        "layout": "Layout",
+        "columnsOption": "{{count}} columns",
+        "widgetMyTasks": "My Tasks",
+        "widgetActionsHistory": "Actions History",
+        "widgetLatestActivities": "Latest Activities",
+        "widgetTeamWorkload": "Team Workload",
+        "widgetSprintCountdown": "Sprint Countdown"
+    }
+}

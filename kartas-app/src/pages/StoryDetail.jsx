@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api from '../services/api';
-import SubItemEditModal, { SUBITEM_TYPE_OPTIONS, SUBITEM_STATUS_OPTIONS } from '../components/SubItemEditModal';
+import SubItemEditModal, { getSubItemTypeOptions, getSubItemStatusOptions } from '../components/SubItemEditModal';
 import CloneStoryModal from '../components/CloneStoryModal';
 import Breadcrumb from '../components/Breadcrumb';
 import MarkdownEditor from '../components/MarkdownEditor';
@@ -13,29 +14,35 @@ import { renderCommentContent } from '../utils/mentions.jsx';
 import { formatRelativeTime, describeHistoryEntry } from '../utils/activity';
 import '../components/navigation.css';
 
-
-const STATUS_OPTIONS = [
-    { value: 'backlog', label: 'Backlog' },
-    { value: 'refining', label: 'Refining' },
-    { value: 'ready', label: 'Ready' },
-    { value: 'in_development', label: 'In Development' },
-    { value: 'review', label: 'Review' },
-    { value: 'test', label: 'Test' },
-    { value: 'done', label: 'Done' },
-    { value: 'cancelled', label: 'Cancelled' }
+// Label text is translated via t(); `value` fields are stable identifiers
+// used for API/DB values and must never be translated.
+const getStatusOptions = (t) => [
+    { value: 'backlog', label: t('storyDetail:statuses.backlog') },
+    { value: 'refining', label: t('storyDetail:statuses.refining') },
+    { value: 'ready', label: t('storyDetail:statuses.ready') },
+    { value: 'in_development', label: t('storyDetail:statuses.inDevelopment') },
+    { value: 'review', label: t('storyDetail:statuses.review') },
+    { value: 'test', label: t('storyDetail:statuses.test') },
+    { value: 'done', label: t('storyDetail:statuses.done') },
+    { value: 'cancelled', label: t('storyDetail:statuses.cancelled') }
 ];
 
-const TYPE_OPTIONS = [
-    { value: 'story', label: 'Story', icon: '📖' },
-    { value: 'task', label: 'Task', icon: '✓' },
-    { value: 'bug', label: 'Bug', icon: '🐛' }
+const getTypeOptions = (t) => [
+    { value: 'story', label: t('storyDetail:types.story'), icon: '📖' },
+    { value: 'task', label: t('storyDetail:types.task'), icon: '✓' },
+    { value: 'bug', label: t('storyDetail:types.bug'), icon: '🐛' }
 ];
 
 const StoryDetail = () => {
+    const { t } = useTranslation(['storyDetail', 'common']);
     const { projectId, storyId } = useParams();
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const { user } = useAuth();
+    const STATUS_OPTIONS = getStatusOptions(t);
+    const TYPE_OPTIONS = getTypeOptions(t);
+    const SUBITEM_TYPE_OPTIONS = getSubItemTypeOptions(t);
+    const SUBITEM_STATUS_OPTIONS = getSubItemStatusOptions(t);
 
     const [project, setProject] = useState(null);
     const [story, setStory] = useState(null);
@@ -139,7 +146,7 @@ const StoryDetail = () => {
             // route itself needs the unchanged numeric `id` instead.
             navigate(`/project/${response.data.projectId}/story/${response.data.id}`);
         } catch (error) {
-            setMigrateError(error.response?.data?.error || 'Failed to migrate story');
+            setMigrateError(error.response?.data?.error || t('storyDetail:detail.failedToMigrate'));
             setMigrating(false);
         }
     };
@@ -172,7 +179,7 @@ const StoryDetail = () => {
             });
         } catch (error) {
             console.error('Error fetching story:', error);
-            setError('Failed to load story');
+            setError(t('storyDetail:detail.failedToLoadStory'));
         } finally {
             setLoading(false);
         }
@@ -222,7 +229,7 @@ const StoryDetail = () => {
             setNewComment('');
             await fetchStory();
         } catch (error) {
-            setError(error.response?.data?.error || 'Failed to post comment');
+            setError(error.response?.data?.error || t('storyDetail:detail.failedToPostComment'));
         }
     };
 
@@ -238,17 +245,17 @@ const StoryDetail = () => {
             setEditCommentText('');
             await fetchStory();
         } catch (error) {
-            setError(error.response?.data?.error || 'Failed to update comment');
+            setError(error.response?.data?.error || t('storyDetail:detail.failedToUpdateComment'));
         }
     };
 
     const handleDeleteComment = async (commentId) => {
-        if (!confirm('Delete this comment?')) return;
+        if (!confirm(t('storyDetail:detail.confirmDeleteComment'))) return;
         try {
             await api.delete(`/stories/${storyId}/comments/${commentId}`);
             await fetchStory();
         } catch (error) {
-            setError(error.response?.data?.error || 'Failed to delete comment');
+            setError(error.response?.data?.error || t('storyDetail:detail.failedToDeleteComment'));
         }
     };
 
@@ -281,10 +288,10 @@ const StoryDetail = () => {
 
             // Refresh story data to get updated sprint info
             await fetchStory();
-            setSuccessMessage('Story updated successfully!');
+            setSuccessMessage(t('storyDetail:detail.storyUpdatedSuccess'));
             setTimeout(() => setSuccessMessage(''), 3000);
         } catch (error) {
-            setError(error.response?.data?.error || 'Failed to update story');
+            setError(error.response?.data?.error || t('storyDetail:detail.failedToUpdateStory'));
         } finally {
             setSaving(false);
         }
@@ -296,10 +303,10 @@ const StoryDetail = () => {
                 storyIds: [parseInt(storyId)]
             });
             await fetchStory();
-            setSuccessMessage('Story added to sprint!');
+            setSuccessMessage(t('storyDetail:detail.storyAddedToSprint'));
             setTimeout(() => setSuccessMessage(''), 3000);
         } catch (error) {
-            setError(error.response?.data?.error || 'Failed to add story to sprint');
+            setError(error.response?.data?.error || t('storyDetail:detail.failedToAddToSprint'));
         }
     };
 
@@ -307,10 +314,10 @@ const StoryDetail = () => {
         try {
             await api.delete(`/sprints/${sprintId}/stories/${storyId}`);
             await fetchStory();
-            setSuccessMessage('Story removed from sprint!');
+            setSuccessMessage(t('storyDetail:detail.storyRemovedFromSprint'));
             setTimeout(() => setSuccessMessage(''), 3000);
         } catch (error) {
-            setError(error.response?.data?.error || 'Failed to remove story from sprint');
+            setError(error.response?.data?.error || t('storyDetail:detail.failedToRemoveFromSprint'));
         }
     };
 
@@ -325,7 +332,7 @@ const StoryDetail = () => {
     };
 
     const handleDeleteSubItem = async (id) => {
-        if (!confirm('Delete this sub-item?')) return;
+        if (!confirm(t('storyDetail:detail.confirmDeleteSubItem'))) return;
         try {
             await api.delete(`/sub-tasks/${id}`);
             await fetchStory();
@@ -336,16 +343,16 @@ const StoryDetail = () => {
 
     if (loading) {
         return (
-            <div className="text-center">Loading story...</div>
+            <div className="text-center">{t('storyDetail:detail.loading')}</div>
         );
     }
 
     if (!story) {
         return (
             <div className="card text-center">
-                <h3>Story Not Found</h3>
+                <h3>{t('storyDetail:detail.notFound')}</h3>
                 <button onClick={() => navigate(`/project/${projectId}/backlog`)} className="btn btn-primary mt-md">
-                    Back to Backlog
+                    {t('storyDetail:detail.backToBacklog')}
                 </button>
             </div>
         );
@@ -359,19 +366,19 @@ const StoryDetail = () => {
     return (
         <>
             <Breadcrumb items={[
-                { label: 'Projects', to: '/' },
-                { label: project?.name || 'Project', to: `/project/${projectId}/backlog` },
+                { label: t('storyDetail:detail.breadcrumbProjects'), to: '/' },
+                { label: project?.name || t('storyDetail:detail.breadcrumbProject'), to: `/project/${projectId}/backlog` },
                 { label: story.storyId, to: `/project/${projectId}/backlog` },
-                { label: 'Edit Story' },
+                { label: t('storyDetail:detail.breadcrumbEditStory') },
             ]} />
 
             {/* Page Title */}
             <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
                 <h2 style={{ margin: 0 }}>
-                    {TYPE_OPTIONS.find(t => t.value === story.type)?.icon || ''} {story.storyId}
+                    {TYPE_OPTIONS.find(opt => opt.value === story.type)?.icon || ''} {story.storyId}
                     {story.isBlocked && (
                         <span className="badge badge-danger" style={{ marginLeft: 'var(--spacing-sm)', fontSize: '10px', padding: '2px 6px', verticalAlign: 'middle' }}>
-                            🚫 Blocked
+                            🚫 {t('storyDetail:fields.blocked')}
                         </span>
                     )}
                 </h2>
@@ -380,14 +387,14 @@ const StoryDetail = () => {
                         onClick={() => setShowCloneModal(true)}
                         className="btn btn-secondary"
                     >
-                        Clone
+                        {t('storyDetail:detail.clone')}
                     </button>
                     {canMigrate && (
                         <button
                             onClick={() => setShowMigrateModal(true)}
                             className="btn btn-secondary"
                         >
-                            Migrate to another project
+                            {t('storyDetail:detail.migrateToAnotherProject')}
                         </button>
                     )}
                     <button
@@ -395,7 +402,7 @@ const StoryDetail = () => {
                         disabled={saving}
                         className="btn btn-primary"
                     >
-                        {saving ? 'Saving...' : 'Save Changes'}
+                        {saving ? t('common:saving') : t('common:saveChanges')}
                     </button>
                 </div>
             </div>
@@ -415,7 +422,7 @@ const StoryDetail = () => {
             {/* Story Details Card */}
             <div className="card">
                 <div className="form-group">
-                    <label className="form-label">Title *</label>
+                    <label className="form-label">{t('common:title')} *</label>
                     <input
                         type="text"
                         className="form-input"
@@ -435,7 +442,7 @@ const StoryDetail = () => {
                     borderBottom: '1px solid var(--color-border)'
                 }}>
                     <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Type</label>
+                        <label className="form-label">{t('storyDetail:fields.type')}</label>
                         <select
                             className="form-select"
                             value={formData.type}
@@ -450,7 +457,7 @@ const StoryDetail = () => {
                     </div>
 
                     <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Status</label>
+                        <label className="form-label">{t('common:status')}</label>
                         <select
                             className="form-select"
                             value={formData.status}
@@ -465,7 +472,7 @@ const StoryDetail = () => {
                     </div>
 
                     <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Story Points</label>
+                        <label className="form-label">{t('storyDetail:fields.storyPoints')}</label>
                         <input
                             type="number"
                             className="form-input"
@@ -476,13 +483,13 @@ const StoryDetail = () => {
                     </div>
 
                     <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Assignee</label>
+                        <label className="form-label">{t('storyDetail:fields.assignee')}</label>
                         <select
                             className="form-select"
                             value={formData.assigneeId || ''}
                             onChange={(e) => handleChange('assigneeId', e.target.value ? parseInt(e.target.value) : null)}
                         >
-                            <option value="">Unassigned</option>
+                            <option value="">{t('storyDetail:fields.unassigned')}</option>
                             {members.map(member => (
                                 <option key={member.id} value={member.id}>
                                     {member.firstName} {member.lastName}
@@ -492,13 +499,13 @@ const StoryDetail = () => {
                     </div>
 
                     <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Epic</label>
+                        <label className="form-label">{t('storyDetail:fields.epic')}</label>
                         <select
                             className="form-select"
                             value={formData.epicId || ''}
                             onChange={(e) => handleChange('epicId', e.target.value ? parseInt(e.target.value) : null)}
                         >
-                            <option value="">No Epic</option>
+                            <option value="">{t('storyDetail:fields.noEpic')}</option>
                             {epics.map(epic => (
                                 <option key={epic.id} value={epic.id}>
                                     {epic.title}
@@ -508,7 +515,7 @@ const StoryDetail = () => {
                     </div>
 
                     <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Blocked</label>
+                        <label className="form-label">{t('storyDetail:fields.blocked')}</label>
                         <label className="switch">
                             <input
                                 type="checkbox"
@@ -518,7 +525,7 @@ const StoryDetail = () => {
                             <span className="switch-track">
                                 <span className="switch-thumb" />
                             </span>
-                            <span className="switch-text">{formData.isBlocked ? 'Blocked' : 'Not blocked'}</span>
+                            <span className="switch-text">{formData.isBlocked ? t('storyDetail:fields.blocked') : t('storyDetail:fields.notBlocked')}</span>
                         </label>
                     </div>
                 </div>
@@ -529,7 +536,7 @@ const StoryDetail = () => {
                     marginBottom: 'var(--spacing-md)',
                     borderBottom: '1px solid var(--color-border)'
                 }}>
-                    <label className="form-label">Sprints</label>
+                    <label className="form-label">{t('storyDetail:detail.sprintsLabel')}</label>
                     <div style={{ marginBottom: 'var(--spacing-sm)' }}>
                         {story.sprints && story.sprints.length > 0 ? (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-xs)' }}>
@@ -559,7 +566,7 @@ const StoryDetail = () => {
                                                 fontSize: '14px',
                                                 lineHeight: '1'
                                             }}
-                                            title="Remove from sprint"
+                                            title={t('storyDetail:detail.removeFromSprint')}
                                         >
                                             ×
                                         </button>
@@ -567,7 +574,7 @@ const StoryDetail = () => {
                                 ))}
                             </div>
                         ) : (
-                            <div className="text-small text-muted">Not in any sprint</div>
+                            <div className="text-small text-muted">{t('storyDetail:detail.notInAnySprint')}</div>
                         )}
                     </div>
                     <select
@@ -580,7 +587,7 @@ const StoryDetail = () => {
                         }}
                         defaultValue=""
                     >
-                        <option value="">Add to sprint...</option>
+                        <option value="">{t('storyDetail:detail.addToSprintPlaceholder')}</option>
                         {sprints.filter(s => !story.sprints?.find(ss => ss.id === s.id)).map(sprint => (
                             <option key={sprint.id} value={sprint.id}>
                                 {sprint.name} ({sprint.status})
@@ -592,14 +599,14 @@ const StoryDetail = () => {
                 {/* Description */}
                 <div className="form-group" style={{ marginBottom: 0 }}>
                     <div className="flex flex-between mb-sm" style={{ alignItems: 'center' }}>
-                        <label className="form-label" style={{ marginBottom: 0 }}>Description</label>
+                        <label className="form-label" style={{ marginBottom: 0 }}>{t('common:description')}</label>
                         {!isEditingDescription && (
                             <button
                                 type="button"
                                 onClick={() => setIsEditingDescription(true)}
                                 className="btn btn-secondary btn-sm"
                             >
-                                Edit Description
+                                {t('storyDetail:detail.editDescription')}
                             </button>
                         )}
                     </div>
@@ -622,7 +629,7 @@ const StoryDetail = () => {
                                         onClick={handleCancelDescriptionEdit}
                                         className="btn btn-secondary btn-sm"
                                     >
-                                        Cancel
+                                        {t('common:cancel')}
                                     </button>
                                     <button
                                         type="button"
@@ -630,14 +637,14 @@ const StoryDetail = () => {
                                         disabled={saving}
                                         className="btn btn-primary btn-sm"
                                     >
-                                        {saving ? 'Saving...' : 'Save'}
+                                        {saving ? t('common:saving') : t('common:save')}
                                     </button>
                                 </div>
                             </>
                         ) : formData.description ? (
                             <MarkdownRenderer content={formData.description} />
                         ) : (
-                            <div className="text-small text-muted">No description yet</div>
+                            <div className="text-small text-muted">{t('storyDetail:detail.noDescriptionYet')}</div>
                         )}
                     </div>
                 </div>
@@ -646,15 +653,15 @@ const StoryDetail = () => {
             {/* Sub-items Section */}
             <div className="card mt-md">
                 <div className="card-header flex flex-between" style={{ alignItems: 'center' }}>
-                    <h3 className="card-title">Sub-items</h3>
+                    <h3 className="card-title">{t('storyDetail:detail.subItemsTitle')}</h3>
                     <button onClick={openCreateSubItem} className="btn btn-primary btn-sm">
-                        + Add Sub-item
+                        {t('storyDetail:detail.addSubItem')}
                     </button>
                 </div>
 
                 {story.subTasks && story.subTasks.length > 0 ? (
                     story.subTasks.map(item => {
-                        const typeOpt = SUBITEM_TYPE_OPTIONS.find(t => t.value === item.type);
+                        const typeOpt = SUBITEM_TYPE_OPTIONS.find(opt => opt.value === item.type);
                         const statusOpt = SUBITEM_STATUS_OPTIONS.find(s => s.value === item.status);
                         return (
                             <div key={item.id} className="flex flex-between mb-sm" style={{
@@ -687,24 +694,24 @@ const StoryDetail = () => {
                                 </div>
                                 <div className="flex flex-gap-xs">
                                     <button onClick={() => openEditSubItem(item)} className="btn btn-secondary btn-sm">
-                                        Edit
+                                        {t('common:edit')}
                                     </button>
                                     <button onClick={() => handleDeleteSubItem(item.id)} className="btn btn-danger btn-sm">
-                                        Delete
+                                        {t('common:delete')}
                                     </button>
                                 </div>
                             </div>
                         );
                     })
                 ) : (
-                    <div className="text-small text-muted">No sub-items yet</div>
+                    <div className="text-small text-muted">{t('storyDetail:detail.noSubItemsYet')}</div>
                 )}
             </div>
 
             {/* Comments Section */}
             <div className="card mt-md">
                 <div className="card-header">
-                    <h3 className="card-title">Comments</h3>
+                    <h3 className="card-title">{t('storyDetail:detail.commentsTitle')}</h3>
                 </div>
 
                 {story.comments && story.comments.length > 0 ? (
@@ -726,8 +733,8 @@ const StoryDetail = () => {
                                 <div className="flex flex-between" style={{ alignItems: 'center' }}>
                                     <span style={{ fontWeight: 'var(--font-weight-semibold)' }}>{comment.userName}</span>
                                     <span className="text-muted" style={{ fontSize: 'var(--font-size-xs)' }}>
-                                        {formatRelativeTime(comment.updatedAt)}
-                                        {comment.updatedAt !== comment.createdAt && ' (edited)'}
+                                        {formatRelativeTime(comment.updatedAt, t)}
+                                        {comment.updatedAt !== comment.createdAt && ` ${t('storyDetail:detail.edited')}`}
                                     </span>
                                 </div>
 
@@ -741,10 +748,10 @@ const StoryDetail = () => {
                                         />
                                         <div className="flex flex-gap-sm mt-xs">
                                             <button onClick={() => handleSaveCommentEdit(comment.id)} className="btn btn-primary btn-sm">
-                                                Save
+                                                {t('common:save')}
                                             </button>
                                             <button onClick={() => setEditingCommentId(null)} className="btn btn-secondary btn-sm">
-                                                Cancel
+                                                {t('common:cancel')}
                                             </button>
                                         </div>
                                     </div>
@@ -757,11 +764,11 @@ const StoryDetail = () => {
                                             <div className="flex flex-gap-sm mt-xs">
                                                 {comment.userId === user?.id && (
                                                     <button onClick={() => openEditComment(comment)} className="btn btn-secondary btn-sm">
-                                                        Edit
+                                                        {t('common:edit')}
                                                     </button>
                                                 )}
                                                 <button onClick={() => handleDeleteComment(comment.id)} className="btn btn-danger btn-sm">
-                                                    Delete
+                                                    {t('common:delete')}
                                                 </button>
                                             </div>
                                         )}
@@ -771,7 +778,7 @@ const StoryDetail = () => {
                         </div>
                     ))
                 ) : (
-                    <div className="text-small text-muted mb-md">No comments yet</div>
+                    <div className="text-small text-muted mb-md">{t('storyDetail:detail.noCommentsYet')}</div>
                 )}
 
                 <div className="mt-md" style={{ borderTop: '1px solid var(--color-border)', paddingTop: 'var(--spacing-md)' }}>
@@ -779,7 +786,7 @@ const StoryDetail = () => {
                         value={newComment}
                         onChange={setNewComment}
                         projectId={projectId}
-                        placeholder="Write a comment... use @ to mention a person or ticket"
+                        placeholder={t('storyDetail:detail.commentPlaceholder')}
                         rows={2}
                     />
                     <button
@@ -787,7 +794,7 @@ const StoryDetail = () => {
                         disabled={!newComment.trim()}
                         className="btn btn-primary btn-sm mt-sm"
                     >
-                        Post Comment
+                        {t('storyDetail:detail.postComment')}
                     </button>
                 </div>
             </div>
@@ -795,7 +802,7 @@ const StoryDetail = () => {
             {/* History Section */}
             <div className="card mt-md">
                 <div className="card-header">
-                    <h3 className="card-title">History</h3>
+                    <h3 className="card-title">{t('storyDetail:detail.historyTitle')}</h3>
                 </div>
 
                 {historyItems.length > 0 ? (
@@ -809,14 +816,14 @@ const StoryDetail = () => {
                                 alignItems: 'center'
                             }}
                         >
-                            <span>{describeHistoryEntry(item)}</span>
+                            <span>{describeHistoryEntry(item, t)}</span>
                             <span className="text-muted" style={{ fontSize: 'var(--font-size-xs)', flexShrink: 0, marginLeft: 'var(--spacing-md)' }}>
-                                {formatRelativeTime(item.changedAt)}
+                                {formatRelativeTime(item.changedAt, t)}
                             </span>
                         </div>
                     ))
                 ) : (
-                    <div className="text-small text-muted">No history yet</div>
+                    <div className="text-small text-muted">{t('storyDetail:detail.noHistoryYet')}</div>
                 )}
 
                 {historyHasMore && (
@@ -824,7 +831,7 @@ const StoryDetail = () => {
                         onClick={() => fetchHistory(historyItems.length)}
                         className="btn btn-secondary btn-sm mt-sm"
                     >
-                        Load more
+                        {t('common:loadMore')}
                     </button>
                 )}
             </div>
@@ -863,26 +870,26 @@ const StoryDetail = () => {
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="card-header">
-                            <h3 className="card-title">Migrate to Another Project</h3>
+                            <h3 className="card-title">{t('storyDetail:detail.migrateModalTitle')}</h3>
                         </div>
                         <p>
-                            Move <strong>{story.storyId}</strong> to a different project's backlog.
+                            {t('storyDetail:detail.migrateModalBodyPrefix')} <strong>{story.storyId}</strong> {t('storyDetail:detail.migrateModalBodySuffix')}
                         </p>
                         <div className="form-group mt-md">
-                            <label className="form-label">Target project</label>
+                            <label className="form-label">{t('storyDetail:detail.targetProjectLabel')}</label>
                             <select
                                 className="form-select"
                                 value={migrateTargetId}
                                 onChange={(e) => setMigrateTargetId(e.target.value)}
                             >
-                                <option value="">Select a project...</option>
+                                <option value="">{t('storyDetail:detail.selectProjectPlaceholder')}</option>
                                 {otherProjects.map(p => (
                                     <option key={p.id} value={p.id}>{p.name}</option>
                                 ))}
                             </select>
                         </div>
                         <div className="form-error mt-md">
-                            <strong>Warning:</strong> This will clear the story's epic assignment and remove it from any sprint. Sub-tasks, comments, and history will move with it.
+                            <strong>{t('storyDetail:detail.migrateWarningLabel')}</strong> {t('storyDetail:detail.migrateWarningBody')}
                         </div>
                         {migrateError && (
                             <div className="form-error mt-md">{migrateError}</div>
@@ -893,14 +900,14 @@ const StoryDetail = () => {
                                 disabled={migrating}
                                 className="btn btn-secondary"
                             >
-                                Cancel
+                                {t('common:cancel')}
                             </button>
                             <button
                                 onClick={handleMigrate}
                                 disabled={!migrateTargetId || migrating}
                                 className="btn btn-primary"
                             >
-                                {migrating ? 'Migrating...' : 'Migrate'}
+                                {migrating ? t('storyDetail:detail.migrating') : t('storyDetail:detail.migrate')}
                             </button>
                         </div>
                     </div>

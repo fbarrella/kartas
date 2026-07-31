@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useOutletContext, Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import api from '../services/api';
 import Breadcrumb from '../components/Breadcrumb';
@@ -47,6 +48,8 @@ const StoryTable = ({
     projectId,
     navigate
 }) => {
+    const { t } = useTranslation(['backlog', 'common']);
+
     // SPR-04: a dragged <tr>'s column widths can visually collapse mid-drag,
     // since the table's auto layout recomputes as other rows in the list
     // reflow. Capture each row's rendered cell widths while at rest, then
@@ -70,13 +73,13 @@ const StoryTable = ({
                             onChange={() => onToggleAllInTable(stories)}
                         />
                     </th>
-                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Type</th>
-                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>ID</th>
-                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Title</th>
-                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Epic</th>
-                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Status</th>
-                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Points</th>
-                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Assignee</th>
+                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('backlog:table.type')}</th>
+                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('backlog:table.id')}</th>
+                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('backlog:table.title')}</th>
+                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('backlog:table.epic')}</th>
+                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('backlog:table.status')}</th>
+                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('backlog:table.points')}</th>
+                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('backlog:table.assignee')}</th>
                 </tr>
             </thead>
             <Droppable droppableId={droppableId}>
@@ -130,9 +133,9 @@ const StoryTable = ({
                                         <td
                                             style={{ padding: 'var(--spacing-sm)', cursor: 'help', position: 'relative' }}
                                             className="story-type-cell"
-                                            data-tooltip={TYPE_OPTIONS.find(t => t.value === story.type)?.label || story.type}
+                                            data-tooltip={t(`backlog:typeLabels.${story.type}`, story.type)}
                                         >
-                                            {TYPE_OPTIONS.find(t => t.value === story.type)?.icon || story.type}
+                                            {TYPE_OPTIONS.find(opt => opt.value === story.type)?.icon || story.type}
                                         </td>
                                         <td
                                             style={{ padding: 'var(--spacing-sm)', cursor: 'pointer' }}
@@ -147,7 +150,7 @@ const StoryTable = ({
                                             {story.title}
                                             {story.isBlocked && (
                                                 <span className="badge badge-danger" style={{ marginLeft: '6px', fontSize: '10px', padding: '2px 6px' }}>
-                                                    🚫 Blocked
+                                                    🚫 {t('backlog:blocked')}
                                                 </span>
                                             )}
                                         </td>
@@ -172,7 +175,7 @@ const StoryTable = ({
                                                     }}
                                                     onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
                                                     onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-                                                    title="Click to filter by this epic"
+                                                    title={t('backlog:filterByEpicTooltip')}
                                                 >
                                                     {story.epicTitle}
                                                 </span>
@@ -194,7 +197,7 @@ const StoryTable = ({
                                             >
                                                 {STATUS_OPTIONS.map(option => (
                                                     <option key={option.value} value={option.value}>
-                                                        {option.label}
+                                                        {t(`backlog:statusLabels.${option.value}`, option.label)}
                                                     </option>
                                                 ))}
                                             </select>
@@ -232,6 +235,7 @@ const StoryTable = ({
 };
 
 const Backlog = () => {
+    const { t } = useTranslation(['backlog', 'common']);
     const { projectId } = useParams();
     const { projectName, defaultLandingPage } = useOutletContext();
     const [searchParams] = useSearchParams();
@@ -368,7 +372,7 @@ const Backlog = () => {
                 projectId: parseInt(projectId)
             });
         } catch (error) {
-            setError(error.response?.data?.error || 'Failed to create story');
+            setError(error.response?.data?.error || t('backlog:errors.createStory'));
         }
     };
 
@@ -412,12 +416,12 @@ const Backlog = () => {
             await api.post(`/sprints/${selectedSprint}/stories`, {
                 storyIds: selectedStories
             });
-            setSuccessMessage(`Successfully added ${selectedStories.length} ${selectedStories.length === 1 ? 'story' : 'stories'} to sprint`);
+            setSuccessMessage(t('backlog:success.addedToSprint', { count: selectedStories.length }));
             setSelectedStories([]);
             fetchStories();
             setTimeout(() => setSuccessMessage(''), 3000);
         } catch (error) {
-            setError(error.response?.data?.error || 'Failed to add stories to sprint');
+            setError(error.response?.data?.error || t('backlog:errors.addToSprint'));
         } finally {
             setAddingToSprint(false);
         }
@@ -437,13 +441,13 @@ const Backlog = () => {
                     })
                 )
             );
-            setSuccessMessage(`Successfully assigned ${selectedStories.length} ${selectedStories.length === 1 ? 'story' : 'stories'}`);
+            setSuccessMessage(t('backlog:success.assigned', { count: selectedStories.length }));
             setSelectedStories([]);
             setSelectedAssignee('');
             fetchStories();
             setTimeout(() => setSuccessMessage(''), 3000);
         } catch (error) {
-            setError(error.response?.data?.error || 'Failed to assign stories');
+            setError(error.response?.data?.error || t('backlog:errors.assignStories'));
         }
     };
 
@@ -459,13 +463,13 @@ const Backlog = () => {
                     api.put(`/stories/${storyId}`, { status: selectedStatus })
                 )
             );
-            setSuccessMessage(`Successfully updated status for ${selectedStories.length} ${selectedStories.length === 1 ? 'story' : 'stories'}`);
+            setSuccessMessage(t('backlog:success.statusUpdated', { count: selectedStories.length }));
             setSelectedStories([]);
             setSelectedStatus('');
             fetchStories();
             setTimeout(() => setSuccessMessage(''), 3000);
         } catch (error) {
-            setError(error.response?.data?.error || 'Failed to update status');
+            setError(error.response?.data?.error || t('backlog:errors.updateStatus'));
         }
     };
 
@@ -483,20 +487,20 @@ const Backlog = () => {
                     })
                 )
             );
-            setSuccessMessage(`Successfully assigned ${selectedStories.length} ${selectedStories.length === 1 ? 'story' : 'stories'} to epic`);
+            setSuccessMessage(t('backlog:success.assignedToEpic', { count: selectedStories.length }));
             setSelectedStories([]);
             setSelectedEpic('');
             fetchStories();
             setTimeout(() => setSuccessMessage(''), 3000);
         } catch (error) {
-            setError(error.response?.data?.error || 'Failed to assign to epic');
+            setError(error.response?.data?.error || t('backlog:errors.assignToEpic'));
         }
     };
 
     const handleBulkDelete = async () => {
         if (selectedStories.length === 0) return;
 
-        if (!window.confirm(`Are you sure you want to delete ${selectedStories.length} ${selectedStories.length === 1 ? 'story' : 'stories'}? This action cannot be undone.`)) {
+        if (!window.confirm(t('backlog:confirmDelete', { count: selectedStories.length }))) {
             return;
         }
 
@@ -507,12 +511,12 @@ const Backlog = () => {
             await Promise.all(
                 selectedStories.map(storyId => api.delete(`/stories/${storyId}`))
             );
-            setSuccessMessage(`Successfully deleted ${selectedStories.length} ${selectedStories.length === 1 ? 'story' : 'stories'}`);
+            setSuccessMessage(t('backlog:success.deleted', { count: selectedStories.length }));
             setSelectedStories([]);
             fetchStories();
             setTimeout(() => setSuccessMessage(''), 3000);
         } catch (error) {
-            setError(error.response?.data?.error || 'Failed to delete stories');
+            setError(error.response?.data?.error || t('backlog:errors.deleteStories'));
         }
     };
 
@@ -624,7 +628,7 @@ const Backlog = () => {
                 await api.delete(`/sprints/${sourceId.replace('sprint-', '')}/stories/${storyId}`);
             }
         } catch (err) {
-            setError(err.response?.data?.error || 'Failed to move story');
+            setError(err.response?.data?.error || t('backlog:errors.moveStory'));
             fetchStories(); // revert-on-error via full refetch — same pattern as KanbanBoard.jsx
         }
     };
@@ -671,17 +675,17 @@ const Backlog = () => {
     return (
         <>
             <Breadcrumb items={[
-                { label: 'Projects', to: '/' },
+                { label: t('backlog:breadcrumbProjects'), to: '/' },
                 { label: projectName, to: `/project/${projectId}/${defaultLandingPage}` },
-                { label: 'Backlog' },
+                { label: t('backlog:breadcrumbBacklog') },
             ]} />
             {/* Page Title */}
             <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
                 <h2>
-                    Backlog
+                    {t('backlog:pageTitle')}
                     {hasActiveFilters && (
                         <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-neutral-600)', marginLeft: 'var(--spacing-sm)' }}>
-                            ({filteredStories.length} of {stories.length})
+                            {t('backlog:filteredCount', { filtered: filteredStories.length, total: stories.length })}
                         </span>
                     )}
                 </h2>
@@ -689,21 +693,21 @@ const Backlog = () => {
                     onClick={() => { setCreateStorySprintId(null); setShowCreateModal(true); }}
                     className="btn btn-primary"
                 >
-                    + Create Story
+                    {t('backlog:createStory')}
                 </button>
             </div>
 
             {/* Filter Bar */}
             <div className="card mb-md" style={{ padding: 'var(--spacing-md)' }}>
                 <div style={{ marginBottom: 'var(--spacing-sm)' }}>
-                    <strong>Filters</strong>
+                    <strong>{t('backlog:filters.title')}</strong>
                     {hasActiveFilters && (
                         <button
                             onClick={clearAllFilters}
                             className="btn btn-secondary btn-sm"
                             style={{ marginLeft: 'var(--spacing-sm)' }}
                         >
-                            Clear All
+                            {t('backlog:filters.clearAll')}
                         </button>
                     )}
                 </div>
@@ -713,20 +717,20 @@ const Backlog = () => {
                     <input
                         type="text"
                         className="form-input"
-                        placeholder="Search by title or ID..."
+                        placeholder={t('backlog:filters.searchPlaceholder')}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         style={{ flex: '1 1 300px' }}
                     />
                     <div className="flex" style={{ gap: 'var(--spacing-sm)' }}>
                         <button onClick={() => applyQuickFilter('unassigned')} className="btn btn-secondary btn-sm">
-                            Unassigned
+                            {t('backlog:filters.unassigned')}
                         </button>
                         <button onClick={() => applyQuickFilter('no-sprint')} className="btn btn-secondary btn-sm">
-                            No Sprint
+                            {t('backlog:filters.noSprint')}
                         </button>
                         <button onClick={() => applyQuickFilter('ready')} className="btn btn-secondary btn-sm">
-                            Ready
+                            {t('backlog:filters.ready')}
                         </button>
                     </div>
                 </div>
@@ -742,10 +746,10 @@ const Backlog = () => {
                         value={filterType}
                         onChange={(e) => setFilterType(e.target.value)}
                     >
-                        <option value="">All Types</option>
+                        <option value="">{t('backlog:filters.allTypes')}</option>
                         {TYPE_OPTIONS.map(type => (
                             <option key={type.value} value={type.value}>
-                                {type.icon} {type.label}
+                                {type.icon} {t(`backlog:typeLabels.${type.value}`, type.label)}
                             </option>
                         ))}
                     </select>
@@ -755,10 +759,10 @@ const Backlog = () => {
                         value={filterStatus}
                         onChange={(e) => setFilterStatus(e.target.value)}
                     >
-                        <option value="">All Statuses</option>
+                        <option value="">{t('backlog:filters.allStatuses')}</option>
                         {STATUS_OPTIONS.map(status => (
                             <option key={status.value} value={status.value}>
-                                {status.label}
+                                {t(`backlog:statusLabels.${status.value}`, status.label)}
                             </option>
                         ))}
                     </select>
@@ -768,8 +772,8 @@ const Backlog = () => {
                         value={filterAssignee}
                         onChange={(e) => setFilterAssignee(e.target.value)}
                     >
-                        <option value="">All Assignees</option>
-                        <option value="unassigned">Unassigned</option>
+                        <option value="">{t('backlog:filters.allAssignees')}</option>
+                        <option value="unassigned">{t('backlog:filters.unassigned')}</option>
                         {members.map(member => (
                             <option key={member.id} value={member.id}>
                                 {member.firstName} {member.lastName}
@@ -779,8 +783,8 @@ const Backlog = () => {
 
                     <ColorDropdown
                         options={[
-                            { value: '', label: 'All Epics', color: null },
-                            { value: 'none', label: 'No Epic', color: null },
+                            { value: '', label: t('backlog:filters.allEpics'), color: null },
+                            { value: 'none', label: t('backlog:filters.noEpic'), color: null },
                             ...epics.map(epic => ({ value: epic.id.toString(), label: epic.title, color: epic.color }))
                         ]}
                         value={filterEpic}
@@ -792,8 +796,8 @@ const Backlog = () => {
                         value={filterSprint}
                         onChange={(e) => setFilterSprint(e.target.value)}
                     >
-                        <option value="">All Sprints</option>
-                        <option value="none">No Sprint</option>
+                        <option value="">{t('backlog:filters.allSprints')}</option>
+                        <option value="none">{t('backlog:filters.noSprint')}</option>
                         {completedSprints.map(sprint => (
                             <option key={sprint.id} value={sprint.id}>
                                 {sprint.name}
@@ -810,7 +814,7 @@ const Backlog = () => {
                         <span className="switch-track">
                             <span className="switch-thumb" />
                         </span>
-                        <span className="switch-text">Show completed stories</span>
+                        <span className="switch-text">{t('backlog:filters.showCompleted')}</span>
                     </label>
                 </div>
             </div>
@@ -819,7 +823,7 @@ const Backlog = () => {
             {selectedStories.length > 0 && (
                 <div className="card mb-md" style={{ backgroundColor: 'var(--color-info-light)', borderLeft: '4px solid var(--color-info)' }}>
                     <div style={{ marginBottom: 'var(--spacing-sm)' }}>
-                        <strong>{selectedStories.length}</strong> {selectedStories.length === 1 ? 'story' : 'stories'} selected
+                        <strong>{selectedStories.length}</strong> {t('backlog:bulkActions.selectedSuffix', { count: selectedStories.length })}
                     </div>
 
                     <div style={{
@@ -835,8 +839,8 @@ const Backlog = () => {
                                 onChange={(e) => setSelectedAssignee(e.target.value)}
                                 style={{ flex: 1 }}
                             >
-                                <option value="">Assign to...</option>
-                                <option value="unassigned">Unassigned</option>
+                                <option value="">{t('backlog:bulkActions.assignTo')}</option>
+                                <option value="unassigned">{t('backlog:filters.unassigned')}</option>
                                 {members.map(member => (
                                     <option key={member.id} value={member.id}>
                                         {member.firstName} {member.lastName}
@@ -848,7 +852,7 @@ const Backlog = () => {
                                 disabled={!selectedAssignee}
                                 className="btn btn-secondary btn-sm"
                             >
-                                Assign
+                                {t('backlog:bulkActions.assign')}
                             </button>
                         </div>
 
@@ -860,10 +864,10 @@ const Backlog = () => {
                                 onChange={(e) => setSelectedStatus(e.target.value)}
                                 style={{ flex: 1 }}
                             >
-                                <option value="">Change status...</option>
+                                <option value="">{t('backlog:bulkActions.changeStatus')}</option>
                                 {STATUS_OPTIONS.map(status => (
                                     <option key={status.value} value={status.value}>
-                                        {status.label}
+                                        {t(`backlog:statusLabels.${status.value}`, status.label)}
                                     </option>
                                 ))}
                             </select>
@@ -872,7 +876,7 @@ const Backlog = () => {
                                 disabled={!selectedStatus}
                                 className="btn btn-secondary btn-sm"
                             >
-                                Update
+                                {t('backlog:bulkActions.update')}
                             </button>
                         </div>
 
@@ -881,8 +885,8 @@ const Backlog = () => {
                             <div style={{ flex: 1 }}>
                                 <ColorDropdown
                                     options={[
-                                        { value: '', label: 'Assign to epic...', color: null },
-                                        { value: 'none', label: 'No Epic', color: null },
+                                        { value: '', label: t('backlog:bulkActions.assignToEpic'), color: null },
+                                        { value: 'none', label: t('backlog:filters.noEpic'), color: null },
                                         ...epics.map(epic => ({ value: epic.id.toString(), label: epic.title, color: epic.color }))
                                     ]}
                                     value={selectedEpic}
@@ -894,7 +898,7 @@ const Backlog = () => {
                                 disabled={!selectedEpic}
                                 className="btn btn-secondary btn-sm"
                             >
-                                Assign
+                                {t('backlog:bulkActions.assign')}
                             </button>
                         </div>
 
@@ -907,7 +911,7 @@ const Backlog = () => {
                                 disabled={addingToSprint}
                                 style={{ flex: 1 }}
                             >
-                                <option value="">Add to sprint...</option>
+                                <option value="">{t('backlog:bulkActions.addToSprint')}</option>
                                 {activeOrPlannedSprints.map(sprint => (
                                     <option key={sprint.id} value={sprint.id}>
                                         {sprint.name} ({sprint.status})
@@ -919,7 +923,7 @@ const Backlog = () => {
                                 disabled={!selectedSprint || addingToSprint}
                                 className="btn btn-primary btn-sm"
                             >
-                                {addingToSprint ? 'Adding...' : 'Add'}
+                                {addingToSprint ? t('backlog:bulkActions.adding') : t('backlog:bulkActions.add')}
                             </button>
                         </div>
                     </div>
@@ -930,13 +934,13 @@ const Backlog = () => {
                             onClick={handleBulkDelete}
                             className="btn btn-danger btn-sm"
                         >
-                            Delete Selected
+                            {t('backlog:bulkActions.deleteSelected')}
                         </button>
                         <button
                             onClick={() => setSelectedStories([])}
                             className="btn btn-secondary btn-sm"
                         >
-                            Clear Selection
+                            {t('backlog:bulkActions.clearSelection')}
                         </button>
                     </div>
                 </div>
@@ -953,12 +957,12 @@ const Backlog = () => {
             )}
 
             {loading ? (
-                <div className="text-center">Loading stories...</div>
+                <div className="text-center">{t('backlog:loadingStories')}</div>
             ) : stories.length === 0 ? (
                 <div className="card text-center">
-                    <h3>No Stories Yet</h3>
+                    <h3>{t('backlog:emptyState.title')}</h3>
                     <p className="text-muted mt-md">
-                        Create your first user story to get started
+                        {t('backlog:emptyState.subtitle')}
                     </p>
                 </div>
             ) : (
@@ -991,7 +995,7 @@ const Backlog = () => {
                                     onClick={() => { setCreateStorySprintId(sprint.id); setShowCreateModal(true); }}
                                     className="btn btn-secondary btn-sm"
                                 >
-                                    + Create story into sprint
+                                    {t('backlog:createStoryIntoSprint')}
                                 </button>
                             </div>
                             <StoryTable
@@ -1013,7 +1017,7 @@ const Backlog = () => {
 
                     <div className="card mb-md">
                         <div className="card-header">
-                            <h3 className="card-title">Backlog</h3>
+                            <h3 className="card-title">{t('backlog:pageTitle')}</h3>
                         </div>
                         <StoryTable
                             droppableId="backlog"
@@ -1051,12 +1055,12 @@ const Backlog = () => {
                     <div className="card" style={{ maxWidth: '850px', width: '100%', margin: 'var(--spacing-md)' }}
                         onClick={(e) => e.stopPropagation()}>
                         <div className="card-header">
-                            <h3 className="card-title">Create New Story</h3>
+                            <h3 className="card-title">{t('backlog:createModal.title')}</h3>
                         </div>
 
                         <form onSubmit={handleCreateStory}>
                             <div className="form-group">
-                                <label className="form-label">Title</label>
+                                <label className="form-label">{t('common:title')}</label>
                                 <input
                                     type="text"
                                     className="form-input"
@@ -1076,7 +1080,7 @@ const Backlog = () => {
                                 borderBottom: '1px solid var(--color-border)'
                             }}>
                                 <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label className="form-label">Type</label>
+                                    <label className="form-label">{t('backlog:createModal.type')}</label>
                                     <select
                                         className="form-select"
                                         value={newStory.type}
@@ -1084,27 +1088,27 @@ const Backlog = () => {
                                     >
                                         {TYPE_OPTIONS.map(option => (
                                             <option key={option.value} value={option.value}>
-                                                {option.icon} {option.label}
+                                                {option.icon} {t(`backlog:typeLabels.${option.value}`, option.label)}
                                             </option>
                                         ))}
                                     </select>
                                 </div>
 
                                 <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label className="form-label">Story Points</label>
+                                    <label className="form-label">{t('backlog:createModal.storyPoints')}</label>
                                     <input
                                         type="number"
                                         className="form-input"
                                         value={newStory.storyPoints}
                                         onChange={(e) => setNewStory({ ...newStory, storyPoints: e.target.value })}
                                         min="0"
-                                        placeholder="Optional"
+                                        placeholder={t('backlog:createModal.storyPointsPlaceholder')}
                                     />
                                 </div>
                             </div>
 
                             <div className="form-group">
-                                <label className="form-label">Description</label>
+                                <label className="form-label">{t('common:description')}</label>
                                 <MarkdownEditor
                                     value={newStory.description}
                                     onChange={(v) => setNewStory({ ...newStory, description: v })}
@@ -1124,10 +1128,10 @@ const Backlog = () => {
                                     onClick={() => { setShowCreateModal(false); setCreateStorySprintId(null); }}
                                     className="btn btn-secondary"
                                 >
-                                    Cancel
+                                    {t('common:cancel')}
                                 </button>
                                 <button type="submit" className="btn btn-primary">
-                                    Create Story
+                                    {t('backlog:createModal.submit')}
                                 </button>
                             </div>
                         </form>
@@ -1168,37 +1172,37 @@ const Backlog = () => {
                                 gap: 'var(--spacing-md)'
                             }}>
                                 <div>
-                                    <strong>Status:</strong>
+                                    <strong>{t('backlog:detailModal.status')}</strong>
                                     <p className="mt-xs">
-                                        {STATUS_OPTIONS.find(s => s.value === selectedStory.status)?.label}
+                                        {t(`backlog:statusLabels.${selectedStory.status}`, STATUS_OPTIONS.find(s => s.value === selectedStory.status)?.label)}
                                     </p>
                                 </div>
                                 <div>
-                                    <strong>Blocked:</strong>
+                                    <strong>{t('backlog:detailModal.blocked')}</strong>
                                     <p className="mt-xs">
                                         {selectedStory.isBlocked ? (
-                                            <span className="badge badge-danger" style={{ fontSize: '10px', padding: '2px 6px' }}>🚫 Blocked</span>
-                                        ) : 'No'}
+                                            <span className="badge badge-danger" style={{ fontSize: '10px', padding: '2px 6px' }}>🚫 {t('backlog:blocked')}</span>
+                                        ) : t('common:no')}
                                     </p>
                                 </div>
                                 <div>
-                                    <strong>Story Points:</strong>
-                                    <p className="mt-xs">{selectedStory.storyPoints || 'Not set'}</p>
+                                    <strong>{t('backlog:detailModal.storyPoints')}</strong>
+                                    <p className="mt-xs">{selectedStory.storyPoints || t('backlog:detailModal.notSet')}</p>
                                 </div>
                                 <div>
-                                    <strong>Assignee:</strong>
-                                    <p className="mt-xs">{selectedStory.assigneeName || 'Unassigned'}</p>
+                                    <strong>{t('backlog:detailModal.assignee')}</strong>
+                                    <p className="mt-xs">{selectedStory.assigneeName || t('backlog:filters.unassigned')}</p>
                                 </div>
                                 <div>
-                                    <strong>Creator:</strong>
-                                    <p className="mt-xs">{selectedStory.creatorName || 'Unknown'}</p>
+                                    <strong>{t('backlog:detailModal.creator')}</strong>
+                                    <p className="mt-xs">{selectedStory.creatorName || t('backlog:detailModal.unknown')}</p>
                                 </div>
                             </div>
                         </div>
 
                         {selectedStory.description && (
                             <div className="mt-md" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-                                <strong style={{ flexShrink: 0 }}>Description:</strong>
+                                <strong style={{ flexShrink: 0 }}>{t('backlog:detailModal.description')}</strong>
                                 <div className="mt-sm" style={{
                                     flex: 1,
                                     minHeight: 0,
@@ -1217,13 +1221,13 @@ const Backlog = () => {
                                 onClick={() => setShowCloneModal(true)}
                                 className="btn btn-secondary"
                             >
-                                Clone
+                                {t('backlog:detailModal.clone')}
                             </button>
                             <button
                                 onClick={() => setSelectedStory(null)}
                                 className="btn btn-secondary"
                             >
-                                Close
+                                {t('common:close')}
                             </button>
                         </div>
                     </div>

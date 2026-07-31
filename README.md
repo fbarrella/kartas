@@ -79,6 +79,17 @@ A modern, comprehensive alternative to Jira for agile team management, built wit
 - **Admin-Customizable Color Palette**: A system-wide, admin-only color scheme editor on the same Settings page — 6 curated presets (Purple, Blue, Green, Red/Rose, Orange, Teal) with hand-picked light and dark variants, or a fully custom palette across 9 base categories per mode, with live preview against the actual app before saving
 - **UI Consistency**: Every in-project page now shares the same wider (1400px) content margin that Story Detail introduced in an earlier phase
 
+### Phase 7 Additions
+- **Drag-and-Drop Migration & Kanban Polish**: Migrated off the unmaintained `react-beautiful-dnd` onto `@hello-pangea/dnd`; collapsed-sidebar nav items now show tooltips; epic filter badges on the Backlog are color-coded to match each epic
+- **Clone & Migrate Stories**: Duplicate a story (with a fresh ID, reset assignee/sprint) from the Backlog or Story Detail; move a story to a different project's backlog entirely, clearing its epic and sprint along the way while preserving its sub-tasks, comments, and history
+- **Per-Sprint Backlog Blocks**: The Backlog groups stories into collapsible per-sprint blocks (plus an "unscheduled" block), with drag-and-drop between them and direct story creation into a specific sprint; only one sprint per project may be active or planned at a time
+- **Epic Detail Page**: A dedicated page per epic — description, timeline, progress, and its full story list — reachable from the Epics board
+- **Combined Search**: A top-bar search input with a live dropdown (stories, epics, sprints, and team members) and a full search-results page for broader queries
+- **Two-Tab Settings Page**: Personal (theme, language) and Admin (color palette, email, backups) tabs, with the Admin tab only ever shown to admins
+- **Configurable Email Delivery**: Admins can reconfigure SMTP/Gmail credentials, the "From" address, and a custom invite message/expiry at runtime from Settings — no server restart needed — with env-set fields locked read-only and secrets never echoed back
+- **Backup & Restore**: Admins can configure scheduled database backups (local disk or S3, with a retention count), trigger one on demand, download any past backup, and restore the database from a backup — gated behind a typed `RESTORE` confirmation phrase given how destructive the action is
+- **Internationalization**: Full English, Spanish, and Brazilian Portuguese support across the entire app, as a per-user preference (not per-project) changeable anytime from Settings, applied instantly with no page reload
+
 ### Additional Features
 - **Story Detail Page**: Full-page view with all story information
 - **Team Collaboration**: Assign stories to team members
@@ -90,6 +101,7 @@ A modern, comprehensive alternative to Jira for agile team management, built wit
 - **Backend**: Node.js with Express
 - **Database**: PostgreSQL
 - **Authentication**: OAuth 2.0 with JWT
+- **Internationalization**: i18next / react-i18next (English, Spanish, Brazilian Portuguese)
 - **Containerization**: Docker & Docker Compose
 
 ## Quick Start
@@ -191,6 +203,7 @@ This project is being developed in phases:
 - **Phase 4**: ✅ Critical fixes & UI polish · ✅ Backlog/epic hardening · ✅ Kanban header context · ✅ Sub-tasks system · ✅ Access control refinements · ✅ Email invitations & admin-created users · ✅ "For You" personal dashboard
 - **Phase 5**: ✅ Navigation overhaul (top bar, breadcrumbs, sidebar project header) · ✅ Markdown descriptions (stories, epics, sub-items) · ✅ People-centric Kanban (avatar assignees, hover cards) · ✅ Per-project User Details page · ✅ Assignee management (unassign, Kanban context-menu parity) · ✅ Filter UI polish
 - **Phase 6**: ✅ Kanban polish (participant avatars, view/edit modal parity) · ✅ Story comments & @mentions (people and tickets) · ✅ Story change history · ✅ "For You" page overhaul (customizable widget grid, Team Workload chart, Sprint Countdown, Latest Activities) · ✅ Dark mode · ✅ Admin-customizable system color palette · ✅ Uniform page margins
+- **Phase 7**: ✅ Drag-and-drop library migration, tooltips & epic filter colors · ✅ Clone/migrate stories · ✅ Per-sprint backlog blocks · ✅ Epic Detail page & combined search · ✅ Two-tab Settings page & runtime email configuration · ✅ Database backup & restore · ✅ Internationalization (English, Spanish, Brazilian Portuguese)
 
 See [`DEVLOG.md`](./DEVLOG.md) for the detailed, dated changelog of every change, across every phase.
 

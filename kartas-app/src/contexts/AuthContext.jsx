@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import api from '../services/api';
 import { applyRuntimePalette, setCachedSystemTheme } from '../utils/systemTheme';
+import i18n from '../i18n';
 
 const AuthContext = createContext(null);
 
@@ -19,6 +20,16 @@ const applyTheme = (theme) => {
     // whichever mode's static CSS defaults just became active above — the light/dark
     // split has to be re-derived every time the attribute changes, not just once.
     applyRuntimePalette();
+};
+
+// I18N-03: same shape as applyTheme above — keeps the cached language,
+// i18next's active language, and the <html lang> attribute in sync with the
+// resolved user's preference.
+const applyLanguage = (language) => {
+    const resolved = language || 'en';
+    localStorage.setItem('language', resolved);
+    i18n.changeLanguage(resolved);
+    document.documentElement.setAttribute('lang', resolved);
 };
 
 export const useAuth = () => {
@@ -82,6 +93,7 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem('user', JSON.stringify(validatedUser));
             setUser(validatedUser);
             applyTheme(validatedUser.themePreference);
+            applyLanguage(validatedUser.languagePreference);
         } catch (error) {
             if (error.response) {
                 // Server confirmed the session is invalid — clear it so the
@@ -97,6 +109,7 @@ export const AuthProvider = ({ children }) => {
                     const fallbackUser = JSON.parse(cachedUser);
                     setUser(fallbackUser);
                     applyTheme(fallbackUser.themePreference);
+                    applyLanguage(fallbackUser.languagePreference);
                 } catch {
                     localStorage.removeItem('user');
                 }
@@ -137,6 +150,7 @@ export const AuthProvider = ({ children }) => {
             setUser(userData);
             setAdminExists(true);
             applyTheme(userData.themePreference);
+            applyLanguage(userData.languagePreference);
 
             return { success: true };
         } catch (error) {
@@ -159,6 +173,7 @@ export const AuthProvider = ({ children }) => {
 
             setUser(userData);
             applyTheme(userData.themePreference);
+            applyLanguage(userData.languagePreference);
 
             return { success: true, user: userData };
         } catch (error) {
@@ -222,6 +237,24 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const updateLanguagePreference = async (language) => {
+        try {
+            await api.put('/users/language', { language });
+
+            const updatedUser = { ...user, languagePreference: language };
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            setUser(updatedUser);
+            applyLanguage(language);
+
+            return { success: true };
+        } catch (error) {
+            return {
+                success: false,
+                error: error.response?.data?.error || 'Failed to update language'
+            };
+        }
+    };
+
     const value = {
         user,
         loading,
@@ -230,7 +263,8 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         changePassword,
-        updateThemePreference
+        updateThemePreference,
+        updateLanguagePreference
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

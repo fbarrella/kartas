@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import UserDropdown from '../components/UserDropdown';
@@ -8,6 +9,7 @@ import '../components/navigation.css';
 import kartasLogoWhite from '../assets/kartas-logo-white.png';
 
 const Dashboard = () => {
+    const { t } = useTranslation(['dashboard', 'common']);
     const navigate = useNavigate();
     const { user, logout } = useAuth();
     const [projects, setProjects] = useState([]);
@@ -41,7 +43,7 @@ const Dashboard = () => {
             setShowCreateModal(false);
             setNewProject({ name: '', description: '' });
         } catch (error) {
-            setError(error.response?.data?.error || 'Failed to create project');
+            setError(error.response?.data?.error || t('dashboard:dashboardPage.createFailed'));
         }
     };
 
@@ -67,28 +69,28 @@ const Dashboard = () => {
 
             {/* Main Content */}
             <div className="container" style={{ marginTop: 'var(--spacing-xl)' }}>
-                <Breadcrumb items={[{ label: 'Projects' }]} />
+                <Breadcrumb items={[{ label: t('dashboard:dashboardPage.breadcrumbProjects') }]} />
                 <div className="flex flex-between mb-lg" style={{ alignItems: 'center' }}>
-                    <h2>Your Projects</h2>
+                    <h2>{t('dashboard:dashboardPage.yourProjects')}</h2>
                     {canCreateProject && (
                         <button
                             onClick={() => setShowCreateModal(true)}
                             className="btn btn-primary"
                         >
-                            + Create Project
+                            {t('dashboard:dashboardPage.createProject')}
                         </button>
                     )}
                 </div>
 
                 {loading ? (
-                    <div className="text-center">Loading projects...</div>
+                    <div className="text-center">{t('dashboard:dashboardPage.loadingProjects')}</div>
                 ) : projects.length === 0 ? (
                     <div className="card text-center">
-                        <h3>No Projects Yet</h3>
+                        <h3>{t('dashboard:dashboardPage.noProjectsTitle')}</h3>
                         <p className="text-muted mt-md">
                             {canCreateProject
-                                ? 'Create your first project to get started'
-                                : 'You are not assigned to any projects yet'}
+                                ? t('dashboard:dashboardPage.noProjectsOwnerText')
+                                : t('dashboard:dashboardPage.noProjectsMemberText')}
                         </p>
                     </div>
                 ) : (
@@ -126,7 +128,7 @@ const Dashboard = () => {
                                         </p>
                                     )}
                                     <div className="mt-md text-small text-muted">
-                                        Created by {project.createdByName || 'Unknown'}
+                                        {t('dashboard:dashboardPage.createdBy', { name: project.createdByName || t('dashboard:dashboardPage.unknownAuthor') })}
                                     </div>
                                 </div>
                             </Link>
@@ -152,12 +154,12 @@ const Dashboard = () => {
                     <div className="card" style={{ maxWidth: '500px', width: '100%' }}
                         onClick={(e) => e.stopPropagation()}>
                         <div className="card-header">
-                            <h3 className="card-title">Create New Project</h3>
+                            <h3 className="card-title">{t('dashboard:dashboardPage.createModalTitle')}</h3>
                         </div>
 
                         <form onSubmit={handleCreateProject}>
                             <div className="form-group">
-                                <label className="form-label">Project Name</label>
+                                <label className="form-label">{t('dashboard:dashboardPage.projectNameLabel')}</label>
                                 <input
                                     type="text"
                                     className="form-input"
@@ -169,7 +171,7 @@ const Dashboard = () => {
                             </div>
 
                             <div className="form-group">
-                                <label className="form-label">Description (Optional)</label>
+                                <label className="form-label">{t('dashboard:dashboardPage.descriptionOptionalLabel')}</label>
                                 <textarea
                                     className="form-textarea"
                                     value={newProject.description}
@@ -189,10 +191,10 @@ const Dashboard = () => {
                                     onClick={() => setShowCreateModal(false)}
                                     className="btn btn-secondary"
                                 >
-                                    Cancel
+                                    {t('common:cancel')}
                                 </button>
                                 <button type="submit" className="btn btn-primary">
-                                    Create Project
+                                    {t('dashboard:dashboardPage.createProjectSubmit')}
                                 </button>
                             </div>
                         </form>

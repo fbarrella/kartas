@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useOutletContext, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import Breadcrumb from '../components/Breadcrumb';
@@ -10,6 +11,7 @@ import '../components/navigation.css';
 
 
 const Epics = () => {
+    const { t } = useTranslation(['epics', 'common']);
     const { projectId } = useParams();
     const { projectName, defaultLandingPage } = useOutletContext();
     const { user } = useAuth();
@@ -29,14 +31,14 @@ const Epics = () => {
     const [showCompleted, setShowCompleted] = useState(false);
 
     const EPIC_COLORS = [
-        { value: '#0052CC', label: 'Blue' },
-        { value: '#00875A', label: 'Green' },
-        { value: '#FF8B00', label: 'Orange' },
-        { value: '#DE350B', label: 'Red' },
-        { value: '#6554C0', label: 'Purple' },
-        { value: '#00B8D9', label: 'Cyan' },
-        { value: '#FF5630', label: 'Bright Red' },
-        { value: '#36B37E', label: 'Bright Green' }
+        { value: '#0052CC', label: t('epics:colorLabels.blue') },
+        { value: '#00875A', label: t('epics:colorLabels.green') },
+        { value: '#FF8B00', label: t('epics:colorLabels.orange') },
+        { value: '#DE350B', label: t('epics:colorLabels.red') },
+        { value: '#6554C0', label: t('epics:colorLabels.purple') },
+        { value: '#00B8D9', label: t('epics:colorLabels.cyan') },
+        { value: '#FF5630', label: t('epics:colorLabels.brightRed') },
+        { value: '#36B37E', label: t('epics:colorLabels.brightGreen') }
     ];
 
     useEffect(() => {
@@ -59,7 +61,7 @@ const Epics = () => {
             setEpics(response.data);
         } catch (error) {
             console.error('Error fetching epics:', error);
-            setError('Failed to load epics');
+            setError(t('epics:errors.loadEpics'));
         } finally {
             setLoading(false);
         }
@@ -94,12 +96,12 @@ const Epics = () => {
             handleCloseModal();
             fetchEpics();
         } catch (error) {
-            setError(error.response?.data?.error || 'Failed to save epic');
+            setError(error.response?.data?.error || t('epics:errors.saveEpic'));
         }
     };
 
     const handleDelete = async (epicId) => {
-        if (!confirm('Are you sure you want to delete this epic? This action cannot be undone.')) {
+        if (!confirm(t('epics:confirmDelete'))) {
             return;
         }
 
@@ -107,7 +109,7 @@ const Epics = () => {
             await api.delete(`/epics/${epicId}`);
             fetchEpics();
         } catch (error) {
-            alert(error.response?.data?.error || 'Failed to delete epic');
+            alert(error.response?.data?.error || t('epics:errors.deleteEpic'));
         }
     };
 
@@ -121,18 +123,8 @@ const Epics = () => {
         return colors[status] || colors.planning;
     };
 
-    const getStatusLabel = (status) => {
-        const labels = {
-            planning: 'Planning',
-            in_progress: 'In Progress',
-            completed: 'Completed',
-            cancelled: 'Cancelled'
-        };
-        return labels[status] || status;
-    };
-
     if (loading) {
-        return <div className="container mt-lg">Loading epics...</div>;
+        return <div className="container mt-lg">{t('epics:loadingEpics')}</div>;
     }
 
     const visibleEpics = epics.filter(epic =>
@@ -145,12 +137,12 @@ const Epics = () => {
     return (
         <>
             <Breadcrumb items={[
-                { label: 'Projects', to: '/' },
+                { label: t('epics:breadcrumbProjects'), to: '/' },
                 { label: projectName, to: `/project/${projectId}/${defaultLandingPage}` },
-                { label: 'Epics' },
+                { label: t('epics:breadcrumbEpics') },
             ]} />
             <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
-                <h2 style={{ margin: 0 }}>Epics</h2>
+                <h2 style={{ margin: 0 }}>{t('epics:pageTitle')}</h2>
                 <div className="flex flex-gap-md" style={{ alignItems: 'center' }}>
                     <label className="switch switch-primary">
                         <input
@@ -161,11 +153,11 @@ const Epics = () => {
                         <span className="switch-track">
                             <span className="switch-thumb" />
                         </span>
-                        <span className="switch-text">Show completed epics</span>
+                        <span className="switch-text">{t('epics:showCompleted')}</span>
                     </label>
                     {canManageEpics && (
                         <button onClick={() => handleOpenModal()} className="btn btn-primary">
-                            + Create Epic
+                            {t('epics:createEpic')}
                         </button>
                     )}
                 </div>
@@ -178,20 +170,20 @@ const Epics = () => {
 
             {epics.length === 0 ? (
                 <div className="card text-center">
-                    <h3>No Epics Yet</h3>
+                    <h3>{t('epics:emptyState.title')}</h3>
                     <p className="text-muted mt-sm">
-                        {canManageEpics ? 'Create your first epic to organize your stories' : 'No epics have been created for this project yet'}
+                        {canManageEpics ? t('epics:emptyState.subtitleManage') : t('epics:emptyState.subtitleView')}
                     </p>
                     {canManageEpics && (
                         <button onClick={() => handleOpenModal()} className="btn btn-primary mt-md">
-                            Create Epic
+                            {t('epics:createEpicButton')}
                         </button>
                     )}
                 </div>
             ) : visibleEpics.length === 0 ? (
                 <div className="card text-center">
-                    <h3>No Epics to Show</h3>
-                    <p className="text-muted mt-sm">All epics are completed or cancelled. Check "Show completed epics" to see them.</p>
+                    <h3>{t('epics:noEpicsToShow.title')}</h3>
+                    <p className="text-muted mt-sm">{t('epics:noEpicsToShow.subtitle')}</p>
                 </div>
             ) : (
                 <div style={{
@@ -233,7 +225,7 @@ const Epics = () => {
                                             color: 'white',
                                             marginLeft: '8px'
                                         }}>
-                                            {getStatusLabel(epic.status)}
+                                            {t(`epics:statusLabels.${epic.status}`, epic.status)}
                                         </span>
                                     </div>
 
@@ -246,7 +238,7 @@ const Epics = () => {
                                             color: 'var(--color-neutral-600)',
                                             marginBottom: '4px'
                                         }}>
-                                            <span>Progress</span>
+                                            <span>{t('epics:progress')}</span>
                                             <span>{epic.progress_percent ?? 0}%</span>
                                         </div>
                                         <div style={{
@@ -281,19 +273,19 @@ const Epics = () => {
                                 }}>
                                     {epic.start_date && (
                                         <div>
-                                            <strong>Start:</strong> {new Date(epic.start_date).toLocaleDateString()}
+                                            <strong>{t('epics:start')}</strong> {new Date(epic.start_date).toLocaleDateString()}
                                         </div>
                                     )}
                                     {epic.end_date && (
                                         <div>
-                                            <strong>End:</strong> {new Date(epic.end_date).toLocaleDateString()}
+                                            <strong>{t('epics:end')}</strong> {new Date(epic.end_date).toLocaleDateString()}
                                         </div>
                                     )}
                                     <div>
-                                        <strong>Stories:</strong> {epic.story_count}
+                                        <strong>{t('epics:stories')}</strong> {epic.story_count}
                                     </div>
                                     <div className="flex flex-gap-xs" style={{ alignItems: 'center' }}>
-                                        <strong>Created by:</strong>
+                                        <strong>{t('epics:createdBy')}</strong>
                                         <span onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex' }}>
                                             <AssigneeAvatarWithHoverCard
                                                 assigneeId={epic.created_by}
@@ -312,10 +304,10 @@ const Epics = () => {
                                             onClick={() => handleDelete(epic.id)}
                                             className="btn btn-danger btn-sm"
                                             disabled={parseInt(epic.story_count) > 0}
-                                            title={parseInt(epic.story_count) > 0 ? 'Cannot delete epic with stories' : 'Delete epic'}
+                                            title={parseInt(epic.story_count) > 0 ? t('epics:cannotDeleteTooltip') : t('epics:deleteTooltip')}
                                             style={{ flex: 1 }}
                                         >
-                                            Delete
+                                            {t('common:delete')}
                                         </button>
                                     </div>
                                 )}
@@ -342,7 +334,7 @@ const Epics = () => {
                     <div className="card" style={{ maxWidth: '600px', width: '100%', margin: 'var(--spacing-md)' }}
                         onClick={(e) => e.stopPropagation()}>
                         <div className="card-header">
-                            <h3 className="card-title">Create Epic</h3>
+                            <h3 className="card-title">{t('epics:createEpicButton')}</h3>
                         </div>
 
                         <form onSubmit={handleSubmit}>
@@ -358,7 +350,7 @@ const Epics = () => {
                             )}
 
                             <div className="form-group">
-                                <label className="form-label">Title *</label>
+                                <label className="form-label">{t('epics:titleLabel')}</label>
                                 <input
                                     type="text"
                                     className="form-input"
@@ -369,7 +361,7 @@ const Epics = () => {
                             </div>
 
                             <div className="form-group">
-                                <label className="form-label">Description</label>
+                                <label className="form-label">{t('common:description')}</label>
                                 <MarkdownEditor
                                     value={formData.description}
                                     onChange={(v) => setFormData({ ...formData, description: v })}
@@ -378,22 +370,22 @@ const Epics = () => {
                             </div>
 
                             <div className="form-group">
-                                <label className="form-label">Status</label>
+                                <label className="form-label">{t('common:status')}</label>
                                 <select
                                     className="form-select"
                                     value={formData.status}
                                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                                 >
-                                    <option value="planning">Planning</option>
-                                    <option value="in_progress">In Progress</option>
-                                    <option value="completed">Completed</option>
-                                    <option value="cancelled">Cancelled</option>
+                                    <option value="planning">{t('epics:statusLabels.planning')}</option>
+                                    <option value="in_progress">{t('epics:statusLabels.in_progress')}</option>
+                                    <option value="completed">{t('epics:statusLabels.completed')}</option>
+                                    <option value="cancelled">{t('epics:statusLabels.cancelled')}</option>
                                 </select>
                             </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-md)' }}>
                                 <div className="form-group">
-                                    <label className="form-label">Start Date</label>
+                                    <label className="form-label">{t('epics:startDate')}</label>
                                     <input
                                         type="date"
                                         className="form-input"
@@ -403,7 +395,7 @@ const Epics = () => {
                                 </div>
 
                                 <div className="form-group">
-                                    <label className="form-label">End Date</label>
+                                    <label className="form-label">{t('epics:endDate')}</label>
                                     <input
                                         type="date"
                                         className="form-input"
@@ -414,7 +406,7 @@ const Epics = () => {
                             </div>
 
                             <div className="form-group">
-                                <label className="form-label">Color</label>
+                                <label className="form-label">{t('epics:color')}</label>
                                 <div style={{ display: 'flex', gap: 'var(--spacing-sm)', flexWrap: 'wrap' }}>
                                     {EPIC_COLORS.map(colorOption => (
                                         <div
@@ -450,10 +442,10 @@ const Epics = () => {
                                     onClick={handleCloseModal}
                                     className="btn btn-secondary"
                                 >
-                                    Cancel
+                                    {t('common:cancel')}
                                 </button>
                                 <button type="submit" className="btn btn-primary">
-                                    Create Epic
+                                    {t('epics:createEpicButton')}
                                 </button>
                             </div>
                         </form>

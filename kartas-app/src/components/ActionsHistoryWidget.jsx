@@ -1,51 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 import { formatRelativeTime } from '../utils/activity';
 
 const PAGE_SIZE = 10;
 
-const STATUS_LABELS = {
-    backlog: 'Backlog', refining: 'Refining', ready: 'Ready',
-    in_development: 'In Development', review: 'Review', test: 'Test',
-    done: 'Done', cancelled: 'Cancelled'
-};
-
 // FY-03: renamed from "Activity" — data/query are unchanged from Phase 4/5,
 // this is still the viewer's own actions, just relabeled and page-sized down
 // to 10 (from 20) per the PRD. Distinct from the new LatestActivitiesWidget
 // (FY-04), which shows *other* people's actions instead.
-const describeActivity = (item) => {
+const describeActivity = (item, t) => {
     const { actionType, entityType, fieldChanged, oldValue, newValue, storyCode } = item;
+    const statusLabel = (value) => t(`dashboard:statusLabels.${value}`, { defaultValue: value });
 
     if (entityType === 'story') {
-        if (actionType === 'created') return `Created story ${storyCode} — ${newValue}`;
-        if (actionType === 'commented') return `Commented on ${storyCode}: "${newValue}"`;
+        if (actionType === 'created') return t('dashboard:actionsHistoryWidget.createdStory', { code: storyCode, title: newValue });
+        if (actionType === 'commented') return t('dashboard:actionsHistoryWidget.commentedOnStory', { code: storyCode, comment: newValue });
         if (actionType === 'moved') {
             return oldValue != null
-                ? `Moved ${storyCode} from ${STATUS_LABELS[oldValue] || oldValue} to ${STATUS_LABELS[newValue] || newValue}`
-                : `Moved ${storyCode} to ${STATUS_LABELS[newValue] || newValue}`;
+                ? t('dashboard:actionsHistoryWidget.movedStoryFromTo', { code: storyCode, from: statusLabel(oldValue), to: statusLabel(newValue) })
+                : t('dashboard:actionsHistoryWidget.movedStoryTo', { code: storyCode, to: statusLabel(newValue) });
         }
-        return `Updated ${(fieldChanged || 'a field').replace('_', ' ')} on ${storyCode}`;
+        const fieldLabel = (fieldChanged ? fieldChanged.replace('_', ' ') : t('dashboard:actionsHistoryWidget.defaultFieldChanged'));
+        return t('dashboard:actionsHistoryWidget.updatedFieldOnStory', { field: fieldLabel, code: storyCode });
     }
     if (entityType === 'sub_task') {
-        if (actionType === 'created') return `Added sub-item "${newValue}" on ${storyCode}`;
+        if (actionType === 'created') return t('dashboard:actionsHistoryWidget.addedSubItem', { title: newValue, code: storyCode });
         if (actionType === 'moved') {
             return oldValue != null
-                ? `Moved a sub-item on ${storyCode} from ${STATUS_LABELS[oldValue] || oldValue} to ${STATUS_LABELS[newValue] || newValue}`
-                : `Moved a sub-item on ${storyCode} to ${STATUS_LABELS[newValue] || newValue}`;
+                ? t('dashboard:actionsHistoryWidget.movedSubItemFromTo', { code: storyCode, from: statusLabel(oldValue), to: statusLabel(newValue) })
+                : t('dashboard:actionsHistoryWidget.movedSubItemTo', { code: storyCode, to: statusLabel(newValue) });
         }
-        return `Updated a sub-item on ${storyCode}`;
+        return t('dashboard:actionsHistoryWidget.updatedSubItem', { code: storyCode });
     }
     if (entityType === 'epic') {
-        return actionType === 'created' ? `Created epic "${newValue}"` : `Updated epic "${newValue}"`;
+        return actionType === 'created'
+            ? t('dashboard:actionsHistoryWidget.createdEpic', { title: newValue })
+            : t('dashboard:actionsHistoryWidget.updatedEpic', { title: newValue });
     }
     if (entityType === 'sprint') {
-        if (actionType === 'created') return `Created sprint "${newValue}"`;
-        if (fieldChanged === 'status') return `Sprint status changed to ${newValue}`;
-        return `Updated sprint "${newValue}"`;
+        if (actionType === 'created') return t('dashboard:actionsHistoryWidget.createdSprint', { title: newValue });
+        if (fieldChanged === 'status') return t('dashboard:actionsHistoryWidget.sprintStatusChanged', { status: newValue });
+        return t('dashboard:actionsHistoryWidget.updatedSprint', { title: newValue });
     }
-    return `${actionType} ${entityType}`;
+    return t('dashboard:actionsHistoryWidget.genericActivity', { actionType, entityType });
 };
 
 const activityLink = (item, projectId) => {
@@ -58,6 +57,7 @@ const activityLink = (item, projectId) => {
 };
 
 const ActionsHistoryWidget = ({ projectId }) => {
+    const { t } = useTranslation(['dashboard', 'common']);
     const [items, setItems] = useState([]);
     const [hasMore, setHasMore] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -86,14 +86,14 @@ const ActionsHistoryWidget = ({ projectId }) => {
     return (
         <div className="card">
             <div className="card-header">
-                <h3 className="card-title">Actions History</h3>
+                <h3 className="card-title">{t('dashboard:actionsHistoryWidget.title')}</h3>
             </div>
 
             {loading ? (
-                <div className="text-center">Loading...</div>
+                <div className="text-center">{t('common:loading')}</div>
             ) : items.length === 0 ? (
                 <div className="text-center">
-                    <p className="text-muted mt-md mb-md">Your recent actions in this project will show up here</p>
+                    <p className="text-muted mt-md mb-md">{t('dashboard:actionsHistoryWidget.empty')}</p>
                 </div>
             ) : (
                 <>
@@ -108,9 +108,9 @@ const ActionsHistoryWidget = ({ projectId }) => {
                                     alignItems: 'center'
                                 }}
                             >
-                                <span>{describeActivity(item)}</span>
+                                <span>{describeActivity(item, t)}</span>
                                 <span className="text-muted text-small" style={{ whiteSpace: 'nowrap', marginLeft: 'var(--spacing-md)' }}>
-                                    {formatRelativeTime(item.changedAt)}
+                                    {formatRelativeTime(item.changedAt, t)}
                                 </span>
                             </div>
                         );
@@ -130,7 +130,7 @@ const ActionsHistoryWidget = ({ projectId }) => {
                                 onClick={() => fetchActivity(items.length)}
                                 disabled={loadingMore}
                             >
-                                {loadingMore ? 'Loading...' : 'Load More'}
+                                {loadingMore ? t('common:loading') : t('dashboard:actionsHistoryWidget.loadMore')}
                             </button>
                         </div>
                     )}

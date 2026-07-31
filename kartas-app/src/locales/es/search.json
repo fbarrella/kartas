@@ -1,0 +1,20 @@
+{
+    "projectSearch": {
+        "placeholder": "Buscar en este proyecto...",
+        "searching": "Buscando...",
+        "seeMore": "Ver más resultados…"
+    },
+    "breadcrumb": {
+        "projects": "Proyectos",
+        "searchResults": "Resultados de la búsqueda"
+    },
+    "resultsTitle": "Resultados de la búsqueda para \"{{query}}\"",
+    "typeToSearch": "Escribe al menos 2 caracteres para buscar.",
+    "sections": {
+        "epics": "Épicas",
+        "stories": "Historias",
+        "subTasks": "Subtareas",
+        "users": "Miembros del equipo"
+    },
+    "noMatching": "No se encontraron {{section}}."
+}

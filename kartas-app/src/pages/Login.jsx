@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import kartasLogo from '../assets/kartas-logo.png';
 
 const Login = () => {
     const navigate = useNavigate();
+    const { t } = useTranslation(['auth', 'common']);
     const { login, user, changePassword } = useAuth();
 
     const [formData, setFormData] = useState({
@@ -69,12 +71,12 @@ const Login = () => {
         setError('');
 
         if (passwordChangeData.newPassword !== passwordChangeData.confirmPassword) {
-            setError('Passwords do not match');
+            setError(t('auth:validation.passwordsDoNotMatch'));
             return;
         }
 
         if (passwordChangeData.newPassword.length < 8) {
-            setError('Password must be at least 8 characters');
+            setError(t('auth:validation.passwordMinLength'));
             return;
         }
 
@@ -99,15 +101,15 @@ const Login = () => {
             <div className="flex flex-center" style={{ minHeight: '100vh', backgroundColor: 'var(--color-background)' }}>
                 <div className="card" style={{ maxWidth: '450px', width: '100%' }}>
                     <div className="card-header">
-                        <h2 className="card-title">Change Your Password</h2>
+                        <h2 className="card-title">{t('auth:login.changePasswordTitle')}</h2>
                         <p className="text-muted mt-sm">
-                            Please set a new password for your account
+                            {t('auth:login.changePasswordSubtitle')}
                         </p>
                     </div>
 
                     <form onSubmit={handlePasswordChange}>
                         <div className="form-group">
-                            <label className="form-label">New Password</label>
+                            <label className="form-label">{t('auth:fields.newPassword')}</label>
                             <input
                                 type="password"
                                 name="newPassword"
@@ -120,7 +122,7 @@ const Login = () => {
                         </div>
 
                         <div className="form-group">
-                            <label className="form-label">Confirm New Password</label>
+                            <label className="form-label">{t('auth:fields.confirmNewPassword')}</label>
                             <input
                                 type="password"
                                 name="confirmPassword"
@@ -143,7 +145,7 @@ const Login = () => {
                             style={{ width: '100%' }}
                             disabled={loading}
                         >
-                            {loading ? 'Changing Password...' : 'Change Password'}
+                            {loading ? t('auth:login.changingPassword') : t('auth:login.changePasswordButton')}
                         </button>
                     </form>
                 </div>
@@ -157,13 +159,13 @@ const Login = () => {
                 <div className="card-header" style={{ textAlign: 'center' }}>
                     <img src={kartasLogo} alt="Kartas" style={{ height: '60px', marginBottom: 'var(--spacing-sm)' }} />
                     <p className="text-muted mt-sm">
-                        Sign in to your account
+                        {t('auth:login.signInSubtitle')}
                     </p>
                 </div>
 
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
-                        <label className="form-label">Email</label>
+                        <label className="form-label">{t('common:email')}</label>
                         <input
                             type="email"
                             name="email"
@@ -175,7 +177,7 @@ const Login = () => {
                     </div>
 
                     <div className="form-group">
-                        <label className="form-label">Password</label>
+                        <label className="form-label">{t('auth:fields.password')}</label>
                         <input
                             type="password"
                             name="password"
@@ -198,7 +200,7 @@ const Login = () => {
                         style={{ width: '100%' }}
                         disabled={loading}
                     >
-                        {loading ? 'Signing In...' : 'Sign In'}
+                        {loading ? t('auth:login.signingIn') : t('auth:login.signInButton')}
                     </button>
                 </form>
             </div>

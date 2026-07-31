@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { getAvatarColor, getInitialsFromFullName } from '../utils/avatar';
 
-const ROLE_LABELS = { admin: 'Admin', project_owner: 'Project Owner', member: 'Member' };
-
 const UserHoverCard = ({ assigneeId, assigneeName, assigneeRole, assigneeEmail, projectId }) => {
+    const { t } = useTranslation(['users']);
     const [copied, setCopied] = useState(false);
 
     const handleCopyEmail = (e) => {
@@ -23,13 +23,13 @@ const UserHoverCard = ({ assigneeId, assigneeName, assigneeRole, assigneeEmail, 
                 </span>
                 <div>
                     <div className="user-hover-card-name">{assigneeName}</div>
-                    {assigneeRole && <div className="user-hover-card-role">{ROLE_LABELS[assigneeRole] || assigneeRole}</div>}
+                    {assigneeRole && <div className="user-hover-card-role">{t(`users:roles.${assigneeRole}`, assigneeRole)}</div>}
                 </div>
             </Link>
             <div className="user-hover-card-email-row">
                 <span className="user-hover-card-email">{assigneeEmail}</span>
-                <button type="button" className="user-hover-card-copy-btn" onClick={handleCopyEmail} title="Copy email">
-                    {copied ? 'Copied!' : 'Copy'}
+                <button type="button" className="user-hover-card-copy-btn" onClick={handleCopyEmail} title={t('users:hoverCard.copyEmail')}>
+                    {copied ? t('users:hoverCard.copied') : t('users:hoverCard.copy')}
                 </button>
             </div>
         </div>

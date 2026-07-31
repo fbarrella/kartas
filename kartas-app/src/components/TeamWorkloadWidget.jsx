@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 import TeamWorkloadChart from './TeamWorkloadChart';
 
 const TeamWorkloadWidget = ({ projectId }) => {
+    const { t } = useTranslation(['dashboard', 'common']);
     const [workload, setWorkload] = useState(null);
     const [hasActiveSprint, setHasActiveSprint] = useState(true);
     const [loading, setLoading] = useState(true);
@@ -30,14 +32,14 @@ const TeamWorkloadWidget = ({ projectId }) => {
     return (
         <div className="card">
             <div className="card-header">
-                <h3 className="card-title">Team Workload</h3>
+                <h3 className="card-title">{t('dashboard:teamWorkloadWidget.title')}</h3>
             </div>
 
             {loading ? (
-                <div className="text-center">Loading...</div>
+                <div className="text-center">{t('common:loading')}</div>
             ) : !hasActiveSprint ? (
                 <div className="text-center">
-                    <p className="text-muted mt-md mb-md">There will only be data here once there's an active sprint</p>
+                    <p className="text-muted mt-md mb-md">{t('dashboard:teamWorkloadWidget.noActiveSprint')}</p>
                 </div>
             ) : (
                 <TeamWorkloadChart data={workload?.data} />

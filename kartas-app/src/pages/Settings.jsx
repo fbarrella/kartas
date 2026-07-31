@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import UserDropdown from '../components/UserDropdown';
 import Breadcrumb from '../components/Breadcrumb';
@@ -10,7 +11,8 @@ import '../components/navigation.css';
 import kartasLogoWhite from '../assets/kartas-logo-white.png';
 
 const Settings = () => {
-    const { user, updateThemePreference } = useAuth();
+    const { t } = useTranslation(['settings', 'common']);
+    const { user, updateThemePreference, updateLanguagePreference } = useAuth();
     const [error, setError] = useState('');
     const isDark = user?.themePreference === 'dark';
     const isAdmin = user?.role === 'admin';
@@ -21,6 +23,16 @@ const Settings = () => {
     const handleThemeToggle = async (e) => {
         setError('');
         const result = await updateThemePreference(e.target.checked ? 'dark' : 'light');
+        if (!result.success) {
+            setError(result.error);
+        }
+    };
+
+    // I18N-04: not admin-gated — every user can change their own language,
+    // matching the theme toggle right above it in the same "Appearance" card.
+    const handleLanguageChange = async (e) => {
+        setError('');
+        const result = await updateLanguagePreference(e.target.value);
         if (!result.success) {
             setError(result.error);
         }
@@ -46,15 +58,15 @@ const Settings = () => {
 
             {/* Main Content */}
             <div className="container" style={{ marginTop: 'var(--spacing-xl)', maxWidth: '760px' }}>
-                <Breadcrumb items={[{ label: 'Settings' }]} />
+                <Breadcrumb items={[{ label: t('settings:page.title') }]} />
                 <div className="mb-md">
                     <Link to="/" className="btn btn-secondary btn-sm">
-                        ← Go back to My Projects
+                        ← {t('settings:page.backToProjects')}
                     </Link>
                 </div>
 
                 <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
-                    <h2 style={{ margin: 0 }}>Settings</h2>
+                    <h2 style={{ margin: 0 }}>{t('settings:page.title')}</h2>
                 </div>
 
                 {error && <div className="form-error mb-md">{error}</div>}
@@ -69,21 +81,21 @@ const Settings = () => {
                             className={`btn btn-sm ${activeTab === 'personal' ? 'btn-primary' : 'btn-secondary'}`}
                             onClick={() => setActiveTab('personal')}
                         >
-                            Personal
+                            {t('settings:page.tabs.personal')}
                         </button>
                         <button
                             type="button"
                             className={`btn btn-sm ${activeTab === 'admin' ? 'btn-primary' : 'btn-secondary'}`}
                             onClick={() => setActiveTab('admin')}
                         >
-                            Admin
+                            {t('settings:page.tabs.admin')}
                         </button>
                     </div>
                 )}
 
                 {(!isAdmin || activeTab === 'personal') && (
                     <div className="card">
-                        <h2>Appearance</h2>
+                        <h2>{t('settings:page.appearance.title')}</h2>
                         <div className="form-group" style={{ marginBottom: 0, marginTop: 'var(--spacing-md)' }}>
                             <label className="switch switch-primary">
                                 <input
@@ -94,9 +106,24 @@ const Settings = () => {
                                 <span className="switch-track">
                                     <span className="switch-thumb" />
                                 </span>
-                                <span className="switch-text">{isDark ? 'Dark mode' : 'Light mode'}</span>
+                                <span className="switch-text">{isDark ? t('settings:page.appearance.darkMode') : t('settings:page.appearance.lightMode')}</span>
                             </label>
-                            <small className="text-muted" style={{ display: 'block', marginTop: 'var(--spacing-sm)' }}>This applies across every project and device you log in from.</small>
+                            <small className="text-muted" style={{ display: 'block', marginTop: 'var(--spacing-sm)' }}>{t('settings:page.appearance.themeHelp')}</small>
+                        </div>
+
+                        <div className="form-group" style={{ marginBottom: 0, marginTop: 'var(--spacing-lg)' }}>
+                            <label className="form-label">{t('settings:page.appearance.language')}</label>
+                            <select
+                                className="form-select"
+                                value={user?.languagePreference || 'en'}
+                                onChange={handleLanguageChange}
+                                style={{ maxWidth: '260px' }}
+                            >
+                                <option value="en">English</option>
+                                <option value="es">Español</option>
+                                <option value="pt-BR">Português (Brasil)</option>
+                            </select>
+                            <small className="text-muted" style={{ display: 'block', marginTop: 'var(--spacing-sm)' }}>{t('settings:page.appearance.languageHelp')}</small>
                         </div>
                     </div>
                 )}
@@ -104,25 +131,25 @@ const Settings = () => {
                 {isAdmin && activeTab === 'admin' && (
                     <>
                         <div className="card">
-                            <h2>System Color Palette</h2>
+                            <h2>{t('settings:page.palette.title')}</h2>
                             <p className="text-muted mb-md" style={{ fontSize: 'var(--font-size-sm)' }}>
-                                Admin-only. This changes the color scheme for every user, across the whole app.
+                                {t('settings:page.palette.description')}
                             </p>
                             <AdminPaletteEditor />
                         </div>
 
                         <div className="card mt-lg">
-                            <h2>Email Configuration</h2>
+                            <h2>{t('settings:page.email.title')}</h2>
                             <p className="text-muted mb-md" style={{ fontSize: 'var(--font-size-sm)' }}>
-                                Admin-only. Controls how invite emails are sent. Fields set via environment variables take precedence and can't be edited here.
+                                {t('settings:page.email.description')}
                             </p>
                             <AdminEmailSettings />
                         </div>
 
                         <div className="card mt-lg">
-                            <h2>Backups</h2>
+                            <h2>{t('settings:page.backups.title')}</h2>
                             <p className="text-muted mb-md" style={{ fontSize: 'var(--font-size-sm)' }}>
-                                Admin-only. Configure automatic database backups, trigger one on demand, and restore from a previous backup.
+                                {t('settings:page.backups.description')}
                             </p>
                             <AdminBackupSettings />
                         </div>

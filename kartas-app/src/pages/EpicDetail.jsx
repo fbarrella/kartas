@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 import Breadcrumb from '../components/Breadcrumb';
 import MarkdownEditor from '../components/MarkdownEditor';
@@ -26,18 +27,21 @@ const EPIC_COLORS = [
     { value: '#36B37E', label: 'Bright Green' }
 ];
 
-const STORY_STATUS_LABELS = {
-    backlog: 'Backlog',
-    refining: 'Refining',
-    ready: 'Ready',
-    in_development: 'In Development',
-    review: 'Review',
-    test: 'Test',
-    done: 'Done',
-    cancelled: 'Cancelled'
+// EPD-02: static hex-to-key lookup so EPIC_COLORS (module-level, no hook
+// access) can be translated at each render/usage site via t('epics:colorLabels.<key>').
+const EPIC_COLOR_KEYS = {
+    '#0052CC': 'blue',
+    '#00875A': 'green',
+    '#FF8B00': 'orange',
+    '#DE350B': 'red',
+    '#6554C0': 'purple',
+    '#00B8D9': 'cyan',
+    '#FF5630': 'brightRed',
+    '#36B37E': 'brightGreen'
 };
 
 const EpicDetail = () => {
+    const { t } = useTranslation(['epics', 'common']);
     const { projectId, epicId } = useParams();
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -90,7 +94,7 @@ const EpicDetail = () => {
             });
         } catch (error) {
             console.error('Error fetching epic:', error);
-            setError('Failed to load epic');
+            setError(t('epics:errors.loadEpic'));
         } finally {
             setLoading(false);
         }
@@ -114,10 +118,10 @@ const EpicDetail = () => {
                 color: formData.color
             });
             await fetchEpic();
-            setSuccessMessage('Epic updated successfully!');
+            setSuccessMessage(t('epics:detail.updatedSuccess'));
             setTimeout(() => setSuccessMessage(''), 3000);
         } catch (error) {
-            setError(error.response?.data?.error || 'Failed to update epic');
+            setError(error.response?.data?.error || t('epics:errors.updateEpic'));
         } finally {
             setSaving(false);
         }
@@ -135,16 +139,16 @@ const EpicDetail = () => {
 
     if (loading) {
         return (
-            <div className="text-center">Loading epic...</div>
+            <div className="text-center">{t('epics:loadingEpic')}</div>
         );
     }
 
     if (!epic) {
         return (
             <div className="card text-center">
-                <h3>Epic Not Found</h3>
+                <h3>{t('epics:detail.notFoundTitle')}</h3>
                 <button onClick={() => navigate(`/project/${projectId}/epics`)} className="btn btn-primary mt-md">
-                    Back to Epics
+                    {t('epics:detail.backToEpics')}
                 </button>
             </div>
         );
@@ -156,10 +160,10 @@ const EpicDetail = () => {
     return (
         <>
             <Breadcrumb items={[
-                { label: 'Projects', to: '/' },
-                { label: project?.name || 'Project', to: `/project/${projectId}/epics` },
+                { label: t('epics:breadcrumbProjects'), to: '/' },
+                { label: project?.name || t('epics:breadcrumbProjectFallback'), to: `/project/${projectId}/epics` },
                 { label: epic.epic_id, to: `/project/${projectId}/epics` },
-                { label: 'Edit Epic' },
+                { label: t('epics:breadcrumbEditEpic') },
             ]} />
 
             {/* Page Title */}
@@ -171,7 +175,7 @@ const EpicDetail = () => {
                         disabled={saving}
                         className="btn btn-primary"
                     >
-                        {saving ? 'Saving...' : 'Save Changes'}
+                        {saving ? t('common:saving') : t('common:saveChanges')}
                     </button>
                 )}
             </div>
@@ -190,7 +194,7 @@ const EpicDetail = () => {
             {/* Epic Details Card */}
             <div className="card">
                 <div className="form-group">
-                    <label className="form-label">Title *</label>
+                    <label className="form-label">{t('epics:titleLabel')}</label>
                     <input
                         type="text"
                         className="form-input"
@@ -210,7 +214,7 @@ const EpicDetail = () => {
                     borderBottom: '1px solid var(--color-border)'
                 }}>
                     <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Status</label>
+                        <label className="form-label">{t('common:status')}</label>
                         <select
                             className="form-select"
                             value={formData.status}
@@ -219,14 +223,14 @@ const EpicDetail = () => {
                         >
                             {STATUS_OPTIONS.map(option => (
                                 <option key={option.value} value={option.value}>
-                                    {option.label}
+                                    {t(`epics:statusLabels.${option.value}`, option.label)}
                                 </option>
                             ))}
                         </select>
                     </div>
 
                     <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Created By</label>
+                        <label className="form-label">{t('epics:detail.createdBy')}</label>
                         <div style={{ paddingTop: 'var(--spacing-xs)' }}>
                             <AssigneeAvatarWithHoverCard
                                 assigneeId={epic.created_by}
@@ -239,7 +243,7 @@ const EpicDetail = () => {
                     </div>
 
                     <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Start Date</label>
+                        <label className="form-label">{t('epics:startDate')}</label>
                         <input
                             type="date"
                             className="form-input"
@@ -250,7 +254,7 @@ const EpicDetail = () => {
                     </div>
 
                     <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">End Date</label>
+                        <label className="form-label">{t('epics:endDate')}</label>
                         <input
                             type="date"
                             className="form-input"
@@ -261,14 +265,14 @@ const EpicDetail = () => {
                     </div>
 
                     <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
-                        <label className="form-label">Color</label>
+                        <label className="form-label">{t('epics:color')}</label>
                         <div className="flex flex-gap-sm" style={{ flexWrap: 'wrap' }}>
                             {EPIC_COLORS.map(colorOption => (
                                 <button
                                     key={colorOption.value}
                                     type="button"
                                     onClick={() => canManageEpics && handleChange('color', colorOption.value)}
-                                    title={colorOption.label}
+                                    title={t(`epics:colorLabels.${EPIC_COLOR_KEYS[colorOption.value]}`, colorOption.label)}
                                     disabled={!canManageEpics}
                                     style={{
                                         width: '32px',
@@ -287,14 +291,14 @@ const EpicDetail = () => {
                 {/* Description */}
                 <div className="form-group" style={{ marginBottom: 0 }}>
                     <div className="flex flex-between mb-sm" style={{ alignItems: 'center' }}>
-                        <label className="form-label" style={{ marginBottom: 0 }}>Description</label>
+                        <label className="form-label" style={{ marginBottom: 0 }}>{t('common:description')}</label>
                         {canManageEpics && !isEditingDescription && (
                             <button
                                 type="button"
                                 onClick={() => setIsEditingDescription(true)}
                                 className="btn btn-secondary btn-sm"
                             >
-                                Edit Description
+                                {t('epics:detail.editDescription')}
                             </button>
                         )}
                     </div>
@@ -317,7 +321,7 @@ const EpicDetail = () => {
                                         onClick={handleCancelDescriptionEdit}
                                         className="btn btn-secondary btn-sm"
                                     >
-                                        Cancel
+                                        {t('common:cancel')}
                                     </button>
                                     <button
                                         type="button"
@@ -325,14 +329,14 @@ const EpicDetail = () => {
                                         disabled={saving}
                                         className="btn btn-primary btn-sm"
                                     >
-                                        {saving ? 'Saving...' : 'Save'}
+                                        {saving ? t('common:saving') : t('common:save')}
                                     </button>
                                 </div>
                             </>
                         ) : formData.description ? (
                             <MarkdownRenderer content={formData.description} />
                         ) : (
-                            <div className="text-small text-muted">No description yet</div>
+                            <div className="text-small text-muted">{t('epics:detail.noDescription')}</div>
                         )}
                     </div>
                 </div>
@@ -341,17 +345,17 @@ const EpicDetail = () => {
             {/* Associated Stories — read-only, visualization only */}
             <div className="card mt-md">
                 <div className="card-header">
-                    <h3 className="card-title">Associated Stories</h3>
+                    <h3 className="card-title">{t('epics:detail.associatedStories')}</h3>
                 </div>
                 {epic.stories && epic.stories.length > 0 ? (
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                             <tr style={{ borderBottom: '2px solid var(--color-border)' }}>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>ID</th>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Title</th>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Status</th>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Points</th>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Assignee</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('epics:detail.table.id')}</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('epics:detail.table.title')}</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('epics:detail.table.status')}</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('epics:detail.table.points')}</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('epics:detail.table.assignee')}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -365,7 +369,7 @@ const EpicDetail = () => {
                                     <td style={{ padding: 'var(--spacing-sm)' }}>{story.title}</td>
                                     <td style={{ padding: 'var(--spacing-sm)' }}>
                                         <span className="badge" style={{ backgroundColor: 'var(--color-neutral-400)', color: 'white' }}>
-                                            {STORY_STATUS_LABELS[story.status] || story.status}
+                                            {t(`epics:storyStatusLabels.${story.status}`, story.status)}
                                         </span>
                                     </td>
                                     <td style={{ padding: 'var(--spacing-sm)' }}>{story.story_points || '-'}</td>
@@ -385,7 +389,7 @@ const EpicDetail = () => {
                         </tbody>
                     </table>
                 ) : (
-                    <p className="text-muted" style={{ padding: 'var(--spacing-md)' }}>No stories associated with this epic yet.</p>
+                    <p className="text-muted" style={{ padding: 'var(--spacing-md)' }}>{t('epics:detail.noStories')}</p>
                 )}
             </div>
         </>

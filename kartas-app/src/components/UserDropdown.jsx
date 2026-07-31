@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { getInitials, getAvatarColor } from '../utils/avatar';
 
 const UserDropdown = () => {
+    const { t } = useTranslation(['users']);
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
     const { user, logout } = useAuth();
@@ -32,7 +34,7 @@ const UserDropdown = () => {
     };
 
     const getFullName = () => {
-        if (!user) return 'User';
+        if (!user) return t('users:dropdown.defaultName');
         return `${user.firstName || ''} ${user.lastName || ''}`.trim();
     };
 
@@ -75,7 +77,7 @@ const UserDropdown = () => {
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                             <path d="M1.5 3C1.5 2.44772 1.94772 2 2.5 2H6L7.5 3.5H13.5C14.0523 3.5 14.5 3.94772 14.5 4.5V12.5C14.5 13.0523 14.0523 13.5 13.5 13.5H2.5C1.94772 13.5 1.5 13.0523 1.5 12.5V3Z" fill="currentColor" />
                         </svg>
-                        <span>My Projects</span>
+                        <span>{t('users:dropdown.myProjects')}</span>
                     </Link>
 
                     <Link
@@ -86,7 +88,7 @@ const UserDropdown = () => {
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                             <path d="M8 8C10.21 8 12 6.21 12 4C12 1.79 10.21 0 8 0C5.79 0 4 1.79 4 4C4 6.21 5.79 8 8 8ZM8 10C5.33 10 0 11.34 0 14V16H16V14C16 11.34 10.67 10 8 10Z" fill="currentColor" />
                         </svg>
-                        <span>My Profile</span>
+                        <span>{t('users:dropdown.myProfile')}</span>
                     </Link>
 
                     <Link
@@ -98,7 +100,7 @@ const UserDropdown = () => {
                             <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.5" />
                             <path d="M8 1.5V3M8 13V14.5M14.5 8H13M3 8H1.5M12.36 3.64L11.3 4.7M4.7 11.3L3.64 12.36M12.36 12.36L11.3 11.3M4.7 4.7L3.64 3.64" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                         </svg>
-                        <span>Settings</span>
+                        <span>{t('users:dropdown.settings')}</span>
                     </Link>
 
                     {user?.role === 'admin' && (
@@ -110,7 +112,7 @@ const UserDropdown = () => {
                             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                                 <path d="M5.5 5C6.88 5 8 3.88 8 2.5C8 1.12 6.88 0 5.5 0C4.12 0 3 1.12 3 2.5C3 3.88 4.12 5 5.5 5ZM10.5 5C11.6 5 12.5 4.1 12.5 3C12.5 1.9 11.6 1 10.5 1C9.4 1 8.5 1.9 8.5 3C8.5 4.1 9.4 5 10.5 5ZM5.5 6.5C3.67 6.5 0 7.42 0 9.25V11H11V9.25C11 7.42 7.33 6.5 5.5 6.5ZM10.5 6.5C10.29 6.5 10.05 6.51 9.8 6.53C10.61 7.13 11.13 7.94 11.13 9.25V11H16V9.25C16 7.42 12.33 6.5 10.5 6.5Z" fill="currentColor" />
                             </svg>
-                            <span>User Management</span>
+                            <span>{t('users:dropdown.userManagement')}</span>
                         </Link>
                     )}
 
@@ -123,7 +125,7 @@ const UserDropdown = () => {
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                             <path d="M6 14H3C2.73478 14 2.48043 13.8946 2.29289 13.7071C2.10536 13.5196 2 13.2652 2 13V3C2 2.73478 2.10536 2.48043 2.29289 2.29289C2.48043 2.10536 2.73478 2 3 2H6M11 11L14 8M14 8L11 5M14 8H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
-                        <span>Logout</span>
+                        <span>{t('users:dropdown.logout')}</span>
                     </button>
                 </div>
             )}

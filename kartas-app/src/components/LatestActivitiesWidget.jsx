@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 import { formatRelativeTime, describeLatestActivity } from '../utils/activity';
 
@@ -16,6 +17,7 @@ const activityLink = (item, projectId) => {
 };
 
 const LatestActivitiesWidget = ({ projectId }) => {
+    const { t } = useTranslation(['dashboard', 'common']);
     const [items, setItems] = useState([]);
     const [hasMore, setHasMore] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -44,14 +46,14 @@ const LatestActivitiesWidget = ({ projectId }) => {
     return (
         <div className="card">
             <div className="card-header">
-                <h3 className="card-title">Latest Activities</h3>
+                <h3 className="card-title">{t('dashboard:latestActivitiesWidget.title')}</h3>
             </div>
 
             {loading ? (
-                <div className="text-center">Loading...</div>
+                <div className="text-center">{t('common:loading')}</div>
             ) : items.length === 0 ? (
                 <div className="text-center">
-                    <p className="text-muted mt-md mb-md">Activity from teammates on your items, and mentions of you, will show up here</p>
+                    <p className="text-muted mt-md mb-md">{t('dashboard:latestActivitiesWidget.empty')}</p>
                 </div>
             ) : (
                 <>
@@ -69,9 +71,9 @@ const LatestActivitiesWidget = ({ projectId }) => {
                                     alignItems: 'center'
                                 }}
                             >
-                                <span>{describeLatestActivity(item)}</span>
+                                <span>{describeLatestActivity(item, t)}</span>
                                 <span className="text-muted text-small" style={{ whiteSpace: 'nowrap', marginLeft: 'var(--spacing-md)' }}>
-                                    {formatRelativeTime(item.changedAt)}
+                                    {formatRelativeTime(item.changedAt, t)}
                                 </span>
                             </div>
                         </Link>
@@ -83,7 +85,7 @@ const LatestActivitiesWidget = ({ projectId }) => {
                                 onClick={() => fetchLatest(items.length)}
                                 disabled={loadingMore}
                             >
-                                {loadingMore ? 'Loading...' : 'Load More'}
+                                {loadingMore ? t('common:loading') : t('dashboard:latestActivitiesWidget.loadMore')}
                             </button>
                         </div>
                     )}

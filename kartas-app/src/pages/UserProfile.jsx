@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import UserDropdown from '../components/UserDropdown';
@@ -8,6 +9,7 @@ import '../components/navigation.css';
 import kartasLogoWhite from '../assets/kartas-logo-white.png';
 
 const UserProfile = () => {
+    const { t } = useTranslation(['users', 'common']);
     const { user: currentUser } = useAuth();
     const [profile, setProfile] = useState({
         firstName: '',
@@ -49,10 +51,10 @@ const UserProfile = () => {
 
         try {
             await api.put('/users/profile', profile);
-            setSuccessMessage('Profile updated successfully!');
+            setSuccessMessage(t('users:profile.profileUpdated'));
             setTimeout(() => setSuccessMessage(''), 3000);
         } catch (error) {
-            setError(error.response?.data?.error || 'Failed to update profile');
+            setError(error.response?.data?.error || t('users:profile.profileUpdateFailed'));
         }
     };
 
@@ -62,12 +64,12 @@ const UserProfile = () => {
         setSuccessMessage('');
 
         if (passwords.newPassword !== passwords.confirmPassword) {
-            setError('New passwords do not match');
+            setError(t('users:profile.passwordMismatch'));
             return;
         }
 
         if (passwords.newPassword.length < 8) {
-            setError('Password must be at least 8 characters');
+            setError(t('users:profile.passwordTooShort'));
             return;
         }
 
@@ -76,18 +78,18 @@ const UserProfile = () => {
                 currentPassword: passwords.currentPassword,
                 newPassword: passwords.newPassword
             });
-            setSuccessMessage('Password changed successfully!');
+            setSuccessMessage(t('users:profile.passwordChanged'));
             setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
             setTimeout(() => setSuccessMessage(''), 3000);
         } catch (error) {
-            setError(error.response?.data?.error || 'Failed to change password');
+            setError(error.response?.data?.error || t('users:profile.passwordChangeFailed'));
         }
     };
 
     if (loading) {
         return (
             <div className="flex flex-center" style={{ minHeight: '100vh' }}>
-                <div>Loading...</div>
+                <div>{t('common:loading')}</div>
             </div>
         );
     }
@@ -112,15 +114,15 @@ const UserProfile = () => {
 
             {/* Main Content */}
             <div className="container" style={{ marginTop: 'var(--spacing-xl)', maxWidth: '600px' }}>
-                <Breadcrumb items={[{ label: 'My Profile' }]} />
+                <Breadcrumb items={[{ label: t('users:profile.title') }]} />
                 <div className="mb-md">
                     <Link to="/" className="btn btn-secondary btn-sm">
-                        ← Go back to My Projects
+                        {t('users:backToProjects')}
                     </Link>
                 </div>
 
                 <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
-                    <h2 style={{ margin: 0 }}>My Profile</h2>
+                    <h2 style={{ margin: 0 }}>{t('users:profile.title')}</h2>
                 </div>
 
                 {successMessage && (
@@ -132,10 +134,10 @@ const UserProfile = () => {
 
                 {/* Profile Information */}
                 <div className="card mb-xl">
-                    <h2>Profile Information</h2>
+                    <h2>{t('users:profile.profileInformation')}</h2>
                     <form onSubmit={handleUpdateProfile}>
                         <div className="form-group">
-                            <label>First Name</label>
+                            <label>{t('users:fields.firstName')}</label>
                             <input
                                 type="text"
                                 className="form-input"
@@ -146,7 +148,7 @@ const UserProfile = () => {
                         </div>
 
                         <div className="form-group">
-                            <label>Last Name</label>
+                            <label>{t('users:fields.lastName')}</label>
                             <input
                                 type="text"
                                 className="form-input"
@@ -157,7 +159,7 @@ const UserProfile = () => {
                         </div>
 
                         <div className="form-group">
-                            <label>Email</label>
+                            <label>{t('common:email')}</label>
                             <input
                                 type="email"
                                 className="form-input"
@@ -168,17 +170,17 @@ const UserProfile = () => {
                         </div>
 
                         <button type="submit" className="btn btn-primary">
-                            Update Profile
+                            {t('users:profile.updateProfile')}
                         </button>
                     </form>
                 </div>
 
                 {/* Change Password */}
                 <div className="card">
-                    <h2>Change Password</h2>
+                    <h2>{t('users:profile.changePassword')}</h2>
                     <form onSubmit={handleChangePassword}>
                         <div className="form-group">
-                            <label>Current Password</label>
+                            <label>{t('users:profile.currentPassword')}</label>
                             <input
                                 type="password"
                                 className="form-input"
@@ -189,7 +191,7 @@ const UserProfile = () => {
                         </div>
 
                         <div className="form-group">
-                            <label>New Password</label>
+                            <label>{t('users:profile.newPassword')}</label>
                             <input
                                 type="password"
                                 className="form-input"
@@ -198,11 +200,11 @@ const UserProfile = () => {
                                 required
                                 minLength={8}
                             />
-                            <small className="text-muted">Minimum 8 characters</small>
+                            <small className="text-muted">{t('users:profile.minPasswordLength')}</small>
                         </div>
 
                         <div className="form-group">
-                            <label>Confirm New Password</label>
+                            <label>{t('users:profile.confirmNewPassword')}</label>
                             <input
                                 type="password"
                                 className="form-input"
@@ -213,7 +215,7 @@ const UserProfile = () => {
                         </div>
 
                         <button type="submit" className="btn btn-primary">
-                            Change Password
+                            {t('users:profile.changePassword')}
                         </button>
                     </form>
                 </div>

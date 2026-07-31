@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 import Breadcrumb from '../components/Breadcrumb';
 import MyTasksWidget from '../components/MyTasksWidget';
@@ -19,6 +20,7 @@ const WIDGET_COMPONENTS = {
 };
 
 const ForYou = () => {
+    const { t } = useTranslation(['dashboard', 'common']);
     const { projectId } = useParams();
     const { projectName, defaultLandingPage } = useOutletContext();
     const [visibleWidgets, setVisibleWidgets] = useState(DEFAULT_WIDGETS);
@@ -55,28 +57,28 @@ const ForYou = () => {
     return (
         <div>
             <Breadcrumb items={[
-                { label: 'Projects', to: '/' },
+                { label: t('dashboard:dashboardPage.breadcrumbProjects'), to: '/' },
                 { label: projectName, to: `/project/${projectId}/${defaultLandingPage}` },
-                { label: 'For You' },
+                { label: t('dashboard:forYouPage.breadcrumbLabel') },
             ]} />
 
             <div className="flex flex-between mb-lg" style={{ alignItems: 'center' }}>
-                <h2 style={{ margin: 0 }}>For You</h2>
+                <h2 style={{ margin: 0 }}>{t('dashboard:forYouPage.heading')}</h2>
                 <button
                     onClick={() => setShowSettings(true)}
                     className="btn btn-secondary btn-sm"
-                    title="Customize widgets"
+                    title={t('dashboard:forYouPage.customizeTooltip')}
                 >
-                    ⚙️ Customize
+                    {t('dashboard:forYouPage.customizeButton')}
                 </button>
             </div>
 
             {!settingsLoaded ? (
-                <div className="text-center">Loading...</div>
+                <div className="text-center">{t('dashboard:forYouPage.loading')}</div>
             ) : visibleWidgets.length === 0 ? (
                 <div className="card text-center">
-                    <h3>Your For You page is empty</h3>
-                    <p className="text-muted mt-md">Click ⚙️ Customize above to choose which widgets to show here.</p>
+                    <h3>{t('dashboard:forYouPage.emptyTitle')}</h3>
+                    <p className="text-muted mt-md">{t('dashboard:forYouPage.emptyText')}</p>
                 </div>
             ) : (
                 <div style={{

@@ -1,14 +1,16 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 
 const ProtectedRoute = ({ children, requireRole }) => {
     const { user, loading } = useAuth();
+    const { t } = useTranslation(['navigation', 'common']);
 
     if (loading) {
         return (
             <div className="flex flex-center" style={{ minHeight: '100vh' }}>
-                <div>Loading...</div>
+                <div>{t('common:loading')}</div>
             </div>
         );
     }
@@ -21,9 +23,9 @@ const ProtectedRoute = ({ children, requireRole }) => {
         return (
             <div className="container" style={{ marginTop: '2rem' }}>
                 <div className="card">
-                    <h2>Access Denied</h2>
+                    <h2>{t('navigation:protectedRoute.accessDenied')}</h2>
                     <p className="text-muted mt-md">
-                        You don't have permission to access this page.
+                        {t('navigation:protectedRoute.noPermission')}
                     </p>
                 </div>
             </div>

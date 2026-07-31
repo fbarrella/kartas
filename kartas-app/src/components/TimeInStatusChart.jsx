@@ -1,7 +1,10 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
+import { useTranslation } from 'react-i18next';
 
 const TimeInStatusChart = ({ data }) => {
+    const { t } = useTranslation(['sprints', 'common']);
+
     if (!data || data.length === 0) {
         return (
             <div style={{
@@ -9,7 +12,7 @@ const TimeInStatusChart = ({ data }) => {
                 textAlign: 'center',
                 color: 'var(--color-neutral-500)'
             }}>
-                No time tracking data available.
+                {t('sprints:noTimeTrackingData')}
             </div>
         );
     }
@@ -26,7 +29,7 @@ const TimeInStatusChart = ({ data }) => {
     };
 
     const chartData = data.map(item => ({
-        status: item.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        status: t(`sprints:statusLabels.${item.status}`, item.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())),
         hours: parseFloat(item.avgTimeHours),
         stories: item.storyCount
     }));
@@ -42,7 +45,7 @@ const TimeInStatusChart = ({ data }) => {
                 <XAxis
                     type="number"
                     stroke="var(--color-neutral-600)"
-                    label={{ value: 'Average Hours', position: 'insideBottom', offset: -5 }}
+                    label={{ value: t('sprints:averageHours'), position: 'insideBottom', offset: -5 }}
                 />
                 <YAxis
                     type="category"
@@ -59,7 +62,7 @@ const TimeInStatusChart = ({ data }) => {
                     }}
                     formatter={(value, name, props) => {
                         if (name === 'hours') {
-                            return [`${value} hours (${props.payload.stories} stories)`, 'Avg Time'];
+                            return [t('sprints:hoursWithStories', { hours: value, stories: props.payload.stories }), t('sprints:avgTime')];
                         }
                         return value;
                     }}

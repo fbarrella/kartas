@@ -1,7 +1,10 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useTranslation } from 'react-i18next';
 
 const BurndownChart = ({ data, startDate, endDate }) => {
+    const { t } = useTranslation(['sprints', 'common']);
+
     if (!data || data.length === 0) {
         return (
             <div style={{
@@ -11,9 +14,9 @@ const BurndownChart = ({ data, startDate, endDate }) => {
                 backgroundColor: 'var(--color-neutral-50)',
                 borderRadius: 'var(--radius-md)'
             }}>
-                <p>No burndown data available yet.</p>
+                <p>{t('sprints:noBurndownData')}</p>
                 <p className="text-small mt-sm">
-                    Daily snapshots are captured automatically for active sprints.
+                    {t('sprints:burndownDataHint')}
                 </p>
             </div>
         );
@@ -46,7 +49,7 @@ const BurndownChart = ({ data, startDate, endDate }) => {
                     <YAxis
                         stroke="var(--color-neutral-600)"
                         style={{ fontSize: '12px' }}
-                        label={{ value: 'Story Points', angle: -90, position: 'insideLeft' }}
+                        label={{ value: t('sprints:storyPoints'), angle: -90, position: 'insideLeft' }}
                     />
                     <Tooltip
                         contentStyle={{
@@ -61,7 +64,7 @@ const BurndownChart = ({ data, startDate, endDate }) => {
                         dataKey="ideal"
                         stroke="var(--color-neutral-400)"
                         strokeDasharray="5 5"
-                        name="Ideal Burndown"
+                        name={t('sprints:idealBurndown')}
                         dot={false}
                     />
                     <Line
@@ -69,7 +72,7 @@ const BurndownChart = ({ data, startDate, endDate }) => {
                         dataKey="actual"
                         stroke="var(--color-primary)"
                         strokeWidth={2}
-                        name="Actual Remaining"
+                        name={t('sprints:actualRemaining')}
                         dot={{ fill: 'var(--color-primary)', r: 4 }}
                     />
                     <Line
@@ -77,7 +80,7 @@ const BurndownChart = ({ data, startDate, endDate }) => {
                         dataKey="completed"
                         stroke="var(--color-success)"
                         strokeWidth={2}
-                        name="Completed Points"
+                        name={t('sprints:completedPointsLegend')}
                         dot={{ fill: 'var(--color-success)', r: 4 }}
                     />
                 </LineChart>

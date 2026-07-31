@@ -24,6 +24,10 @@ const validateThemeUpdate = [
     body('theme').isIn(['light', 'dark'])
 ];
 
+const validateLanguageUpdate = [
+    body('language').isIn(['en', 'es', 'pt-BR'])
+];
+
 const validateRoleUpdate = [
     body('role').isIn(['admin', 'project_owner', 'member'])
 ];
@@ -44,6 +48,7 @@ router.get('/profile', userController.getProfile);
 router.put('/profile', validateProfileUpdate, userController.updateProfile);
 router.put('/password', validatePasswordChange, userController.changePassword);
 router.put('/theme', validateThemeUpdate, userController.updateThemePreference);
+router.put('/language', validateLanguageUpdate, userController.updateLanguagePreference);
 router.put('/:id/role', validateRoleUpdate, userController.updateUserRole);
 router.delete('/:id', userController.deleteUser);
 

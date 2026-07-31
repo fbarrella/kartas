@@ -1,0 +1,47 @@
+{
+    "breadcrumb": {
+        "projects": "Proyectos",
+        "teamMembers": "Miembros del equipo",
+        "projectSettings": "Configuración del proyecto"
+    },
+    "teamMembers": {
+        "title": "Miembros del equipo",
+        "addMember": "+ Agregar miembro",
+        "membersLabel": "miembros",
+        "role": "Rol",
+        "joined": "Se unió",
+        "remove": "Quitar",
+        "confirmRemove": "¿Seguro que deseas quitar a este miembro?",
+        "failedToRemove": "No se pudo quitar al miembro",
+        "notFound": {
+            "title": "Proyecto no encontrado",
+            "backToDashboard": "Volver al panel"
+        },
+        "modal": {
+            "title": "Agregar miembro del equipo",
+            "searchUser": "Buscar usuario",
+            "member": "Miembro",
+            "projectOwner": "Propietario del proyecto",
+            "pleaseSelectUser": "Selecciona un usuario",
+            "failedToAdd": "No se pudo agregar al miembro",
+            "addMember": "Agregar miembro"
+        }
+    },
+    "settings": {
+        "title": "Configuración del proyecto",
+        "loadingSettings": "Cargando configuración...",
+        "defaultLandingPage": "Página predeterminada al entrar a este proyecto",
+        "defaultLandingPageHint": "Esto solo se aplica a tu propia cuenta.",
+        "saveSuccess": "Configuración guardada correctamente",
+        "saveError": "No se pudo guardar la configuración",
+        "landingPageOptions": {
+            "backlog": "Backlog",
+            "forYou": "Para ti",
+            "epics": "Épicas",
+            "sprints": "Sprints",
+            "kanban": "Kanban",
+            "reports": "Informes",
+            "team": "Miembros del equipo"
+        }
+    }
+}

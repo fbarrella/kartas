@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 
 // CLONE-02: shared Yes/No sub-task prompt used by both Backlog.jsx and
 // StoryDetail.jsx — both need the identical prompt calling the identical
 // endpoint, so it's a single small component rather than duplicated JSX.
 const CloneStoryModal = ({ story, onClose, onCloned }) => {
+    const { t } = useTranslation(['backlog', 'common']);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
 
@@ -15,7 +17,7 @@ const CloneStoryModal = ({ story, onClose, onCloned }) => {
             const response = await api.post(`/stories/${story.id}/clone`, { includeSubtasks });
             onCloned(response.data);
         } catch (err) {
-            setError(err.response?.data?.error || 'Failed to clone story');
+            setError(err.response?.data?.error || t('backlog:errors.cloneStory'));
             setSaving(false);
         }
     };
@@ -42,13 +44,13 @@ const CloneStoryModal = ({ story, onClose, onCloned }) => {
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="card-header">
-                    <h3 className="card-title">Clone Story</h3>
+                    <h3 className="card-title">{t('backlog:cloneModal.title')}</h3>
                 </div>
                 <p>
-                    Clone <strong>{story.storyId}</strong>? The new story will be created in the Backlog.
+                    {t('backlog:cloneModal.promptPrefix')} <strong>{story.storyId}</strong>{t('backlog:cloneModal.promptSuffix')}
                 </p>
                 <p className="text-small text-muted mt-sm">
-                    Include this story's sub-tasks in the clone?
+                    {t('backlog:cloneModal.includeSubtasksPrompt')}
                 </p>
 
                 {error && (
@@ -57,13 +59,13 @@ const CloneStoryModal = ({ story, onClose, onCloned }) => {
 
                 <div className="flex flex-gap-sm mt-lg" style={{ justifyContent: 'flex-end' }}>
                     <button onClick={onClose} disabled={saving} className="btn btn-secondary">
-                        Cancel
+                        {t('common:cancel')}
                     </button>
                     <button onClick={() => doClone(false)} disabled={saving} className="btn btn-secondary">
-                        No, sub-tasks
+                        {t('backlog:cloneModal.noSubtasks')}
                     </button>
                     <button onClick={() => doClone(true)} disabled={saving} className="btn btn-primary">
-                        {saving ? 'Cloning...' : 'Yes, include sub-tasks'}
+                        {saving ? t('backlog:cloneModal.cloning') : t('backlog:cloneModal.yesIncludeSubtasks')}
                     </button>
                 </div>
             </div>

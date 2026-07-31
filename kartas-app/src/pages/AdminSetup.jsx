@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import kartasLogo from '../assets/kartas-logo.png';
 
 const AdminSetup = () => {
     const navigate = useNavigate();
+    const { t } = useTranslation(['auth', 'common']);
     const { createAdmin } = useAuth();
 
     const [formData, setFormData] = useState({
@@ -30,12 +32,12 @@ const AdminSetup = () => {
 
         // Validation
         if (formData.password !== formData.confirmPassword) {
-            setError('Passwords do not match');
+            setError(t('auth:validation.passwordsDoNotMatch'));
             return;
         }
 
         if (formData.password.length < 8) {
-            setError('Password must be at least 8 characters');
+            setError(t('auth:validation.passwordMinLength'));
             return;
         }
 
@@ -63,16 +65,16 @@ const AdminSetup = () => {
                 <div className="card-header" style={{ textAlign: 'center' }}>
                     <img src={kartasLogo} alt="Kartas" style={{ height: '60px', marginBottom: 'var(--spacing-sm)' }} />
                     <h1 className="card-title" style={{ color: 'var(--color-primary)' }}>
-                        Welcome to Kartas
+                        {t('auth:adminSetup.welcomeTitle')}
                     </h1>
                     <p className="text-muted mt-sm">
-                        Let's set up your admin account to get started
+                        {t('auth:adminSetup.subtitle')}
                     </p>
                 </div>
 
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
-                        <label className="form-label">First Name</label>
+                        <label className="form-label">{t('auth:fields.firstName')}</label>
                         <input
                             type="text"
                             name="firstName"
@@ -84,7 +86,7 @@ const AdminSetup = () => {
                     </div>
 
                     <div className="form-group">
-                        <label className="form-label">Last Name</label>
+                        <label className="form-label">{t('auth:fields.lastName')}</label>
                         <input
                             type="text"
                             name="lastName"
@@ -96,7 +98,7 @@ const AdminSetup = () => {
                     </div>
 
                     <div className="form-group">
-                        <label className="form-label">Email</label>
+                        <label className="form-label">{t('common:email')}</label>
                         <input
                             type="email"
                             name="email"
@@ -108,7 +110,7 @@ const AdminSetup = () => {
                     </div>
 
                     <div className="form-group">
-                        <label className="form-label">Password</label>
+                        <label className="form-label">{t('auth:fields.password')}</label>
                         <input
                             type="password"
                             name="password"
@@ -119,12 +121,12 @@ const AdminSetup = () => {
                             minLength={8}
                         />
                         <small className="text-muted text-small">
-                            Must be at least 8 characters
+                            {t('auth:validation.passwordMinCharsHintAlt')}
                         </small>
                     </div>
 
                     <div className="form-group">
-                        <label className="form-label">Confirm Password</label>
+                        <label className="form-label">{t('auth:fields.confirmPassword')}</label>
                         <input
                             type="password"
                             name="confirmPassword"
@@ -147,7 +149,7 @@ const AdminSetup = () => {
                         style={{ width: '100%' }}
                         disabled={loading}
                     >
-                        {loading ? 'Creating Admin...' : 'Create Admin Account'}
+                        {loading ? t('auth:adminSetup.creatingAdmin') : t('auth:adminSetup.createAdminButton')}
                     </button>
                 </form>
             </div>

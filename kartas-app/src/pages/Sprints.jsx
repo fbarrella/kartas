@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useOutletContext, Link, useNavigate } from 'react-router-dom';
+import { useTranslation, Trans } from 'react-i18next';
 import api from '../services/api';
 import Breadcrumb from '../components/Breadcrumb';
 import '../components/navigation.css';
@@ -7,6 +8,7 @@ import '../components/navigation.css';
 
 // Sprint with Metrics Component
 const SprintWithMetrics = ({ sprint, projectId, onEnd, navigate }) => {
+    const { t } = useTranslation(['sprints', 'common']);
     const [metrics, setMetrics] = useState(null);
     const [loadingMetrics, setLoadingMetrics] = useState(true);
 
@@ -27,9 +29,9 @@ const SprintWithMetrics = ({ sprint, projectId, onEnd, navigate }) => {
 
     const getStatusBadge = (status) => {
         const badges = {
-            active: { class: 'badge-success', label: 'Active' },
-            planned: { class: 'badge-neutral', label: 'Planned' },
-            completed: { class: 'badge-primary', label: 'Completed' }
+            active: { class: 'badge-success', label: t('sprints:status.active') },
+            planned: { class: 'badge-neutral', label: t('sprints:status.planned') },
+            completed: { class: 'badge-primary', label: t('sprints:status.completed') }
         };
         return badges[status] || badges.planned;
     };
@@ -48,13 +50,13 @@ const SprintWithMetrics = ({ sprint, projectId, onEnd, navigate }) => {
                         onClick={() => navigate(`/project/${projectId}/kanban`)}
                         className="btn btn-primary"
                     >
-                        View Kanban
+                        {t('sprints:viewKanban')}
                     </button>
                     <button
                         onClick={onEnd}
                         className="btn btn-secondary"
                     >
-                        End Sprint
+                        {t('sprints:endSprint')}
                     </button>
                 </div>
             </div>
@@ -69,16 +71,16 @@ const SprintWithMetrics = ({ sprint, projectId, onEnd, navigate }) => {
                 gap: 'var(--spacing-md)'
             }}>
                 <div>
-                    <strong>Stories:</strong> {sprint.storyCount}
+                    <strong>{t('sprints:storiesFieldLabel')}:</strong> {sprint.storyCount}
                 </div>
                 <div>
-                    <strong>Points:</strong> {sprint.totalPoints}
+                    <strong>{t('sprints:pointsFieldLabel')}:</strong> {sprint.totalPoints}
                 </div>
                 <div>
-                    <strong>Start:</strong> {new Date(sprint.startDate).toLocaleDateString()}
+                    <strong>{t('sprints:startDate')}:</strong> {new Date(sprint.startDate).toLocaleDateString()}
                 </div>
                 <div>
-                    <strong>End:</strong> {new Date(sprint.endDate).toLocaleDateString()}
+                    <strong>{t('sprints:endDate')}:</strong> {new Date(sprint.endDate).toLocaleDateString()}
                 </div>
             </div>
 
@@ -100,7 +102,7 @@ const SprintWithMetrics = ({ sprint, projectId, onEnd, navigate }) => {
                             color: 'var(--color-neutral-600)',
                             marginBottom: '4px'
                         }}>
-                            <span>Elapsed Time</span>
+                            <span>{t('sprints:elapsedTime')}</span>
                             <span>{Math.round(progressPercent)}%</span>
                         </div>
                         <div style={{
@@ -123,14 +125,14 @@ const SprintWithMetrics = ({ sprint, projectId, onEnd, navigate }) => {
 
             {/* Metrics Section */}
             {loadingMetrics ? (
-                <div className="mt-lg text-center text-muted">Loading metrics...</div>
+                <div className="mt-lg text-center text-muted">{t('sprints:loadingMetrics')}</div>
             ) : metrics ? (
                 <div className="mt-lg" style={{
                     padding: 'var(--spacing-md)',
                     backgroundColor: 'var(--color-background)',
                     borderRadius: 'var(--radius-md)'
                 }}>
-                    <h4 style={{ marginTop: 0, marginBottom: 'var(--spacing-md)' }}>Sprint Metrics</h4>
+                    <h4 style={{ marginTop: 0, marginBottom: 'var(--spacing-md)' }}>{t('sprints:sprintMetrics')}</h4>
 
                     {/* Progress Overview */}
                     <div style={{
@@ -143,7 +145,7 @@ const SprintWithMetrics = ({ sprint, projectId, onEnd, navigate }) => {
                         <div>
                             <div className="flex flex-between mb-xs">
                                 <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>
-                                    Story Completion
+                                    {t('sprints:storyCompletion')}
                                 </span>
                                 <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-primary)' }}>
                                     {metrics.completionRate}%
@@ -163,7 +165,7 @@ const SprintWithMetrics = ({ sprint, projectId, onEnd, navigate }) => {
                                 }} />
                             </div>
                             <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-neutral-600)', marginTop: '4px' }}>
-                                {metrics.completedStories} of {metrics.totalStories} stories
+                                {t('sprints:storiesCompletionSummary', { completed: metrics.completedStories, total: metrics.totalStories })}
                             </div>
                         </div>
 
@@ -171,7 +173,7 @@ const SprintWithMetrics = ({ sprint, projectId, onEnd, navigate }) => {
                         <div>
                             <div className="flex flex-between mb-xs">
                                 <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>
-                                    Story Points
+                                    {t('sprints:storyPoints')}
                                 </span>
                                 <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-success)' }}>
                                     {metrics.totalPoints > 0 ? Math.round((metrics.completedPoints / metrics.totalPoints) * 100) : 0}%
@@ -191,7 +193,7 @@ const SprintWithMetrics = ({ sprint, projectId, onEnd, navigate }) => {
                                 }} />
                             </div>
                             <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-neutral-600)', marginTop: '4px' }}>
-                                {metrics.completedPoints} of {metrics.totalPoints} points
+                                {t('sprints:pointsCompletionSummary', { completed: metrics.completedPoints, total: metrics.totalPoints })}
                             </div>
                         </div>
                     </div>
@@ -200,7 +202,7 @@ const SprintWithMetrics = ({ sprint, projectId, onEnd, navigate }) => {
                     {metrics.timeInStatus && metrics.timeInStatus.length > 0 && (
                         <div>
                             <h5 style={{ marginBottom: 'var(--spacing-sm)', fontSize: 'var(--font-size-sm)' }}>
-                                Average Time in Status
+                                {t('sprints:averageTimeInStatus')}
                             </h5>
                             <div style={{
                                 display: 'grid',
@@ -220,7 +222,7 @@ const SprintWithMetrics = ({ sprint, projectId, onEnd, navigate }) => {
                                             marginBottom: '4px',
                                             textTransform: 'capitalize'
                                         }}>
-                                            {item.status.replace(/_/g, ' ')}
+                                            {t(`sprints:statusLabels.${item.status}`, item.status.replace(/_/g, ' '))}
                                         </div>
                                         <div style={{
                                             fontSize: 'var(--font-size-md)',
@@ -233,7 +235,7 @@ const SprintWithMetrics = ({ sprint, projectId, onEnd, navigate }) => {
                                             fontSize: 'var(--font-size-xs)',
                                             color: 'var(--color-neutral-500)'
                                         }}>
-                                            {item.storyCount} {item.storyCount === 1 ? 'story' : 'stories'}
+                                            {t('sprints:storyCount', { count: item.storyCount })}
                                         </div>
                                     </div>
                                 ))}
@@ -247,6 +249,7 @@ const SprintWithMetrics = ({ sprint, projectId, onEnd, navigate }) => {
 };
 
 const Sprints = () => {
+    const { t } = useTranslation(['sprints', 'common']);
     const { projectId } = useParams();
     const { projectName, defaultLandingPage } = useOutletContext();
     const navigate = useNavigate();
@@ -302,7 +305,7 @@ const Sprints = () => {
             setShowCreateModal(false);
             setNewSprint({ name: '', objective: '', startDate: '', endDate: '' });
         } catch (error) {
-            setError(error.response?.data?.error || 'Failed to create sprint');
+            setError(error.response?.data?.error || t('sprints:failedToCreateSprint'));
         }
     };
 
@@ -312,7 +315,7 @@ const Sprints = () => {
             fetchSprints();
             setShowStartDialog(null);
         } catch (error) {
-            setError(error.response?.data?.error || 'Failed to start sprint');
+            setError(error.response?.data?.error || t('sprints:failedToStartSprint'));
         }
     };
 
@@ -322,26 +325,26 @@ const Sprints = () => {
             fetchSprints();
             setShowEndDialog(null);
         } catch (error) {
-            setError(error.response?.data?.error || 'Failed to end sprint');
+            setError(error.response?.data?.error || t('sprints:failedToEndSprint'));
         }
     };
 
     const handleDeleteSprint = async (sprintId) => {
-        if (!window.confirm('Are you sure you want to delete this sprint?')) return;
+        if (!window.confirm(t('sprints:confirmDeleteSprint'))) return;
 
         try {
             await api.delete(`/sprints/${sprintId}`);
             setSprints(sprints.filter(s => s.id !== sprintId));
         } catch (error) {
-            setError(error.response?.data?.error || 'Failed to delete sprint');
+            setError(error.response?.data?.error || t('sprints:failedToDeleteSprint'));
         }
     };
 
     const getStatusBadge = (status) => {
         const badges = {
-            active: { class: 'badge-success', label: 'Active' },
-            planned: { class: 'badge-neutral', label: 'Planned' },
-            completed: { class: 'badge-primary', label: 'Completed' }
+            active: { class: 'badge-success', label: t('sprints:status.active') },
+            planned: { class: 'badge-neutral', label: t('sprints:status.planned') },
+            completed: { class: 'badge-primary', label: t('sprints:status.completed') }
         };
         return badges[status] || badges.planned;
     };
@@ -353,14 +356,14 @@ const Sprints = () => {
     return (
         <>
             <Breadcrumb items={[
-                { label: 'Projects', to: '/' },
+                { label: t('sprints:breadcrumb.projects'), to: '/' },
                 { label: projectName, to: `/project/${projectId}/${defaultLandingPage}` },
-                { label: 'Sprints' },
+                { label: t('sprints:breadcrumb.sprints') },
             ]} />
             <div className="flex flex-between mb-lg" style={{ alignItems: 'center' }}>
-                <h2>Sprint Management</h2>
+                <h2>{t('sprints:sprintManagement')}</h2>
                 <button onClick={() => setShowCreateModal(true)} className="btn btn-primary">
-                    + Create Sprint
+                    + {t('sprints:createSprint')}
                 </button>
             </div>
 
@@ -369,13 +372,13 @@ const Sprints = () => {
             )}
 
             {loading ? (
-                <div className="text-center">Loading sprints...</div>
+                <div className="text-center">{t('sprints:loadingSprints')}</div>
             ) : (
                 <>
                     {/* Active Sprint */}
                     {activeSprints.length > 0 && (
                         <div className="mb-xl">
-                            <h3 className="mb-md">Active Sprint</h3>
+                            <h3 className="mb-md">{t('sprints:activeSprint')}</h3>
                             {activeSprints.map(sprint => (
                                 <SprintWithMetrics
                                     key={sprint.id}
@@ -391,7 +394,7 @@ const Sprints = () => {
                     {/* Planned Sprints */}
                     {plannedSprints.length > 0 && (
                         <div className="mb-xl">
-                            <h3 className="mb-md">Planned Sprints</h3>
+                            <h3 className="mb-md">{t('sprints:plannedSprints')}</h3>
                             <div style={{ display: 'grid', gap: 'var(--spacing-lg)' }}>
                                 {plannedSprints.map(sprint => (
                                     <div key={sprint.id} className="card">
@@ -408,19 +411,19 @@ const Sprints = () => {
                                                     className="btn btn-primary btn-sm"
                                                     disabled={sprint.storyCount === 0}
                                                 >
-                                                    Start Sprint
+                                                    {t('sprints:startSprint')}
                                                 </button>
                                                 <Link
                                                     to={`/project/${projectId}/backlog?sprint=${sprint.id}`}
                                                     className="btn btn-secondary btn-sm"
                                                 >
-                                                    Add Stories
+                                                    {t('sprints:addStories')}
                                                 </Link>
                                                 <button
                                                     onClick={() => handleDeleteSprint(sprint.id)}
                                                     className="btn btn-secondary btn-sm"
                                                 >
-                                                    Delete
+                                                    {t('common:delete')}
                                                 </button>
                                             </div>
                                         </div>
@@ -428,9 +431,9 @@ const Sprints = () => {
                                             <p className="text-muted text-small mt-sm">{sprint.objective}</p>
                                         )}
                                         <div className="mt-sm text-small">
-                                            <strong>{sprint.storyCount}</strong> stories | <strong>{sprint.totalPoints}</strong> points
+                                            <strong>{sprint.storyCount}</strong> {t('sprints:storiesLabel')} | <strong>{sprint.totalPoints}</strong> {t('sprints:pointsLabel')}
                                             {sprint.storyCount === 0 && (
-                                                <span className="text-muted ml-sm">(Add stories to start)</span>
+                                                <span className="text-muted ml-sm">{t('sprints:addStoriesToStart')}</span>
                                             )}
                                         </div>
                                         <div className="mt-xs text-small text-muted">
@@ -445,7 +448,7 @@ const Sprints = () => {
                     {/* Completed Sprints */}
                     {completedSprints.length > 0 && (
                         <div>
-                            <h3 className="mb-md">Completed Sprints</h3>
+                            <h3 className="mb-md">{t('sprints:completedSprints')}</h3>
                             <div style={{ display: 'grid', gap: 'var(--spacing-md)' }}>
                                 {completedSprints.map(sprint => (
                                     <div key={sprint.id} className="card" style={{ opacity: 0.8 }}>
@@ -457,7 +460,7 @@ const Sprints = () => {
                                                 </span>
                                             </div>
                                             <div className="text-small text-muted">
-                                                <strong>{sprint.storyCount}</strong> stories | <strong>{sprint.totalPoints}</strong> points
+                                                <strong>{sprint.storyCount}</strong> {t('sprints:storiesLabel')} | <strong>{sprint.totalPoints}</strong> {t('sprints:pointsLabel')}
                                             </div>
                                         </div>
                                     </div>
@@ -468,8 +471,8 @@ const Sprints = () => {
 
                     {sprints.length === 0 && (
                         <div className="card text-center">
-                            <h3>No Sprints Yet</h3>
-                            <p className="text-muted mt-md">Create your first sprint to start planning</p>
+                            <h3>{t('sprints:noSprintsYet')}</h3>
+                            <p className="text-muted mt-md">{t('sprints:noSprintsDescription')}</p>
                         </div>
                     )}
                 </>
@@ -492,12 +495,12 @@ const Sprints = () => {
                     <div className="card" style={{ maxWidth: '600px', width: '100%', margin: 'var(--spacing-md)' }}
                         onClick={(e) => e.stopPropagation()}>
                         <div className="card-header">
-                            <h3 className="card-title">Create New Sprint</h3>
+                            <h3 className="card-title">{t('sprints:createNewSprint')}</h3>
                         </div>
 
                         <form onSubmit={handleCreateSprint}>
                             <div className="form-group">
-                                <label className="form-label">Sprint Name</label>
+                                <label className="form-label">{t('sprints:sprintName')}</label>
                                 <input
                                     type="text"
                                     className="form-input"
@@ -505,24 +508,24 @@ const Sprints = () => {
                                     onChange={(e) => setNewSprint({ ...newSprint, name: e.target.value })}
                                     required
                                     autoFocus
-                                    placeholder="Sprint 1"
+                                    placeholder={t('sprints:sprintNamePlaceholder')}
                                 />
                             </div>
 
                             <div className="form-group">
-                                <label className="form-label">Objective (Optional)</label>
+                                <label className="form-label">{t('sprints:objectiveOptional')}</label>
                                 <textarea
                                     className="form-textarea"
                                     value={newSprint.objective}
                                     onChange={(e) => setNewSprint({ ...newSprint, objective: e.target.value })}
                                     rows={3}
-                                    placeholder="What do you want to achieve in this sprint?"
+                                    placeholder={t('sprints:objectivePlaceholder')}
                                 />
                             </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-md)' }}>
                                 <div className="form-group">
-                                    <label className="form-label">Start Date</label>
+                                    <label className="form-label">{t('sprints:startDate')}</label>
                                     <input
                                         type="date"
                                         className="form-input"
@@ -533,7 +536,7 @@ const Sprints = () => {
                                 </div>
 
                                 <div className="form-group">
-                                    <label className="form-label">End Date</label>
+                                    <label className="form-label">{t('sprints:endDate')}</label>
                                     <input
                                         type="date"
                                         className="form-input"
@@ -555,10 +558,10 @@ const Sprints = () => {
                                     onClick={() => setShowCreateModal(false)}
                                     className="btn btn-secondary"
                                 >
-                                    Cancel
+                                    {t('common:cancel')}
                                 </button>
                                 <button type="submit" className="btn btn-primary">
-                                    Create Sprint
+                                    {t('sprints:createSprint')}
                                 </button>
                             </div>
                         </form>
@@ -583,21 +586,21 @@ const Sprints = () => {
                     <div className="card" style={{ maxWidth: '500px', width: '100%' }}
                         onClick={(e) => e.stopPropagation()}>
                         <div className="card-header">
-                            <h3 className="card-title">Start Sprint</h3>
+                            <h3 className="card-title">{t('sprints:startSprint')}</h3>
                         </div>
 
-                        <p>Are you ready to start <strong>{showStartDialog.name}</strong>?</p>
+                        <p><Trans i18nKey="sprints:readyToStart" values={{ name: showStartDialog.name }}>Are you ready to start <strong>{{ name: showStartDialog.name }}</strong>?</Trans></p>
                         <div className="mt-md">
                             <p className="text-small">
-                                <strong>Stories:</strong> {showStartDialog.storyCount}<br />
-                                <strong>Story Points:</strong> {showStartDialog.totalPoints}<br />
-                                <strong>Duration:</strong> {new Date(showStartDialog.startDate).toLocaleDateString()} - {new Date(showStartDialog.endDate).toLocaleDateString()}
+                                <strong>{t('sprints:storiesFieldLabel')}:</strong> {showStartDialog.storyCount}<br />
+                                <strong>{t('sprints:storyPoints')}:</strong> {showStartDialog.totalPoints}<br />
+                                <strong>{t('sprints:duration')}:</strong> {new Date(showStartDialog.startDate).toLocaleDateString()} - {new Date(showStartDialog.endDate).toLocaleDateString()}
                             </p>
                         </div>
 
                         {activeSprints.length > 0 && (
                             <div className="form-error mt-md">
-                                <strong>Warning:</strong> Another sprint is currently active. It will be ended automatically.
+                                <strong>{t('sprints:warningLabel')}:</strong> {t('sprints:anotherSprintActiveWarning')}
                             </div>
                         )}
 
@@ -606,13 +609,13 @@ const Sprints = () => {
                                 onClick={() => setShowStartDialog(null)}
                                 className="btn btn-secondary"
                             >
-                                Cancel
+                                {t('common:cancel')}
                             </button>
                             <button
                                 onClick={() => handleStartSprint(showStartDialog.id)}
                                 className="btn btn-primary"
                             >
-                                Start Sprint
+                                {t('sprints:startSprint')}
                             </button>
                         </div>
                     </div>
@@ -636,12 +639,12 @@ const Sprints = () => {
                     <div className="card" style={{ maxWidth: '500px', width: '100%' }}
                         onClick={(e) => e.stopPropagation()}>
                         <div className="card-header">
-                            <h3 className="card-title">End Sprint</h3>
+                            <h3 className="card-title">{t('sprints:endSprint')}</h3>
                         </div>
 
-                        <p>Are you sure you want to end <strong>{showEndDialog.name}</strong>?</p>
+                        <p><Trans i18nKey="sprints:confirmEnd" values={{ name: showEndDialog.name }}>Are you sure you want to end <strong>{{ name: showEndDialog.name }}</strong>?</Trans></p>
                         <p className="text-small text-muted mt-sm">
-                            The sprint will be marked as completed and can no longer be modified.
+                            {t('sprints:endSprintDescription')}
                         </p>
 
                         <div className="flex flex-gap-sm mt-lg" style={{ justifyContent: 'flex-end' }}>
@@ -649,13 +652,13 @@ const Sprints = () => {
                                 onClick={() => setShowEndDialog(null)}
                                 className="btn btn-secondary"
                             >
-                                Cancel
+                                {t('common:cancel')}
                             </button>
                             <button
                                 onClick={() => handleEndSprint(showEndDialog.id)}
                                 className="btn btn-primary"
                             >
-                                End Sprint
+                                {t('sprints:endSprint')}
                             </button>
                         </div>
                     </div>

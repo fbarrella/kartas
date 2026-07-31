@@ -1,0 +1,24 @@
+{
+    "sidebar": {
+        "forYou": "For You",
+        "backlog": "Backlog",
+        "epics": "Epics",
+        "sprints": "Sprints",
+        "kanban": "Kanban",
+        "reports": "Reports",
+        "teamMembers": "Team Members",
+        "projectSettings": "Project Settings",
+        "collapse": "Collapse",
+        "exitProject": "Exit Project"
+    },
+    "breadcrumb": {
+        "ariaLabel": "Breadcrumb"
+    },
+    "colorDropdown": {
+        "placeholder": "Select…"
+    },
+    "protectedRoute": {
+        "accessDenied": "Access Denied",
+        "noPermission": "You don't have permission to access this page."
+    }
+}

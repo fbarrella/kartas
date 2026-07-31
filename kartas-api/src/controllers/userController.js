@@ -111,7 +111,7 @@ export const userController = {
             const userId = req.user.userId;
 
             const result = await query(
-                `SELECT id, email, first_name, last_name, role, avatar_url, theme_preference, created_at
+                `SELECT id, email, first_name, last_name, role, avatar_url, theme_preference, language_preference, created_at
                  FROM users WHERE id = $1`,
                 [userId]
             );
@@ -130,6 +130,7 @@ export const userController = {
                 role: user.role,
                 avatarUrl: user.avatar_url,
                 themePreference: user.theme_preference,
+                languagePreference: user.language_preference,
                 createdAt: user.created_at
             });
         } catch (error) {
@@ -249,6 +250,33 @@ export const userController = {
             res.json({ themePreference: result.rows[0].theme_preference });
         } catch (error) {
             console.error('Error updating theme preference:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
+    // I18N-03: update the current user's language preference — same shape as
+    // updateThemePreference above.
+    async updateLanguagePreference(req, res) {
+        try {
+            const userId = req.user.userId;
+            const { language } = req.body;
+
+            if (!['en', 'es', 'pt-BR'].includes(language)) {
+                return res.status(400).json({ error: 'Language must be "en", "es", or "pt-BR"' });
+            }
+
+            const result = await query(
+                'UPDATE users SET language_preference = $1 WHERE id = $2 RETURNING language_preference',
+                [language, userId]
+            );
+
+            if (result.rows.length === 0) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+
+            res.json({ languagePreference: result.rows[0].language_preference });
+        } catch (error) {
+            console.error('Error updating language preference:', error);
             res.status(500).json({ error: 'Server error' });
         }
     },

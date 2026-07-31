@@ -1,0 +1,93 @@
+{
+    "types": {
+        "story": "Story",
+        "task": "Task",
+        "bug": "Bug",
+        "subTask": "Sub-Task",
+        "subTest": "Sub-Test"
+    },
+    "statuses": {
+        "backlog": "Backlog",
+        "refining": "Refining",
+        "ready": "Ready",
+        "inDevelopment": "In Development",
+        "review": "Review",
+        "test": "Test",
+        "done": "Done",
+        "cancelled": "Cancelled"
+    },
+    "fields": {
+        "type": "Type",
+        "assignee": "Assignee",
+        "unassigned": "Unassigned",
+        "storyPoints": "Story Points",
+        "epic": "Epic",
+        "noEpic": "No Epic",
+        "blocked": "Blocked",
+        "notBlocked": "Not blocked"
+    },
+    "detail": {
+        "loading": "Loading story...",
+        "notFound": "Story Not Found",
+        "backToBacklog": "Back to Backlog",
+        "breadcrumbProjects": "Projects",
+        "breadcrumbProject": "Project",
+        "breadcrumbEditStory": "Edit Story",
+        "clone": "Clone",
+        "migrateToAnotherProject": "Migrate to another project",
+        "sprintsLabel": "Sprints",
+        "notInAnySprint": "Not in any sprint",
+        "removeFromSprint": "Remove from sprint",
+        "addToSprintPlaceholder": "Add to sprint...",
+        "editDescription": "Edit Description",
+        "noDescriptionYet": "No description yet",
+        "subItemsTitle": "Sub-items",
+        "addSubItem": "+ Add Sub-item",
+        "noSubItemsYet": "No sub-items yet",
+        "commentsTitle": "Comments",
+        "edited": "(edited)",
+        "noCommentsYet": "No comments yet",
+        "commentPlaceholder": "Write a comment... use @ to mention a person or ticket",
+        "postComment": "Post Comment",
+        "historyTitle": "History",
+        "noHistoryYet": "No history yet",
+        "migrateModalTitle": "Migrate to Another Project",
+        "migrateModalBodyPrefix": "Move",
+        "migrateModalBodySuffix": "to a different project's backlog.",
+        "targetProjectLabel": "Target project",
+        "selectProjectPlaceholder": "Select a project...",
+        "migrateWarningLabel": "Warning:",
+        "migrateWarningBody": "This will clear the story's epic assignment and remove it from any sprint. Sub-tasks, comments, and history will move with it.",
+        "migrating": "Migrating...",
+        "migrate": "Migrate",
+        "storyUpdatedSuccess": "Story updated successfully!",
+        "storyAddedToSprint": "Story added to sprint!",
+        "storyRemovedFromSprint": "Story removed from sprint!",
+        "failedToLoadStory": "Failed to load story",
+        "failedToUpdateStory": "Failed to update story",
+        "failedToAddToSprint": "Failed to add story to sprint",
+        "failedToRemoveFromSprint": "Failed to remove story from sprint",
+        "failedToPostComment": "Failed to post comment",
+        "failedToUpdateComment": "Failed to update comment",
+        "failedToDeleteComment": "Failed to delete comment",
+        "confirmDeleteComment": "Delete this comment?",
+        "confirmDeleteSubItem": "Delete this sub-item?",
+        "failedToMigrate": "Failed to migrate story"
+    },
+    "history": {
+        "created": "{{user}} created this",
+        "statusChanged": "{{user}} changed status to \"{{value}}\"",
+        "updatedField": "{{user}} updated {{field}}"
+    },
+    "subItemModal": {
+        "editTitle": "Edit Sub-Item",
+        "createTitle": "Create Sub-Item",
+        "storyPointsPlaceholder": "Optional",
+        "failedToSave": "Failed to save sub-item"
+    },
+    "markdownEditor": {
+        "write": "Write",
+        "preview": "Preview",
+        "nothingToPreview": "Nothing to preview yet."
+    }
+}

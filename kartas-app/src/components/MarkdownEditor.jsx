@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import MarkdownRenderer from './MarkdownRenderer';
 
 // Controlled component: value/onChange own the single source of truth.
 // Switching Write <-> Preview never loses edits — both tabs render the
 // same `value` state; only the textarea (Write) mutates it.
 const MarkdownEditor = ({ value, onChange, placeholder = '', rows = 10 }) => {
+    const { t } = useTranslation(['storyDetail']);
     const [activeTab, setActiveTab] = useState('write');
 
     return (
@@ -15,14 +17,14 @@ const MarkdownEditor = ({ value, onChange, placeholder = '', rows = 10 }) => {
                     className={`btn btn-sm ${activeTab === 'write' ? 'btn-primary' : 'btn-secondary'}`}
                     onClick={() => setActiveTab('write')}
                 >
-                    Write
+                    {t('storyDetail:markdownEditor.write')}
                 </button>
                 <button
                     type="button"
                     className={`btn btn-sm ${activeTab === 'preview' ? 'btn-primary' : 'btn-secondary'}`}
                     onClick={() => setActiveTab('preview')}
                 >
-                    Preview
+                    {t('storyDetail:markdownEditor.preview')}
                 </button>
             </div>
 
@@ -43,7 +45,7 @@ const MarkdownEditor = ({ value, onChange, placeholder = '', rows = 10 }) => {
                     {value ? (
                         <MarkdownRenderer content={value} />
                     ) : (
-                        <span className="text-muted">Nothing to preview yet.</span>
+                        <span className="text-muted">{t('storyDetail:markdownEditor.nothingToPreview')}</span>
                     )}
                 </div>
             )}
