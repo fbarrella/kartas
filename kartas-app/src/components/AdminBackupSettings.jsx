@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 
 // BKP-03/BKP-04: mirrors AdminEmailSettings.jsx's structure (own loading/error/
@@ -16,22 +17,25 @@ const formatBytes = (bytes) => {
     return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-const PasswordField = ({ label, configured, value, onChange }) => (
-    <div className="form-group">
-        <label className="form-label">{label}</label>
-        <input
-            type="password"
-            className="form-input"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={configured ? 'Leave blank to keep the current value' : 'Not set'}
-        />
-    </div>
-);
+const PasswordField = ({ label, configured, value, onChange }) => {
+    const { t } = useTranslation('settings');
+    return (
+        <div className="form-group">
+            <label className="form-label">{label}</label>
+            <input
+                type="password"
+                className="form-input"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                placeholder={configured ? t('settings:backupSettings.passwordPlaceholderConfigured') : t('settings:backupSettings.passwordPlaceholderNotSet')}
+            />
+        </div>
+    );
+};
 
 const AdminBackupSettings = () => {
+    const { t } = useTranslation(['settings', 'common']);
+    const dayNames = t('settings:backupSettings.days', { returnObjects: true });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [saving, setSaving] = useState(false);
@@ -83,7 +87,7 @@ const AdminBackupSettings = () => {
             setDraft(draftFrom(response.data));
         } catch (err) {
             console.error('Error fetching system backup settings:', err);
-            setError('Failed to load system backup settings');
+            setError(t('settings:backupSettings.loadError'));
         } finally {
             setLoading(false);
         }
@@ -98,7 +102,7 @@ const AdminBackupSettings = () => {
             setHasMore(response.data.hasMore);
         } catch (err) {
             console.error('Error fetching backup history:', err);
-            setHistoryError('Failed to load backup history');
+            setHistoryError(t('settings:backupSettings.historyLoadError'));
         } finally {
             setHistoryLoading(false);
         }
@@ -130,10 +134,10 @@ const AdminBackupSettings = () => {
             const response = await api.put('/system-settings/backup', payload);
             setData(response.data);
             setDraft(draftFrom(response.data));
-            setSuccessMessage('Backup settings saved');
+            setSuccessMessage(t('settings:backupSettings.saveSuccess'));
             setTimeout(() => setSuccessMessage(''), 3000);
         } catch (err) {
-            setError(err.response?.data?.error || 'Failed to save backup settings');
+            setError(err.response?.data?.error || t('settings:backupSettings.saveError'));
         } finally {
             setSaving(false);
         }
@@ -146,13 +150,13 @@ const AdminBackupSettings = () => {
         try {
             const response = await api.post('/system-settings/backup/run');
             if (response.data.status === 'success') {
-                setRunMessage(`Backup completed: ${response.data.filename}`);
+                setRunMessage(t('settings:backupSettings.backupCompleted', { filename: response.data.filename }));
             } else {
-                setRunError(response.data.errorMessage || 'Backup failed');
+                setRunError(response.data.errorMessage || t('settings:backupSettings.backupFailed'));
             }
             fetchHistory(0);
         } catch (err) {
-            setRunError(err.response?.data?.error || 'Failed to run backup');
+            setRunError(err.response?.data?.error || t('settings:backupSettings.runError'));
         } finally {
             setRunningBackup(false);
         }
@@ -182,7 +186,7 @@ const AdminBackupSettings = () => {
             let payload;
             if (restoreSource === 'upload') {
                 if (!restoreFile) {
-                    setRestoreError('Choose a dump file to upload');
+                    setRestoreError(t('settings:backupSettings.chooseFileError'));
                     setRestoring(false);
                     return;
                 }
@@ -190,16 +194,16 @@ const AdminBackupSettings = () => {
                 payload.append('file', restoreFile);
             } else {
                 if (!restoreHistoryId) {
-                    setRestoreError('Choose a backup to restore from');
+                    setRestoreError(t('settings:backupSettings.chooseBackupError'));
                     setRestoring(false);
                     return;
                 }
                 payload = { backupHistoryId: restoreHistoryId };
             }
             await api.post('/system-settings/backup/restore', payload);
-            setRestoreSuccess('Restore completed successfully.');
+            setRestoreSuccess(t('settings:backupSettings.restoreSuccess'));
         } catch (err) {
-            setRestoreError(err.response?.data?.error || 'Restore failed');
+            setRestoreError(err.response?.data?.error || t('settings:backupSettings.restoreError'));
         } finally {
             setRestoring(false);
             setConfirmPhrase('');
@@ -209,11 +213,11 @@ const AdminBackupSettings = () => {
     };
 
     if (loading) {
-        return <div className="text-muted">Loading system backup settings...</div>;
+        return <div className="text-muted">{t('settings:backupSettings.loading')}</div>;
     }
 
     if (!data) {
-        return <div className="form-error">{error || 'System backup settings unavailable'}</div>;
+        return <div className="form-error">{error || t('settings:backupSettings.unavailable')}</div>;
     }
 
     const successfulHistory = history.filter((h) => h.status === 'success');
@@ -225,20 +229,20 @@ const AdminBackupSettings = () => {
                 {successMessage && <div className="alert alert-success mb-md" style={{ color: 'var(--color-success)' }}>{successMessage}</div>}
 
                 <div className="form-group">
-                    <label className="form-label">Destination</label>
+                    <label className="form-label">{t('settings:backupSettings.destination')}</label>
                     <select
                         className="form-select"
                         value={draft.destinationType}
                         onChange={(e) => updateDraft('destinationType', e.target.value)}
                     >
-                        <option value="local">Local folder</option>
-                        <option value="s3">Amazon S3</option>
+                        <option value="local">{t('settings:backupSettings.localFolder')}</option>
+                        <option value="s3">{t('settings:backupSettings.amazonS3')}</option>
                     </select>
                 </div>
 
                 {draft.destinationType === 'local' ? (
                     <div className="form-group">
-                        <label className="form-label">Local Path</label>
+                        <label className="form-label">{t('settings:backupSettings.localPath')}</label>
                         <input
                             type="text"
                             className="form-input"
@@ -249,19 +253,19 @@ const AdminBackupSettings = () => {
                 ) : (
                     <>
                         <div className="form-group">
-                            <label className="form-label">S3 Bucket</label>
+                            <label className="form-label">{t('settings:backupSettings.s3Bucket')}</label>
                             <input type="text" className="form-input" value={draft.s3Bucket} onChange={(e) => updateDraft('s3Bucket', e.target.value)} />
                         </div>
                         <div className="form-group">
-                            <label className="form-label">S3 Region</label>
+                            <label className="form-label">{t('settings:backupSettings.s3Region')}</label>
                             <input type="text" className="form-input" value={draft.s3Region} onChange={(e) => updateDraft('s3Region', e.target.value)} />
                         </div>
                         <div className="form-group">
-                            <label className="form-label">S3 Access Key ID</label>
+                            <label className="form-label">{t('settings:backupSettings.s3AccessKeyId')}</label>
                             <input type="text" className="form-input" value={draft.s3AccessKeyId} onChange={(e) => updateDraft('s3AccessKeyId', e.target.value)} />
                         </div>
                         <PasswordField
-                            label="S3 Secret Access Key"
+                            label={t('settings:backupSettings.s3SecretAccessKey')}
                             configured={data.s3SecretAccessKey.configured}
                             value={draft.s3SecretAccessKey}
                             onChange={(v) => updateDraft('s3SecretAccessKey', v)}
@@ -270,21 +274,21 @@ const AdminBackupSettings = () => {
                 )}
 
                 <div className="form-group">
-                    <label className="form-label">Frequency</label>
+                    <label className="form-label">{t('settings:backupSettings.frequency')}</label>
                     <select
                         className="form-select"
                         value={draft.scheduleFrequency}
                         onChange={(e) => updateDraft('scheduleFrequency', e.target.value)}
                     >
-                        <option value="hourly">Hourly</option>
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
+                        <option value="hourly">{t('settings:backupSettings.hourly')}</option>
+                        <option value="daily">{t('settings:backupSettings.daily')}</option>
+                        <option value="weekly">{t('settings:backupSettings.weekly')}</option>
                     </select>
                 </div>
 
                 {draft.scheduleFrequency !== 'hourly' && (
                     <div className="form-group">
-                        <label className="form-label">Time</label>
+                        <label className="form-label">{t('settings:backupSettings.time')}</label>
                         <input
                             type="time"
                             className="form-input"
@@ -297,14 +301,14 @@ const AdminBackupSettings = () => {
 
                 {draft.scheduleFrequency === 'weekly' && (
                     <div className="form-group">
-                        <label className="form-label">Day of Week</label>
+                        <label className="form-label">{t('settings:backupSettings.dayOfWeek')}</label>
                         <select
                             className="form-select"
                             value={draft.scheduleDayOfWeek}
                             onChange={(e) => updateDraft('scheduleDayOfWeek', e.target.value)}
                             style={{ maxWidth: '200px' }}
                         >
-                            {DAY_NAMES.map((name, idx) => (
+                            {dayNames.map((name, idx) => (
                                 <option key={idx} value={idx}>{name}</option>
                             ))}
                         </select>
@@ -312,7 +316,7 @@ const AdminBackupSettings = () => {
                 )}
 
                 <div className="form-group">
-                    <label className="form-label">Retention Count</label>
+                    <label className="form-label">{t('settings:backupSettings.retentionCount')}</label>
                     <input
                         type="number"
                         className="form-input"
@@ -333,33 +337,41 @@ const AdminBackupSettings = () => {
                         <span className="switch-track">
                             <span className="switch-thumb" />
                         </span>
-                        <span className="switch-text">Scheduled backups enabled</span>
+                        <span className="switch-text">{t('settings:backupSettings.scheduledEnabled')}</span>
                     </label>
                 </div>
 
                 <div className="flex flex-gap-sm mt-lg">
                     <button type="submit" className="btn btn-primary" disabled={saving}>
-                        {saving ? 'Saving...' : 'Save Backup Settings'}
+                        {saving ? t('common:saving') : t('settings:backupSettings.saveButton')}
                     </button>
                     <button type="button" className="btn btn-secondary" disabled={runningBackup} onClick={handleRunNow}>
-                        {runningBackup ? 'Running...' : 'Back Up Now'}
+                        {runningBackup ? t('settings:backupSettings.running') : t('settings:backupSettings.backUpNow')}
                     </button>
                 </div>
                 {runMessage && <div className="text-muted mt-sm" style={{ fontSize: 'var(--font-size-sm)' }}>{runMessage}</div>}
                 {runError && <div className="form-error mt-sm">{runError}</div>}
             </form>
 
-            <h3 className="mt-lg mb-sm">Backup History</h3>
+            <h3 className="mt-lg mb-sm">{t('settings:backupSettings.historyTitle')}</h3>
             {historyError && <div className="form-error mb-md">{historyError}</div>}
             {history.length === 0 && !historyLoading ? (
-                <p className="text-muted" style={{ fontSize: 'var(--font-size-sm)' }}>No backups yet.</p>
+                <p className="text-muted" style={{ fontSize: 'var(--font-size-sm)' }}>{t('settings:backupSettings.noBackups')}</p>
             ) : (
                 <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                             <tr>
-                                {['Filename', 'Size', 'Destination', 'Status', 'Triggered By', 'Created At', ''].map((h) => (
-                                    <th key={h} style={{ textAlign: 'left', padding: 'var(--spacing-sm)', borderBottom: '1px solid var(--color-border)', fontSize: 'var(--font-size-sm)' }}>{h}</th>
+                                {[
+                                    t('settings:backupSettings.table.filename'),
+                                    t('settings:backupSettings.table.size'),
+                                    t('settings:backupSettings.table.destination'),
+                                    t('settings:backupSettings.table.status'),
+                                    t('settings:backupSettings.table.triggeredBy'),
+                                    t('settings:backupSettings.table.createdAt'),
+                                    ''
+                                ].map((h, idx) => (
+                                    <th key={idx} style={{ textAlign: 'left', padding: 'var(--spacing-sm)', borderBottom: '1px solid var(--color-border)', fontSize: 'var(--font-size-sm)' }}>{h}</th>
                                 ))}
                             </tr>
                         </thead>
@@ -377,7 +389,7 @@ const AdminBackupSettings = () => {
                                     <td style={{ padding: 'var(--spacing-sm)', borderBottom: '1px solid var(--color-border)' }}>
                                         {item.downloadable && (
                                             <button type="button" className="btn btn-secondary btn-sm" onClick={() => handleDownload(item)}>
-                                                Download
+                                                {t('common:download')}
                                             </button>
                                         )}
                                     </td>
@@ -394,26 +406,25 @@ const AdminBackupSettings = () => {
                     disabled={historyLoading}
                     onClick={() => fetchHistory(history.length)}
                 >
-                    {historyLoading ? 'Loading...' : 'Load more'}
+                    {historyLoading ? t('common:loading') : t('common:loadMore')}
                 </button>
             )}
 
             <div className="card mt-lg" style={{ borderColor: 'var(--color-danger)' }}>
-                <h3 className="mb-sm">Restore Database</h3>
+                <h3 className="mb-sm">{t('settings:backupSettings.restoreTitle')}</h3>
                 <p className="text-muted mb-md" style={{ fontSize: 'var(--font-size-sm)' }}>
-                    This is a single-process restore — the app is not restarted, but in-flight requests may transiently fail while the restore runs.
-                    The connection pool reconnects automatically afterward; no manual restart is needed.
-                    <strong> This action overwrites the current database and cannot be undone.</strong>
+                    {t('settings:backupSettings.restoreDescriptionIntro')}
+                    <strong> {t('settings:backupSettings.restoreDescriptionWarning')}</strong>
                 </p>
 
                 <div className="form-group">
                     <label className="flex flex-gap-sm" style={{ alignItems: 'center', marginBottom: 'var(--spacing-xs)' }}>
                         <input type="radio" checked={restoreSource === 'upload'} onChange={() => setRestoreSource('upload')} />
-                        <span>Upload a dump file</span>
+                        <span>{t('settings:backupSettings.uploadOption')}</span>
                     </label>
                     <label className="flex flex-gap-sm" style={{ alignItems: 'center' }}>
                         <input type="radio" checked={restoreSource === 'history'} onChange={() => setRestoreSource('history')} />
-                        <span>Restore from an existing backup</span>
+                        <span>{t('settings:backupSettings.historyOption')}</span>
                     </label>
                 </div>
 
@@ -431,7 +442,7 @@ const AdminBackupSettings = () => {
                             value={restoreHistoryId}
                             onChange={(e) => setRestoreHistoryId(e.target.value)}
                         >
-                            <option value="">Select a backup...</option>
+                            <option value="">{t('settings:backupSettings.selectBackupPlaceholder')}</option>
                             {successfulHistory.map((h) => (
                                 <option key={h.id} value={h.id}>{h.filename} ({new Date(h.createdAt).toLocaleString()})</option>
                             ))}
@@ -443,7 +454,9 @@ const AdminBackupSettings = () => {
                 {restoreSuccess && <div className="alert alert-success mb-md" style={{ color: 'var(--color-success)' }}>{restoreSuccess}</div>}
 
                 <div className="form-group">
-                    <label className="form-label">Type RESTORE to confirm</label>
+                    {/* The word "RESTORE" itself is a fixed safety-gate literal the user must
+                        type verbatim — it is interpolated but never translated. */}
+                    <label className="form-label">{t('settings:backupSettings.confirmLabel', { word: 'RESTORE' })}</label>
                     <input
                         type="text"
                         className="form-input"
@@ -460,7 +473,7 @@ const AdminBackupSettings = () => {
                     disabled={confirmPhrase !== 'RESTORE' || restoring}
                     onClick={handleRestore}
                 >
-                    {restoring ? 'Restoring...' : 'Restore Database'}
+                    {restoring ? t('settings:backupSettings.restoring') : t('settings:backupSettings.restoreButton')}
                 </button>
             </div>
         </div>

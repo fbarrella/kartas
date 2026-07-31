@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 
 const formatDate = (d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -7,6 +8,7 @@ const formatDate = (d) => new Date(d).toLocaleDateString('en-US', { month: 'shor
 // header (KanbanBoard.jsx, KAN-01's flex row), surfaced as its own For You
 // widget under a more descriptive name.
 const SprintCountdownWidget = ({ projectId }) => {
+    const { t } = useTranslation(['dashboard', 'common']);
     const [sprint, setSprint] = useState(null);
     const [hasActiveSprint, setHasActiveSprint] = useState(true);
     const [loading, setLoading] = useState(true);
@@ -38,14 +40,14 @@ const SprintCountdownWidget = ({ projectId }) => {
     return (
         <div className="card">
             <div className="card-header">
-                <h3 className="card-title">Sprint Countdown</h3>
+                <h3 className="card-title">{t('dashboard:sprintCountdownWidget.title')}</h3>
             </div>
 
             {loading ? (
-                <div className="text-center">Loading...</div>
+                <div className="text-center">{t('common:loading')}</div>
             ) : !hasActiveSprint ? (
                 <div className="text-center">
-                    <p className="text-muted mt-md mb-md">There will only be data here once there's an active sprint</p>
+                    <p className="text-muted mt-md mb-md">{t('dashboard:sprintCountdownWidget.noActiveSprint')}</p>
                 </div>
             ) : (
                 <div>
@@ -60,7 +62,7 @@ const SprintCountdownWidget = ({ projectId }) => {
                         color: 'var(--color-neutral-600)',
                         marginBottom: '2px'
                     }}>
-                        <span>Elapsed Time</span>
+                        <span>{t('dashboard:sprintCountdownWidget.elapsedTime')}</span>
                         <span>{Math.round(elapsedPercent)}%</span>
                     </div>
                     <div style={{

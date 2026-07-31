@@ -1,0 +1,119 @@
+{
+    "pageTitle": "Backlog",
+    "breadcrumbProjects": "Proyectos",
+    "breadcrumbBacklog": "Backlog",
+    "filteredCount": "({{filtered}} de {{total}})",
+    "createStory": "+ Crear historia",
+    "loadingStories": "Cargando historias...",
+    "filters": {
+        "title": "Filtros",
+        "clearAll": "Borrar todo",
+        "searchPlaceholder": "Buscar por título o ID...",
+        "unassigned": "Sin asignar",
+        "noSprint": "Sin sprint",
+        "ready": "Lista",
+        "allTypes": "Todos los tipos",
+        "allStatuses": "Todos los estados",
+        "allAssignees": "Todos los responsables",
+        "allEpics": "Todos los épicos",
+        "noEpic": "Sin épico",
+        "allSprints": "Todos los sprints",
+        "showCompleted": "Mostrar historias completadas"
+    },
+    "table": {
+        "type": "Tipo",
+        "id": "ID",
+        "title": "Título",
+        "epic": "Épico",
+        "status": "Estado",
+        "points": "Puntos",
+        "assignee": "Responsable"
+    },
+    "filterByEpicTooltip": "Haz clic para filtrar por este épico",
+    "blocked": "Bloqueada",
+    "bulkActions": {
+        "selectedSuffix_one": "historia seleccionada",
+        "selectedSuffix_other": "historias seleccionadas",
+        "assignTo": "Asignar a...",
+        "assign": "Asignar",
+        "changeStatus": "Cambiar estado...",
+        "update": "Actualizar",
+        "assignToEpic": "Asignar a épico...",
+        "addToSprint": "Agregar al sprint...",
+        "adding": "Agregando...",
+        "add": "Agregar",
+        "deleteSelected": "Eliminar selección",
+        "clearSelection": "Deseleccionar todo"
+    },
+    "emptyState": {
+        "title": "Aún no hay historias",
+        "subtitle": "Crea tu primera historia de usuario para comenzar"
+    },
+    "createStoryIntoSprint": "+ Crear historia en el sprint",
+    "createModal": {
+        "title": "Crear nueva historia",
+        "type": "Tipo",
+        "storyPoints": "Puntos de historia",
+        "storyPointsPlaceholder": "Opcional",
+        "submit": "Crear historia"
+    },
+    "detailModal": {
+        "status": "Estado:",
+        "blocked": "Bloqueada:",
+        "storyPoints": "Puntos de historia:",
+        "notSet": "Sin definir",
+        "assignee": "Responsable:",
+        "creator": "Creador:",
+        "unknown": "Desconocido",
+        "description": "Descripción:",
+        "clone": "Clonar"
+    },
+    "statusLabels": {
+        "backlog": "Backlog",
+        "refining": "Refinamiento",
+        "ready": "Lista",
+        "in_development": "En desarrollo",
+        "review": "Revisión",
+        "test": "Pruebas",
+        "done": "Hecha",
+        "cancelled": "Cancelada"
+    },
+    "typeLabels": {
+        "story": "Historia",
+        "task": "Tarea",
+        "bug": "Error"
+    },
+    "errors": {
+        "createStory": "No se pudo crear la historia",
+        "addToSprint": "No se pudieron agregar las historias al sprint",
+        "assignStories": "No se pudieron asignar las historias",
+        "updateStatus": "No se pudo actualizar el estado",
+        "assignToEpic": "No se pudo asignar al épico",
+        "deleteStories": "No se pudieron eliminar las historias",
+        "moveStory": "No se pudo mover la historia",
+        "cloneStory": "No se pudo clonar la historia"
+    },
+    "success": {
+        "addedToSprint_one": "Se agregó {{count}} historia al sprint correctamente",
+        "addedToSprint_other": "Se agregaron {{count}} historias al sprint correctamente",
+        "assigned_one": "Se asignó {{count}} historia correctamente",
+        "assigned_other": "Se asignaron {{count}} historias correctamente",
+        "statusUpdated_one": "Se actualizó el estado de {{count}} historia correctamente",
+        "statusUpdated_other": "Se actualizó el estado de {{count}} historias correctamente",
+        "assignedToEpic_one": "Se asignó {{count}} historia al épico correctamente",
+        "assignedToEpic_other": "Se asignaron {{count}} historias al épico correctamente",
+        "deleted_one": "Se eliminó {{count}} historia correctamente",
+        "deleted_other": "Se eliminaron {{count}} historias correctamente"
+    },
+    "confirmDelete_one": "¿Seguro que quieres eliminar {{count}} historia? Esta acción no se puede deshacer.",
+    "confirmDelete_other": "¿Seguro que quieres eliminar {{count}} historias? Esta acción no se puede deshacer.",
+    "cloneModal": {
+        "title": "Clonar historia",
+        "promptPrefix": "¿Clonar",
+        "promptSuffix": "? La nueva historia se creará en el Backlog.",
+        "includeSubtasksPrompt": "¿Incluir las subtareas de esta historia en el clon?",
+        "noSubtasks": "No, sin subtareas",
+        "yesIncludeSubtasks": "Sí, incluir subtareas",
+        "cloning": "Clonando..."
+    }
+}

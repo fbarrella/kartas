@@ -1,0 +1,47 @@
+{
+    "breadcrumb": {
+        "projects": "Projects",
+        "teamMembers": "Team Members",
+        "projectSettings": "Project Settings"
+    },
+    "teamMembers": {
+        "title": "Team Members",
+        "addMember": "+ Add Member",
+        "membersLabel": "Members",
+        "role": "Role",
+        "joined": "Joined",
+        "remove": "Remove",
+        "confirmRemove": "Are you sure you want to remove this member?",
+        "failedToRemove": "Failed to remove member",
+        "notFound": {
+            "title": "Project Not Found",
+            "backToDashboard": "Back to Dashboard"
+        },
+        "modal": {
+            "title": "Add Team Member",
+            "searchUser": "Search User",
+            "member": "Member",
+            "projectOwner": "Project Owner",
+            "pleaseSelectUser": "Please select a user",
+            "failedToAdd": "Failed to add member",
+            "addMember": "Add Member"
+        }
+    },
+    "settings": {
+        "title": "Project Settings",
+        "loadingSettings": "Loading settings...",
+        "defaultLandingPage": "Default page when entering this project",
+        "defaultLandingPageHint": "This applies only to your own account.",
+        "saveSuccess": "Settings saved successfully",
+        "saveError": "Failed to save settings",
+        "landingPageOptions": {
+            "backlog": "Backlog",
+            "forYou": "For You",
+            "epics": "Epics",
+            "sprints": "Sprints",
+            "kanban": "Kanban",
+            "reports": "Reports",
+            "team": "Team Members"
+        }
+    }
+}

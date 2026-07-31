@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 import { getInitials, getAvatarColor } from '../utils/avatar';
 
-const UserSelect = ({ onSelect, label = "Search User" }) => {
+const UserSelect = ({ onSelect, label }) => {
+    const { t } = useTranslation(['users']);
+    const resolvedLabel = label || t('users:select.searchUser');
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -52,11 +55,11 @@ const UserSelect = ({ onSelect, label = "Search User" }) => {
 
     return (
         <div className="search-container" ref={wrapperRef}>
-            <label className="form-label">{label}</label>
+            <label className="form-label">{resolvedLabel}</label>
             <input
                 type="text"
                 className="form-input"
-                placeholder="Type name or email to search..."
+                placeholder={t('users:select.placeholder')}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onFocus={() => query.length >= 2 && setIsOpen(true)}
@@ -66,7 +69,7 @@ const UserSelect = ({ onSelect, label = "Search User" }) => {
                 <div className="search-dropdown">
                     {loading ? (
                         <div style={{ padding: '12px', textAlign: 'center', color: '#6B778C' }}>
-                            Searching...
+                            {t('users:select.searching')}
                         </div>
                     ) : results.length > 0 ? (
                         results.map((user) => (
@@ -90,7 +93,7 @@ const UserSelect = ({ onSelect, label = "Search User" }) => {
                         ))
                     ) : (
                         <div style={{ padding: '12px', textAlign: 'center', color: '#6B778C' }}>
-                            No users found
+                            {t('users:select.noUsersFound')}
                         </div>
                     )}
                 </div>

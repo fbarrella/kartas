@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 import { BASE_CATEGORIES, PRESETS, deriveTokens, setCachedSystemTheme, getCachedSystemTheme } from '../utils/systemTheme';
 
@@ -35,6 +36,7 @@ const PresetThumbnail = ({ preset, selected, onClick }) => (
 );
 
 const AdminPaletteEditor = () => {
+    const { t } = useTranslation(['settings', 'common']);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [saving, setSaving] = useState(false);
@@ -55,7 +57,7 @@ const AdminPaletteEditor = () => {
             setCurrent(response.data);
         } catch (err) {
             console.error('Error fetching system theme settings:', err);
-            setError('Failed to load system theme settings');
+            setError(t('settings:paletteEditor.loadError'));
         } finally {
             setLoading(false);
         }
@@ -69,11 +71,11 @@ const AdminPaletteEditor = () => {
             const response = await api.put('/system-settings/theme', payload);
             setCurrent(response.data);
             setCachedSystemTheme(response.data);
-            setSuccessMessage('Palette saved');
+            setSuccessMessage(t('settings:paletteEditor.saveSuccess'));
             setTimeout(() => setSuccessMessage(''), 3000);
             return true;
         } catch (err) {
-            setError(err.response?.data?.error || 'Failed to save palette');
+            setError(err.response?.data?.error || t('settings:paletteEditor.saveError'));
             // Revert the live preview back to whatever is actually persisted.
             const cached = getCachedSystemTheme();
             if (cached) previewDraft(cached.lightPalette, cached.darkPalette);
@@ -118,11 +120,11 @@ const AdminPaletteEditor = () => {
     };
 
     if (loading) {
-        return <div className="text-muted">Loading system theme settings...</div>;
+        return <div className="text-muted">{t('settings:paletteEditor.loading')}</div>;
     }
 
     if (!current) {
-        return <div className="form-error">{error || 'System theme settings unavailable'}</div>;
+        return <div className="form-error">{error || t('settings:paletteEditor.unavailable')}</div>;
     }
 
     return (
@@ -133,7 +135,7 @@ const AdminPaletteEditor = () => {
             {!editingCustom ? (
                 <>
                     <p className="text-muted mb-md" style={{ fontSize: 'var(--font-size-sm)' }}>
-                        Pick a preset (each thumbnail's diagonal shows its light/dark primary color), or customize every color individually.
+                        {t('settings:paletteEditor.pickPresetHelp')}
                     </p>
                     <div className="flex flex-gap-md" style={{ flexWrap: 'wrap', alignItems: 'center' }}>
                         {PRESETS.map((preset) => (
@@ -150,7 +152,7 @@ const AdminPaletteEditor = () => {
                             className="btn btn-secondary btn-sm"
                             disabled={saving}
                         >
-                            {current.presetName === 'custom' ? 'Edit custom palette' : 'Customize colors'}
+                            {current.presetName === 'custom' ? t('settings:paletteEditor.editCustomPalette') : t('settings:paletteEditor.customizeColors')}
                         </button>
                     </div>
                 </>
@@ -158,7 +160,7 @@ const AdminPaletteEditor = () => {
                 <>
                     <div className="flex flex-gap-lg" style={{ flexWrap: 'wrap' }}>
                         <div style={{ flex: '1 1 260px', minWidth: '260px' }}>
-                            <h4 className="mb-sm">Light mode</h4>
+                            <h4 className="mb-sm">{t('settings:paletteEditor.lightMode')}</h4>
                             {BASE_CATEGORIES.map(({ key, label }) => (
                                 <div key={key} className="flex flex-between mb-xs" style={{ alignItems: 'center' }}>
                                     <span className="text-small">{label}</span>
@@ -175,7 +177,7 @@ const AdminPaletteEditor = () => {
                             ))}
                         </div>
                         <div style={{ flex: '1 1 260px', minWidth: '260px' }}>
-                            <h4 className="mb-sm">Dark mode</h4>
+                            <h4 className="mb-sm">{t('settings:paletteEditor.darkMode')}</h4>
                             {BASE_CATEGORIES.map(({ key, label }) => (
                                 <div key={key} className="flex flex-between mb-xs" style={{ alignItems: 'center' }}>
                                     <span className="text-small">{label}</span>
@@ -195,10 +197,10 @@ const AdminPaletteEditor = () => {
 
                     <div className="flex flex-gap-sm mt-lg">
                         <button type="button" onClick={saveCustom} className="btn btn-primary" disabled={saving}>
-                            {saving ? 'Saving...' : 'Save custom palette'}
+                            {saving ? t('common:saving') : t('settings:paletteEditor.saveCustomPalette')}
                         </button>
                         <button type="button" onClick={cancelCustom} className="btn btn-secondary" disabled={saving}>
-                            Cancel
+                            {t('common:cancel')}
                         </button>
                     </div>
                 </>

@@ -1,11 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 const Breadcrumb = ({ items = [] }) => {
+    const { t } = useTranslation(['navigation', 'common']);
     if (items.length === 0) return null;
 
     return (
-        <nav className="breadcrumb" aria-label="Breadcrumb">
+        <nav className="breadcrumb" aria-label={t('navigation:breadcrumb.ariaLabel')}>
             {items.map((item, index) => {
                 const isLast = index === items.length - 1;
                 return (

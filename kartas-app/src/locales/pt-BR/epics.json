@@ -1,0 +1,83 @@
+{
+    "pageTitle": "Épicos",
+    "breadcrumbProjects": "Projetos",
+    "breadcrumbEpics": "Épicos",
+    "breadcrumbEditEpic": "Editar épico",
+    "breadcrumbProjectFallback": "Projeto",
+    "createEpic": "+ Criar épico",
+    "createEpicButton": "Criar épico",
+    "showCompleted": "Mostrar épicos concluídos",
+    "loadingEpics": "Carregando épicos...",
+    "loadingEpic": "Carregando épico...",
+    "confirmDelete": "Tem certeza de que deseja excluir este épico? Esta ação não pode ser desfeita.",
+    "emptyState": {
+        "title": "Ainda não há épicos",
+        "subtitleManage": "Crie seu primeiro épico para organizar suas histórias",
+        "subtitleView": "Ainda não foram criados épicos para este projeto"
+    },
+    "noEpicsToShow": {
+        "title": "Nenhum épico para mostrar",
+        "subtitle": "Todos os épicos estão concluídos ou cancelados. Marque \"Mostrar épicos concluídos\" para vê-los."
+    },
+    "progress": "Progresso",
+    "start": "Início:",
+    "end": "Fim:",
+    "stories": "Histórias:",
+    "createdBy": "Criado por:",
+    "cannotDeleteTooltip": "Não é possível excluir um épico com histórias",
+    "deleteTooltip": "Excluir épico",
+    "titleLabel": "Título *",
+    "startDate": "Data de início",
+    "endDate": "Data de término",
+    "color": "Cor",
+    "statusLabels": {
+        "planning": "Planejamento",
+        "in_progress": "Em andamento",
+        "completed": "Concluído",
+        "cancelled": "Cancelado"
+    },
+    "colorLabels": {
+        "blue": "Azul",
+        "green": "Verde",
+        "orange": "Laranja",
+        "red": "Vermelho",
+        "purple": "Roxo",
+        "cyan": "Ciano",
+        "brightRed": "Vermelho vivo",
+        "brightGreen": "Verde vivo"
+    },
+    "storyStatusLabels": {
+        "backlog": "Backlog",
+        "refining": "Refinamento",
+        "ready": "Pronta",
+        "in_development": "Em desenvolvimento",
+        "review": "Revisão",
+        "test": "Teste",
+        "done": "Concluída",
+        "cancelled": "Cancelada"
+    },
+    "errors": {
+        "loadEpics": "Falha ao carregar épicos",
+        "loadEpic": "Falha ao carregar épico",
+        "saveEpic": "Falha ao salvar épico",
+        "updateEpic": "Falha ao atualizar épico",
+        "deleteEpic": "Falha ao excluir épico"
+    },
+    "detail": {
+        "notFoundTitle": "Épico não encontrado",
+        "backToEpics": "Voltar para épicos",
+        "createdBy": "Criado por",
+        "editDescription": "Editar descrição",
+        "noDescription": "Ainda não há descrição",
+        "updatedSuccess": "Épico atualizado com sucesso!",
+        "associatedStories": "Histórias associadas",
+        "noStories": "Ainda não há histórias associadas a este épico.",
+        "table": {
+            "id": "ID",
+            "title": "Título",
+            "status": "Status",
+            "points": "Pontos",
+            "assignee": "Responsável"
+        }
+    }
+}

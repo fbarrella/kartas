@@ -1,22 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 
 const STATUS_OPTIONS = [
-    { value: 'backlog', label: 'Backlog', color: 'var(--color-neutral-400)' },
-    { value: 'refining', label: 'Refining', color: 'var(--color-info)' },
-    { value: 'ready', label: 'Ready', color: 'var(--color-success)' },
-    { value: 'in_development', label: 'In Development', color: 'var(--color-warning)' },
-    { value: 'review', label: 'Review', color: 'var(--color-secondary)' },
-    { value: 'test', label: 'Test', color: 'var(--color-info)' },
-    { value: 'done', label: 'Done', color: 'var(--color-success)' },
-    { value: 'cancelled', label: 'Cancelled', color: 'var(--color-danger)' }
+    { value: 'backlog', color: 'var(--color-neutral-400)' },
+    { value: 'refining', color: 'var(--color-info)' },
+    { value: 'ready', color: 'var(--color-success)' },
+    { value: 'in_development', color: 'var(--color-warning)' },
+    { value: 'review', color: 'var(--color-secondary)' },
+    { value: 'test', color: 'var(--color-info)' },
+    { value: 'done', color: 'var(--color-success)' },
+    { value: 'cancelled', color: 'var(--color-danger)' }
 ];
 
 const getStatusColor = (status) => STATUS_OPTIONS.find(opt => opt.value === status)?.color || 'var(--color-neutral-400)';
-const getStatusLabel = (status) => STATUS_OPTIONS.find(opt => opt.value === status)?.label || status;
 
 const MyTasksWidget = ({ projectId }) => {
+    const { t } = useTranslation(['dashboard', 'common']);
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -38,25 +39,25 @@ const MyTasksWidget = ({ projectId }) => {
     return (
         <div className="card">
             <div className="card-header">
-                <h3 className="card-title">My Tasks</h3>
+                <h3 className="card-title">{t('dashboard:myTasksWidget.title')}</h3>
             </div>
 
             {loading ? (
-                <div className="text-center">Loading tasks...</div>
+                <div className="text-center">{t('dashboard:myTasksWidget.loading')}</div>
             ) : tasks.length === 0 ? (
                 <div className="text-center">
-                    <p className="text-muted mt-md mb-md">You don't have any tasks assigned in this project</p>
+                    <p className="text-muted mt-md mb-md">{t('dashboard:myTasksWidget.empty')}</p>
                 </div>
             ) : (
                 <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                             <tr style={{ borderBottom: '2px solid var(--color-border)' }}>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Task</th>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Epic</th>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Sprint</th>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Status</th>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Points</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('dashboard:myTasksWidget.columnTask')}</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('dashboard:myTasksWidget.columnEpic')}</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('dashboard:myTasksWidget.columnSprint')}</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('dashboard:myTasksWidget.columnStatus')}</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('dashboard:myTasksWidget.columnPoints')}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -73,7 +74,7 @@ const MyTasksWidget = ({ projectId }) => {
                                             <strong>{task.code}</strong> — {task.title}
                                             {task.itemType === 'subtask' && (
                                                 <span className="badge badge-info" style={{ marginLeft: '6px', fontSize: '10px', padding: '2px 6px' }}>
-                                                    Sub-item
+                                                    {t('dashboard:myTasksWidget.subItemBadge')}
                                                 </span>
                                             )}
                                         </Link>
@@ -107,7 +108,7 @@ const MyTasksWidget = ({ projectId }) => {
                                             borderRadius: 'var(--radius-sm)',
                                             whiteSpace: 'nowrap'
                                         }}>
-                                            {getStatusLabel(task.status)}
+                                            {t(`dashboard:statusLabels.${task.status}`, { defaultValue: task.status })}
                                         </span>
                                     </td>
                                     <td style={{ padding: 'var(--spacing-sm)' }}>{task.storyPoints ?? '—'}</td>

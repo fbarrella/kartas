@@ -1,0 +1,100 @@
+{
+    "statusLabels": {
+        "backlog": "Backlog",
+        "refining": "Refinamento",
+        "ready": "Pronto",
+        "in_development": "Em Desenvolvimento",
+        "review": "Revisão",
+        "test": "Teste",
+        "done": "Concluído",
+        "cancelled": "Cancelado"
+    },
+    "dashboardPage": {
+        "breadcrumbProjects": "Projetos",
+        "yourProjects": "Seus Projetos",
+        "createProject": "+ Criar Projeto",
+        "loadingProjects": "Carregando projetos...",
+        "noProjectsTitle": "Ainda Não Há Projetos",
+        "noProjectsOwnerText": "Crie seu primeiro projeto para começar",
+        "noProjectsMemberText": "Você ainda não foi atribuído a nenhum projeto",
+        "createdBy": "Criado por {{name}}",
+        "unknownAuthor": "Desconhecido",
+        "createModalTitle": "Criar Novo Projeto",
+        "projectNameLabel": "Nome do Projeto",
+        "descriptionOptionalLabel": "Descrição (Opcional)",
+        "createFailed": "Falha ao criar o projeto",
+        "createProjectSubmit": "Criar Projeto"
+    },
+    "forYouPage": {
+        "breadcrumbLabel": "Para Você",
+        "heading": "Para Você",
+        "customizeTooltip": "Personalizar widgets",
+        "customizeButton": "⚙️ Personalizar",
+        "loading": "Carregando...",
+        "emptyTitle": "Sua página Para Você está vazia",
+        "emptyText": "Clique em ⚙️ Personalizar acima para escolher quais widgets exibir aqui."
+    },
+    "myTasksWidget": {
+        "title": "Minhas Tarefas",
+        "loading": "Carregando tarefas...",
+        "empty": "Você não tem tarefas atribuídas neste projeto",
+        "columnTask": "Tarefa",
+        "columnEpic": "Épico",
+        "columnSprint": "Sprint",
+        "columnStatus": "Status",
+        "columnPoints": "Pontos",
+        "subItemBadge": "Subitem"
+    },
+    "actionsHistoryWidget": {
+        "title": "Histórico de Ações",
+        "empty": "Suas ações recentes neste projeto aparecerão aqui",
+        "loadMore": "Carregar Mais",
+        "createdStory": "Criou a história {{code}} — {{title}}",
+        "commentedOnStory": "Comentou em {{code}}: \"{{comment}}\"",
+        "movedStoryFromTo": "Moveu {{code}} de {{from}} para {{to}}",
+        "movedStoryTo": "Moveu {{code}} para {{to}}",
+        "updatedFieldOnStory": "Atualizou {{field}} em {{code}}",
+        "addedSubItem": "Adicionou o subitem \"{{title}}\" em {{code}}",
+        "movedSubItemFromTo": "Moveu um subitem em {{code}} de {{from}} para {{to}}",
+        "movedSubItemTo": "Moveu um subitem em {{code}} para {{to}}",
+        "updatedSubItem": "Atualizou um subitem em {{code}}",
+        "createdEpic": "Criou o épico \"{{title}}\"",
+        "updatedEpic": "Atualizou o épico \"{{title}}\"",
+        "createdSprint": "Criou o sprint \"{{title}}\"",
+        "sprintStatusChanged": "O status do sprint mudou para {{status}}",
+        "updatedSprint": "Atualizou o sprint \"{{title}}\"",
+        "genericActivity": "{{actionType}} {{entityType}}",
+        "defaultFieldChanged": "um campo"
+    },
+    "latestActivitiesWidget": {
+        "title": "Últimas Atividades",
+        "empty": "Atividades de colegas nos seus itens, e menções a você, aparecerão aqui",
+        "loadMore": "Carregar Mais",
+        "mentioned": "{{user}} mencionou você em um comentário em {{storyCode}}",
+        "subItemTarget": "um subitem em {{storyCode}}",
+        "created": "{{user}} criou {{target}}",
+        "movedFrom": "{{user}} moveu {{target}} de {{from}} para {{to}}",
+        "movedTo": "{{user}} moveu {{target}} para {{to}}",
+        "updatedField": "{{user}} atualizou {{field}} em {{target}}"
+    },
+    "sprintCountdownWidget": {
+        "title": "Contagem Regressiva do Sprint",
+        "noActiveSprint": "Só haverá dados aqui quando existir um sprint ativo",
+        "elapsedTime": "Tempo Decorrido"
+    },
+    "teamWorkloadWidget": {
+        "title": "Carga de Trabalho da Equipe",
+        "noActiveSprint": "Só haverá dados aqui quando existir um sprint ativo"
+    },
+    "widgetSettingsModal": {
+        "title": "Personalizar Widgets",
+        "description": "Escolha quais widgets aparecem na sua página Para Você.",
+        "layout": "Layout",
+        "columnsOption": "{{count}} colunas",
+        "widgetMyTasks": "Minhas Tarefas",
+        "widgetActionsHistory": "Histórico de Ações",
+        "widgetLatestActivities": "Últimas Atividades",
+        "widgetTeamWorkload": "Carga de Trabalho da Equipe",
+        "widgetSprintCountdown": "Contagem Regressiva do Sprint"
+    }
+}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useOutletContext, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 import UserSelect from '../components/UserSelect';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,6 +9,7 @@ import '../components/navigation.css';
 
 
 const ProjectView = () => {
+    const { t } = useTranslation(['project', 'common']);
     const { projectId } = useParams();
     const { projectName, defaultLandingPage } = useOutletContext();
     const { user } = useAuth();
@@ -37,7 +39,7 @@ const ProjectView = () => {
         setError('');
 
         if (!addMemberForm.userId && !addMemberForm.email) {
-            setError('Please select a user');
+            setError(t('project:teamMembers.modal.pleaseSelectUser'));
             return;
         }
 
@@ -47,32 +49,32 @@ const ProjectView = () => {
             setAddMemberForm({ userId: null, email: '', role: 'member' });
             fetchProject();
         } catch (error) {
-            setError(error.response?.data?.error || 'Failed to add member');
+            setError(error.response?.data?.error || t('project:teamMembers.modal.failedToAdd'));
         }
     };
 
     const handleRemoveMember = async (userId) => {
-        if (!window.confirm('Are you sure you want to remove this member?')) return;
+        if (!window.confirm(t('project:teamMembers.confirmRemove'))) return;
         try {
             await api.delete(`/projects/${projectId}/members/${userId}`);
             fetchProject();
         } catch (error) {
             console.error('Error removing member:', error);
-            alert(error.response?.data?.error || 'Failed to remove member');
+            alert(error.response?.data?.error || t('project:teamMembers.failedToRemove'));
         }
     };
 
     if (loading) {
-        return <div className="container mt-lg">Loading...</div>;
+        return <div className="container mt-lg">{t('common:loading')}</div>;
     }
 
     if (!project) {
         return (
             <div className="container mt-lg">
                 <div className="card">
-                    <h2>Project Not Found</h2>
+                    <h2>{t('project:teamMembers.notFound.title')}</h2>
                     <Link to="/" className="btn btn-primary mt-md">
-                        Back to Dashboard
+                        {t('project:teamMembers.notFound.backToDashboard')}
                     </Link>
                 </div>
             </div>
@@ -85,19 +87,19 @@ const ProjectView = () => {
     return (
         <>
             <Breadcrumb items={[
-                { label: 'Projects', to: '/' },
+                { label: t('project:breadcrumb.projects'), to: '/' },
                 { label: projectName, to: `/project/${projectId}/${defaultLandingPage}` },
-                { label: 'Team Members' },
+                { label: t('project:breadcrumb.teamMembers') },
             ]} />
             {/* Page Title and Actions */}
             <div className="flex flex-between mb-md" style={{ alignItems: 'center' }}>
-                <h2 style={{ margin: 0 }}>Team Members</h2>
+                <h2 style={{ margin: 0 }}>{t('project:teamMembers.title')}</h2>
                 {canManageMembers && (
                     <button
                         onClick={() => setShowAddMemberModal(true)}
                         className="btn btn-primary"
                     >
-                        + Add Member
+                        {t('project:teamMembers.addMember')}
                     </button>
                 )}
             </div>
@@ -105,19 +107,19 @@ const ProjectView = () => {
             {/* Team Members Card */}
             <div className="card">
                 <div className="mb-md">
-                    <p><strong>{project.members?.length || 0}</strong> Members</p>
+                    <p><strong>{project.members?.length || 0}</strong> {t('project:teamMembers.membersLabel')}</p>
                 </div>
 
                 <div className="overflow-x-auto">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                             <tr style={{ borderBottom: '2px solid var(--color-border)' }}>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Name</th>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Email</th>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Role</th>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Joined</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('common:name')}</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('common:email')}</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('project:teamMembers.role')}</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('project:teamMembers.joined')}</th>
                                 {canManageMembers && (
-                                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Actions</th>
+                                    <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('common:actions')}</th>
                                 )}
                             </tr>
                         </thead>
@@ -149,7 +151,7 @@ const ProjectView = () => {
                                                     className="btn btn-danger btn-sm"
                                                     style={{ padding: '4px 8px', fontSize: '0.8rem' }}
                                                 >
-                                                    Remove
+                                                    {t('project:teamMembers.remove')}
                                                 </button>
                                             )}
                                         </td>
@@ -166,36 +168,36 @@ const ProjectView = () => {
                 <div className="modal-overlay" onClick={() => setShowAddMemberModal(false)}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
-                            <h2>Add Team Member</h2>
+                            <h2>{t('project:teamMembers.modal.title')}</h2>
                             <button onClick={() => setShowAddMemberModal(false)} className="btn-close">×</button>
                         </div>
                         <form onSubmit={handleAddMember}>
                             <div className="modal-body">
                                 <div className="form-group">
                                     <UserSelect
-                                        label="Search User"
+                                        label={t('project:teamMembers.modal.searchUser')}
                                         onSelect={(user) => setAddMemberForm({ ...addMemberForm, userId: user.id, email: user.email })}
                                     />
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label">Role</label>
+                                    <label className="form-label">{t('project:teamMembers.role')}</label>
                                     <select
                                         className="form-select"
                                         value={addMemberForm.role}
                                         onChange={(e) => setAddMemberForm({ ...addMemberForm, role: e.target.value })}
                                     >
-                                        <option value="member">Member</option>
-                                        <option value="owner">Project Owner</option>
+                                        <option value="member">{t('project:teamMembers.modal.member')}</option>
+                                        <option value="owner">{t('project:teamMembers.modal.projectOwner')}</option>
                                     </select>
                                 </div>
                                 {error && <div className="form-error">{error}</div>}
                             </div>
                             <div className="modal-footer">
                                 <button type="button" onClick={() => setShowAddMemberModal(false)} className="btn btn-secondary">
-                                    Cancel
+                                    {t('common:cancel')}
                                 </button>
                                 <button type="submit" className="btn btn-primary">
-                                    Add Member
+                                    {t('project:teamMembers.modal.addMember')}
                                 </button>
                             </div>
                         </form>

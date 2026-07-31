@@ -1,21 +1,24 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 import MarkdownEditor from './MarkdownEditor';
 
-export const SUBITEM_TYPE_OPTIONS = [
-    { value: 'sub_task', label: 'Sub-Task', icon: '🔧' },
-    { value: 'sub_test', label: 'Sub-Test', icon: '🧪' }
+// Label text is translated via t(); `value` fields are stable identifiers
+// used for API/DB values and must never be translated.
+export const getSubItemTypeOptions = (t) => [
+    { value: 'sub_task', label: t('storyDetail:types.subTask'), icon: '🔧' },
+    { value: 'sub_test', label: t('storyDetail:types.subTest'), icon: '🧪' }
 ];
 
-export const SUBITEM_STATUS_OPTIONS = [
-    { value: 'backlog', label: 'Backlog', color: 'var(--color-neutral-400)' },
-    { value: 'refining', label: 'Refining', color: 'var(--color-info)' },
-    { value: 'ready', label: 'Ready', color: 'var(--color-success)' },
-    { value: 'in_development', label: 'In Development', color: 'var(--color-warning)' },
-    { value: 'review', label: 'Review', color: 'var(--color-secondary)' },
-    { value: 'test', label: 'Test', color: 'var(--color-info)' },
-    { value: 'done', label: 'Done', color: 'var(--color-success)' },
-    { value: 'cancelled', label: 'Cancelled', color: 'var(--color-danger)' }
+export const getSubItemStatusOptions = (t) => [
+    { value: 'backlog', label: t('storyDetail:statuses.backlog'), color: 'var(--color-neutral-400)' },
+    { value: 'refining', label: t('storyDetail:statuses.refining'), color: 'var(--color-info)' },
+    { value: 'ready', label: t('storyDetail:statuses.ready'), color: 'var(--color-success)' },
+    { value: 'in_development', label: t('storyDetail:statuses.inDevelopment'), color: 'var(--color-warning)' },
+    { value: 'review', label: t('storyDetail:statuses.review'), color: 'var(--color-secondary)' },
+    { value: 'test', label: t('storyDetail:statuses.test'), color: 'var(--color-info)' },
+    { value: 'done', label: t('storyDetail:statuses.done'), color: 'var(--color-success)' },
+    { value: 'cancelled', label: t('storyDetail:statuses.cancelled'), color: 'var(--color-danger)' }
 ];
 
 // mode: 'create' | 'edit'
@@ -24,6 +27,9 @@ export const SUBITEM_STATUS_OPTIONS = [
 // members: project members list, for the assignee <select>
 // onClose(), onSaved(): callbacks
 const SubItemEditModal = ({ mode, storyId, subItem, members, onClose, onSaved }) => {
+    const { t } = useTranslation(['storyDetail', 'common']);
+    const SUBITEM_TYPE_OPTIONS = getSubItemTypeOptions(t);
+    const SUBITEM_STATUS_OPTIONS = getSubItemStatusOptions(t);
     const [form, setForm] = useState({
         title: subItem?.title || '',
         description: subItem?.description || '',
@@ -56,7 +62,7 @@ const SubItemEditModal = ({ mode, storyId, subItem, members, onClose, onSaved })
             await onSaved();
             onClose();
         } catch (err) {
-            setError(err.response?.data?.error || 'Failed to save sub-item');
+            setError(err.response?.data?.error || t('storyDetail:subItemModal.failedToSave'));
         } finally {
             setSaving(false);
         }
@@ -72,11 +78,11 @@ const SubItemEditModal = ({ mode, storyId, subItem, members, onClose, onSaved })
             <div className="card" style={{ maxWidth: '650px', width: '100%', margin: 'var(--spacing-md)' }}
                 onClick={(e) => e.stopPropagation()}>
                 <div className="card-header">
-                    <h3 className="card-title">{mode === 'edit' ? 'Edit Sub-Item' : 'Create Sub-Item'}</h3>
+                    <h3 className="card-title">{mode === 'edit' ? t('storyDetail:subItemModal.editTitle') : t('storyDetail:subItemModal.createTitle')}</h3>
                 </div>
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
-                        <label className="form-label">Type</label>
+                        <label className="form-label">{t('storyDetail:fields.type')}</label>
                         <select className="form-select" value={form.type}
                             onChange={(e) => setForm({ ...form, type: e.target.value })}>
                             {SUBITEM_TYPE_OPTIONS.map(o => (
@@ -85,12 +91,12 @@ const SubItemEditModal = ({ mode, storyId, subItem, members, onClose, onSaved })
                         </select>
                     </div>
                     <div className="form-group">
-                        <label className="form-label">Title *</label>
+                        <label className="form-label">{t('common:title')} *</label>
                         <input type="text" className="form-input" value={form.title}
                             onChange={(e) => setForm({ ...form, title: e.target.value })} required autoFocus />
                     </div>
                     <div className="form-group">
-                        <label className="form-label">Description</label>
+                        <label className="form-label">{t('common:description')}</label>
                         <MarkdownEditor
                             value={form.description}
                             onChange={(v) => setForm({ ...form, description: v })}
@@ -98,7 +104,7 @@ const SubItemEditModal = ({ mode, storyId, subItem, members, onClose, onSaved })
                         />
                     </div>
                     <div className="form-group">
-                        <label className="form-label">Status</label>
+                        <label className="form-label">{t('common:status')}</label>
                         <select className="form-select" value={form.status}
                             onChange={(e) => setForm({ ...form, status: e.target.value })}>
                             {SUBITEM_STATUS_OPTIONS.map(o => (
@@ -107,15 +113,15 @@ const SubItemEditModal = ({ mode, storyId, subItem, members, onClose, onSaved })
                         </select>
                     </div>
                     <div className="form-group">
-                        <label className="form-label">Story Points</label>
+                        <label className="form-label">{t('storyDetail:fields.storyPoints')}</label>
                         <input type="number" className="form-input" min="0" value={form.storyPoints}
-                            onChange={(e) => setForm({ ...form, storyPoints: e.target.value })} placeholder="Optional" />
+                            onChange={(e) => setForm({ ...form, storyPoints: e.target.value })} placeholder={t('storyDetail:subItemModal.storyPointsPlaceholder')} />
                     </div>
                     <div className="form-group">
-                        <label className="form-label">Assignee</label>
+                        <label className="form-label">{t('storyDetail:fields.assignee')}</label>
                         <select className="form-select" value={form.assigneeId || ''}
                             onChange={(e) => setForm({ ...form, assigneeId: e.target.value ? parseInt(e.target.value) : null })}>
-                            <option value="">Unassigned</option>
+                            <option value="">{t('storyDetail:fields.unassigned')}</option>
                             {members.map(m => (
                                 <option key={m.id} value={m.id}>{m.firstName} {m.lastName}</option>
                             ))}
@@ -123,9 +129,9 @@ const SubItemEditModal = ({ mode, storyId, subItem, members, onClose, onSaved })
                     </div>
                     {error && <div className="form-error mb-md">{error}</div>}
                     <div className="flex flex-gap-sm" style={{ justifyContent: 'flex-end' }}>
-                        <button type="button" onClick={onClose} className="btn btn-secondary">Cancel</button>
+                        <button type="button" onClick={onClose} className="btn btn-secondary">{t('common:cancel')}</button>
                         <button type="submit" className="btn btn-primary" disabled={saving}>
-                            {saving ? 'Saving...' : mode === 'edit' ? 'Save Changes' : 'Create'}
+                            {saving ? t('common:saving') : mode === 'edit' ? t('common:saveChanges') : t('common:create')}
                         </button>
                     </div>
                 </form>

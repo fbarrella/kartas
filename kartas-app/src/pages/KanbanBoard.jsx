@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useParams, useOutletContext, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import api from '../services/api';
 import SubItemEditModal from '../components/SubItemEditModal';
@@ -10,16 +11,24 @@ import '../components/navigation.css';
 
 const formatDate = (d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-const STATUS_OPTIONS = [
-    { value: 'backlog', label: 'Backlog', color: 'var(--color-neutral-400)' },
-    { value: 'refining', label: 'Refining', color: 'var(--color-info)' },
-    { value: 'ready', label: 'Ready', color: 'var(--color-success)' },
-    { value: 'in_development', label: 'In Development', color: 'var(--color-warning)' },
-    { value: 'review', label: 'Review', color: 'var(--color-secondary)' },
-    { value: 'test', label: 'Test', color: 'var(--color-info)' },
-    { value: 'done', label: 'Done', color: 'var(--color-success)' },
-    { value: 'cancelled', label: 'Cancelled', color: 'var(--color-danger)' }
+// Status value/color config — `value` is a stable identifier used for the
+// API and drag-and-drop logic, never translated. `label` is populated at
+// render time from the `kanban:statusLabels` translations (see getStatusOptions).
+const STATUS_OPTIONS_BASE = [
+    { value: 'backlog', color: 'var(--color-neutral-400)' },
+    { value: 'refining', color: 'var(--color-info)' },
+    { value: 'ready', color: 'var(--color-success)' },
+    { value: 'in_development', color: 'var(--color-warning)' },
+    { value: 'review', color: 'var(--color-secondary)' },
+    { value: 'test', color: 'var(--color-info)' },
+    { value: 'done', color: 'var(--color-success)' },
+    { value: 'cancelled', color: 'var(--color-danger)' }
 ];
+
+const getStatusOptions = (t) => STATUS_OPTIONS_BASE.map(opt => ({
+    ...opt,
+    label: t(`kanban:statusLabels.${opt.value}`, opt.value)
+}));
 
 // Measures a fixed-position context menu after it renders and flips/clamps it
 // so it never overflows the bottom or right edge of the viewport.
@@ -50,6 +59,8 @@ const useClampedMenuPosition = (x, y, visible) => {
 };
 
 const KanbanBoard = () => {
+    const { t } = useTranslation(['kanban', 'common']);
+    const statusOptions = getStatusOptions(t);
     const { projectId } = useParams();
     const { projectName, defaultLandingPage } = useOutletContext();
     const [project, setProject] = useState(null);
@@ -244,7 +255,7 @@ const KanbanBoard = () => {
     };
 
     const handleDeleteSubtask = async (id) => {
-        if (!confirm('Delete this sub-item?')) return;
+        if (!confirm(t('kanban:confirmDeleteSubItem'))) return;
         try {
             await api.delete(`/sub-tasks/${id}`);
             fetchKanbanBoard();
@@ -275,7 +286,7 @@ const KanbanBoard = () => {
     };
 
     const handleDeleteStory = async (storyId) => {
-        if (!confirm('Are you sure you want to delete this story?')) return;
+        if (!confirm(t('kanban:confirmDeleteStory'))) return;
         try {
             await api.delete(`/stories/${storyId}`);
             fetchKanbanBoard();
@@ -325,7 +336,7 @@ const KanbanBoard = () => {
 
     if (loading) {
         return (
-            <div className="text-center">Loading kanban board...</div>
+            <div className="text-center">{t('kanban:loadingBoard')}</div>
         );
     }
 
@@ -333,15 +344,15 @@ const KanbanBoard = () => {
         return (
             <>
                 <Breadcrumb items={[
-                    { label: 'Projects', to: '/' },
+                    { label: t('kanban:breadcrumb.projects'), to: '/' },
                     { label: projectName, to: `/project/${projectId}/${defaultLandingPage}` },
-                    { label: 'Kanban Board' },
+                    { label: t('kanban:breadcrumb.kanbanBoard') },
                 ]} />
                 <div className="card text-center">
-                    <h2>No Active Sprint</h2>
-                    <p className="text-muted mt-md">Start a sprint to use the kanban board</p>
+                    <h2>{t('kanban:noActiveSprint')}</h2>
+                    <p className="text-muted mt-md">{t('kanban:noActiveSprintDescription')}</p>
                     <Link to={`/project/${projectId}/sprints`} className="btn btn-primary mt-md">
-                        Go to Sprints
+                        {t('kanban:goToSprints')}
                     </Link>
                 </div>
             </>
@@ -363,12 +374,12 @@ const KanbanBoard = () => {
     return (
         <>
             <Breadcrumb items={[
-                { label: 'Projects', to: '/' },
+                { label: t('kanban:breadcrumb.projects'), to: '/' },
                 { label: projectName, to: `/project/${projectId}/${defaultLandingPage}` },
-                { label: 'Kanban Board' },
+                { label: t('kanban:breadcrumb.kanbanBoard') },
             ]} />
             <div className="mb-md">
-                <h2 style={{ margin: 0, marginBottom: 'var(--spacing-sm)' }}>{sprint?.name || 'Kanban Board'}</h2>
+                <h2 style={{ margin: 0, marginBottom: 'var(--spacing-sm)' }}>{sprint?.name || t('kanban:kanbanBoard')}</h2>
                 {sprint?.objective && (
                     <p className="text-muted" style={{ margin: 0 }}>{sprint.objective}</p>
                 )}
@@ -387,7 +398,7 @@ const KanbanBoard = () => {
                                 color: 'var(--color-neutral-600)',
                                 marginBottom: '2px'
                             }}>
-                                <span>Elapsed Time</span>
+                                <span>{t('kanban:elapsedTime')}</span>
                                 <span>{Math.round(elapsedPercent)}%</span>
                             </div>
                             <div style={{
@@ -435,7 +446,7 @@ const KanbanBoard = () => {
                     <div className="flex flex-gap-sm">
                         <input
                             type="text"
-                            placeholder="Search stories..."
+                            placeholder={t('kanban:searchPlaceholder')}
                             className="form-input"
                             style={{ width: '200px' }}
                             value={filter.search}
@@ -446,17 +457,17 @@ const KanbanBoard = () => {
                             value={filter.type}
                             onChange={(e) => setFilter({ ...filter, type: e.target.value })}
                         >
-                            <option value="">All Types</option>
-                            <option value="story">Stories</option>
-                            <option value="task">Tasks</option>
-                            <option value="bug">Bugs</option>
+                            <option value="">{t('kanban:allTypes')}</option>
+                            <option value="story">{t('kanban:storiesType')}</option>
+                            <option value="task">{t('kanban:tasksType')}</option>
+                            <option value="bug">{t('kanban:bugsType')}</option>
                         </select>
                     </div>
                     <button
                         onClick={() => setShowColumnConfig(true)}
                         className="btn btn-secondary btn-sm"
                     >
-                        ⚙️ Customize Columns
+                        ⚙️ {t('kanban:customizeColumns')}
                     </button>
                 </div>
             </div>
@@ -550,7 +561,7 @@ const KanbanBoard = () => {
                                                                             <span className="badge badge-neutral" style={{ fontSize: '9px', padding: '1px 4px' }}>
                                                                                 {item.parentStoryCode}
                                                                             </span>
-                                                                            <span title={item.type}>{getSubtaskTypeIcon(item.type)}</span>
+                                                                            <span title={t(`kanban:subtaskTypes.${item.type}`, item.type)}>{getSubtaskTypeIcon(item.type)}</span>
                                                                         </div>
                                                                         <div style={{ fontSize: 'var(--font-size-xs)', marginBottom: '2px', color: 'var(--color-neutral-900)' }}>
                                                                             {item.title}
@@ -577,7 +588,7 @@ const KanbanBoard = () => {
                                                                     <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600, color: 'var(--color-neutral-700)' }}>
                                                                         {item.storyId}
                                                                     </span>
-                                                                    <span title={item.type}>
+                                                                    <span title={t(`kanban:types.${item.type}`, item.type)}>
                                                                         {getTypeIcon(item.type)}
                                                                     </span>
                                                                 </div>
@@ -610,7 +621,7 @@ const KanbanBoard = () => {
                                                                             }}
                                                                                 onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
                                                                                 onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-                                                                                title="Click to filter by this epic"
+                                                                                title={t('kanban:filterByEpic')}
                                                                             >
                                                                                 {item.epicTitle}
                                                                             </span>
@@ -631,7 +642,7 @@ const KanbanBoard = () => {
                                                                     <div className="flex flex-gap-xs">
                                                                         {item.isBlocked && (
                                                                             <span className="badge badge-danger" style={{ fontSize: '10px', padding: '2px 6px' }}>
-                                                                                🚫 Blocked
+                                                                                🚫 {t('kanban:blocked')}
                                                                             </span>
                                                                         )}
                                                                         {item.storyPoints && (
@@ -661,7 +672,7 @@ const KanbanBoard = () => {
                                                         color: 'var(--color-neutral-400)',
                                                         fontSize: 'var(--font-size-sm)'
                                                     }}>
-                                                        {filter.search || filter.type ? 'No matching stories' : 'No stories'}
+                                                        {filter.search || filter.type ? t('kanban:noMatchingStories') : t('kanban:noStories')}
                                                     </div>
                                                 )}
                                             </div>
@@ -694,7 +705,7 @@ const KanbanBoard = () => {
                         <div className="card-header" style={{ flexShrink: 0 }}>
                             <div className="flex flex-between" style={{ alignItems: 'center' }}>
                                 <h3 className="card-title">{selectedStory.storyId}</h3>
-                                <span>{getTypeIcon(selectedStory.type)} {selectedStory.type}</span>
+                                <span>{getTypeIcon(selectedStory.type)} {t(`kanban:types.${selectedStory.type}`, selectedStory.type)}</span>
                             </div>
                         </div>
 
@@ -707,10 +718,10 @@ const KanbanBoard = () => {
                                 gap: 'var(--spacing-md)'
                             }}>
                                 <div>
-                                    <strong>Status:</strong>
+                                    <strong>{t('common:status')}:</strong>
                                     <p className="mt-xs">
                                         {(() => {
-                                            const statusOption = STATUS_OPTIONS.find(s => s.value === selectedStory.status);
+                                            const statusOption = statusOptions.find(s => s.value === selectedStory.status);
                                             return (
                                                 <span className="badge" style={{ backgroundColor: statusOption?.color || 'var(--color-neutral-400)', color: 'white' }}>
                                                     {statusOption?.label || selectedStory.status}
@@ -720,25 +731,25 @@ const KanbanBoard = () => {
                                     </p>
                                 </div>
                                 <div>
-                                    <strong>Blocked:</strong>
+                                    <strong>{t('kanban:blocked')}:</strong>
                                     <p className="mt-xs">
                                         {selectedStory.isBlocked ? (
-                                            <span className="badge badge-danger" style={{ fontSize: '10px', padding: '2px 6px' }}>🚫 Blocked</span>
-                                        ) : 'No'}
+                                            <span className="badge badge-danger" style={{ fontSize: '10px', padding: '2px 6px' }}>🚫 {t('kanban:blocked')}</span>
+                                        ) : t('common:no')}
                                     </p>
                                 </div>
                                 <div>
-                                    <strong>Story Points:</strong>
-                                    <p className="mt-xs">{selectedStory.storyPoints || 'Not set'}</p>
+                                    <strong>{t('kanban:storyPoints')}:</strong>
+                                    <p className="mt-xs">{selectedStory.storyPoints || t('kanban:notSet')}</p>
                                 </div>
                                 <div>
-                                    <strong>Assignee:</strong>
-                                    <p className="mt-xs">{selectedStory.assigneeName || 'Unassigned'}</p>
+                                    <strong>{t('kanban:assignee')}:</strong>
+                                    <p className="mt-xs">{selectedStory.assigneeName || t('kanban:unassigned')}</p>
                                 </div>
                                 <div>
-                                    <strong>Sub-tasks:</strong>
+                                    <strong>{t('kanban:subtasks')}:</strong>
                                     <p className="mt-xs">
-                                        {selectedStory.completedSubtasks}/{selectedStory.totalSubtasks} completed
+                                        {t('kanban:subtasksCompleted', { completed: selectedStory.completedSubtasks, total: selectedStory.totalSubtasks })}
                                     </p>
                                 </div>
                             </div>
@@ -746,7 +757,7 @@ const KanbanBoard = () => {
 
                         {selectedStory.description && (
                             <div className="mt-md" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-                                <strong style={{ flexShrink: 0 }}>Description:</strong>
+                                <strong style={{ flexShrink: 0 }}>{t('common:description')}:</strong>
                                 <div className="mt-sm" style={{
                                     flex: 1,
                                     minHeight: 0,
@@ -766,13 +777,13 @@ const KanbanBoard = () => {
                                 className="btn btn-primary"
                                 style={{ textDecoration: 'none' }}
                             >
-                                Edit Story
+                                {t('kanban:editStory')}
                             </Link>
                             <button
                                 onClick={() => setSelectedStory(null)}
                                 className="btn btn-secondary"
                             >
-                                Close
+                                {t('common:close')}
                             </button>
                         </div>
                     </div>
@@ -799,7 +810,7 @@ const KanbanBoard = () => {
                         <div className="card-header" style={{ flexShrink: 0 }}>
                             <div className="flex flex-between" style={{ alignItems: 'center' }}>
                                 <h3 className="card-title">{viewSubtask.parentStoryCode}</h3>
-                                <span>{getSubtaskTypeIcon(viewSubtask.type)} {viewSubtask.type}</span>
+                                <span>{getSubtaskTypeIcon(viewSubtask.type)} {t(`kanban:subtaskTypes.${viewSubtask.type}`, viewSubtask.type)}</span>
                             </div>
                         </div>
 
@@ -812,10 +823,10 @@ const KanbanBoard = () => {
                                 gap: 'var(--spacing-md)'
                             }}>
                                 <div>
-                                    <strong>Status:</strong>
+                                    <strong>{t('common:status')}:</strong>
                                     <p className="mt-xs">
                                         {(() => {
-                                            const statusOption = STATUS_OPTIONS.find(s => s.value === viewSubtask.status);
+                                            const statusOption = statusOptions.find(s => s.value === viewSubtask.status);
                                             return (
                                                 <span className="badge" style={{ backgroundColor: statusOption?.color || 'var(--color-neutral-400)', color: 'white' }}>
                                                     {statusOption?.label || viewSubtask.status}
@@ -825,19 +836,19 @@ const KanbanBoard = () => {
                                     </p>
                                 </div>
                                 <div>
-                                    <strong>Story Points:</strong>
-                                    <p className="mt-xs">{viewSubtask.storyPoints || 'Not set'}</p>
+                                    <strong>{t('kanban:storyPoints')}:</strong>
+                                    <p className="mt-xs">{viewSubtask.storyPoints || t('kanban:notSet')}</p>
                                 </div>
                                 <div>
-                                    <strong>Assignee:</strong>
-                                    <p className="mt-xs">{viewSubtask.assigneeName || 'Unassigned'}</p>
+                                    <strong>{t('kanban:assignee')}:</strong>
+                                    <p className="mt-xs">{viewSubtask.assigneeName || t('kanban:unassigned')}</p>
                                 </div>
                             </div>
                         </div>
 
                         {viewSubtask.description && (
                             <div className="mt-md" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-                                <strong style={{ flexShrink: 0 }}>Description:</strong>
+                                <strong style={{ flexShrink: 0 }}>{t('common:description')}:</strong>
                                 <div className="mt-sm" style={{
                                     flex: 1,
                                     minHeight: 0,
@@ -857,13 +868,13 @@ const KanbanBoard = () => {
                                 className="btn btn-primary"
                                 style={{ textDecoration: 'none' }}
                             >
-                                Edit Sub-task
+                                {t('kanban:editSubtask')}
                             </Link>
                             <button
                                 onClick={() => setViewSubtask(null)}
                                 className="btn btn-secondary"
                             >
-                                Close
+                                {t('common:close')}
                             </button>
                         </div>
                     </div>
@@ -898,7 +909,7 @@ const KanbanBoard = () => {
                     <div className="card" style={{ maxWidth: '600px', width: '100%', margin: 'var(--spacing-md)' }}
                         onClick={(e) => e.stopPropagation()}>
                         <div className="card-header">
-                            <h3 className="card-title">Customize Kanban Columns</h3>
+                            <h3 className="card-title">{t('kanban:customizeKanbanColumns')}</h3>
                         </div>
 
                         <div>
@@ -939,13 +950,13 @@ const KanbanBoard = () => {
                                 onClick={() => setShowColumnConfig(false)}
                                 className="btn btn-secondary"
                             >
-                                Cancel
+                                {t('common:cancel')}
                             </button>
                             <button
                                 onClick={handleSaveColumnConfig}
                                 className="btn btn-primary"
                             >
-                                Save Configuration
+                                {t('kanban:saveConfiguration')}
                             </button>
                         </div>
                     </div>
@@ -999,7 +1010,7 @@ const KanbanBoard = () => {
                             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)'}
                             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                         >
-                            👁️ View Story
+                            👁️ {t('kanban:viewStory')}
                         </div>
 
                         {/* Edit Story */}
@@ -1018,7 +1029,7 @@ const KanbanBoard = () => {
                                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)'}
                                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                             >
-                                ✏️ Edit Story
+                                ✏️ {t('kanban:editStory')}
                             </div>
                         </Link>
 
@@ -1034,7 +1045,7 @@ const KanbanBoard = () => {
                             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)'}
                             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                         >
-                            {contextMenu.story?.isBlocked ? '✅ Unblock' : '🚫 Mark as Blocked'}
+                            {contextMenu.story?.isBlocked ? `✅ ${t('kanban:unblock')}` : `🚫 ${t('kanban:markAsBlocked')}`}
                         </div>
 
                         <div style={{ height: '1px', backgroundColor: 'var(--color-border)', margin: 'var(--spacing-xs) 0' }} />
@@ -1042,7 +1053,7 @@ const KanbanBoard = () => {
                         {/* Assign To */}
                         <div style={{ padding: 'var(--spacing-xs)' }}>
                             <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-neutral-600)', padding: 'var(--spacing-xs)', fontWeight: 600 }}>
-                                Assign To
+                                {t('kanban:assignTo')}
                             </div>
                             {contextMenu.story?.assigneeId && (
                                 <div
@@ -1058,7 +1069,7 @@ const KanbanBoard = () => {
                                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)'}
                                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                                 >
-                                    🚫 Remove Assignee
+                                    🚫 {t('kanban:removeAssignee')}
                                 </div>
                             )}
                             {members.map(member => (
@@ -1101,7 +1112,7 @@ const KanbanBoard = () => {
                                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)'}
                                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                             >
-                                <span>➡️ Move To</span>
+                                <span>➡️ {t('kanban:moveTo')}</span>
                                 <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
                                     <path d="M7.5 15L12.5 10L7.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                 </svg>
@@ -1159,7 +1170,7 @@ const KanbanBoard = () => {
                             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-danger-light)'}
                             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                         >
-                            🗑️ Delete Story
+                            🗑️ {t('kanban:deleteStory')}
                         </div>
                     </div>
                 </>
@@ -1203,7 +1214,7 @@ const KanbanBoard = () => {
                             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)'}
                             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                         >
-                            👁️ View Sub-Item
+                            👁️ {t('kanban:viewSubItem')}
                         </div>
 
                         {/* Edit Sub-Item */}
@@ -1221,7 +1232,7 @@ const KanbanBoard = () => {
                             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)'}
                             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                         >
-                            ✏️ Edit Sub-Item
+                            ✏️ {t('kanban:editSubItem')}
                         </div>
 
                         {/* View Parent Story */}
@@ -1240,7 +1251,7 @@ const KanbanBoard = () => {
                                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)'}
                                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                             >
-                                📖 View Parent Story
+                                📖 {t('kanban:viewParentStory')}
                             </div>
                         </Link>
 
@@ -1249,7 +1260,7 @@ const KanbanBoard = () => {
                         {/* Assign To */}
                         <div style={{ padding: 'var(--spacing-xs)' }}>
                             <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-neutral-600)', padding: 'var(--spacing-xs)', fontWeight: 600 }}>
-                                Assign To
+                                {t('kanban:assignTo')}
                             </div>
                             {subtaskContextMenu.subtask?.assigneeId && (
                                 <div
@@ -1265,7 +1276,7 @@ const KanbanBoard = () => {
                                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)'}
                                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                                 >
-                                    🚫 Remove Assignee
+                                    🚫 {t('kanban:removeAssignee')}
                                 </div>
                             )}
                             {members.map(member => (
@@ -1308,7 +1319,7 @@ const KanbanBoard = () => {
                                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-neutral-50)'}
                                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                             >
-                                <span>➡️ Move To</span>
+                                <span>➡️ {t('kanban:moveTo')}</span>
                                 <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
                                     <path d="M7.5 15L12.5 10L7.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                 </svg>
@@ -1365,7 +1376,7 @@ const KanbanBoard = () => {
                             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-danger-light)'}
                             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                         >
-                            🗑️ Delete Sub-Item
+                            🗑️ {t('kanban:deleteSubItem')}
                         </div>
                     </div>
                 </>

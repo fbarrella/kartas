@@ -1,0 +1,119 @@
+{
+    "pageTitle": "Backlog",
+    "breadcrumbProjects": "Projects",
+    "breadcrumbBacklog": "Backlog",
+    "filteredCount": "({{filtered}} of {{total}})",
+    "createStory": "+ Create Story",
+    "loadingStories": "Loading stories...",
+    "filters": {
+        "title": "Filters",
+        "clearAll": "Clear All",
+        "searchPlaceholder": "Search by title or ID...",
+        "unassigned": "Unassigned",
+        "noSprint": "No Sprint",
+        "ready": "Ready",
+        "allTypes": "All Types",
+        "allStatuses": "All Statuses",
+        "allAssignees": "All Assignees",
+        "allEpics": "All Epics",
+        "noEpic": "No Epic",
+        "allSprints": "All Sprints",
+        "showCompleted": "Show completed stories"
+    },
+    "table": {
+        "type": "Type",
+        "id": "ID",
+        "title": "Title",
+        "epic": "Epic",
+        "status": "Status",
+        "points": "Points",
+        "assignee": "Assignee"
+    },
+    "filterByEpicTooltip": "Click to filter by this epic",
+    "blocked": "Blocked",
+    "bulkActions": {
+        "selectedSuffix_one": "story selected",
+        "selectedSuffix_other": "stories selected",
+        "assignTo": "Assign to...",
+        "assign": "Assign",
+        "changeStatus": "Change status...",
+        "update": "Update",
+        "assignToEpic": "Assign to epic...",
+        "addToSprint": "Add to sprint...",
+        "adding": "Adding...",
+        "add": "Add",
+        "deleteSelected": "Delete Selected",
+        "clearSelection": "Clear Selection"
+    },
+    "emptyState": {
+        "title": "No Stories Yet",
+        "subtitle": "Create your first user story to get started"
+    },
+    "createStoryIntoSprint": "+ Create story into sprint",
+    "createModal": {
+        "title": "Create New Story",
+        "type": "Type",
+        "storyPoints": "Story Points",
+        "storyPointsPlaceholder": "Optional",
+        "submit": "Create Story"
+    },
+    "detailModal": {
+        "status": "Status:",
+        "blocked": "Blocked:",
+        "storyPoints": "Story Points:",
+        "notSet": "Not set",
+        "assignee": "Assignee:",
+        "creator": "Creator:",
+        "unknown": "Unknown",
+        "description": "Description:",
+        "clone": "Clone"
+    },
+    "statusLabels": {
+        "backlog": "Backlog",
+        "refining": "Refining",
+        "ready": "Ready",
+        "in_development": "In Development",
+        "review": "Review",
+        "test": "Test",
+        "done": "Done",
+        "cancelled": "Cancelled"
+    },
+    "typeLabels": {
+        "story": "Story",
+        "task": "Task",
+        "bug": "Bug"
+    },
+    "errors": {
+        "createStory": "Failed to create story",
+        "addToSprint": "Failed to add stories to sprint",
+        "assignStories": "Failed to assign stories",
+        "updateStatus": "Failed to update status",
+        "assignToEpic": "Failed to assign to epic",
+        "deleteStories": "Failed to delete stories",
+        "moveStory": "Failed to move story",
+        "cloneStory": "Failed to clone story"
+    },
+    "success": {
+        "addedToSprint_one": "Successfully added {{count}} story to sprint",
+        "addedToSprint_other": "Successfully added {{count}} stories to sprint",
+        "assigned_one": "Successfully assigned {{count}} story",
+        "assigned_other": "Successfully assigned {{count}} stories",
+        "statusUpdated_one": "Successfully updated status for {{count}} story",
+        "statusUpdated_other": "Successfully updated status for {{count}} stories",
+        "assignedToEpic_one": "Successfully assigned {{count}} story to epic",
+        "assignedToEpic_other": "Successfully assigned {{count}} stories to epic",
+        "deleted_one": "Successfully deleted {{count}} story",
+        "deleted_other": "Successfully deleted {{count}} stories"
+    },
+    "confirmDelete_one": "Are you sure you want to delete {{count}} story? This action cannot be undone.",
+    "confirmDelete_other": "Are you sure you want to delete {{count}} stories? This action cannot be undone.",
+    "cloneModal": {
+        "title": "Clone Story",
+        "promptPrefix": "Clone",
+        "promptSuffix": "? The new story will be created in the Backlog.",
+        "includeSubtasksPrompt": "Include this story's sub-tasks in the clone?",
+        "noSubtasks": "No, sub-tasks",
+        "yesIncludeSubtasks": "Yes, include sub-tasks",
+        "cloning": "Cloning..."
+    }
+}

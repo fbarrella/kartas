@@ -1,0 +1,24 @@
+{
+    "sidebar": {
+        "forYou": "Para você",
+        "backlog": "Backlog",
+        "epics": "Épicos",
+        "sprints": "Sprints",
+        "kanban": "Kanban",
+        "reports": "Relatórios",
+        "teamMembers": "Membros da equipe",
+        "projectSettings": "Configurações do projeto",
+        "collapse": "Recolher",
+        "exitProject": "Sair do projeto"
+    },
+    "breadcrumb": {
+        "ariaLabel": "Trilha de navegação"
+    },
+    "colorDropdown": {
+        "placeholder": "Selecionar…"
+    },
+    "protectedRoute": {
+        "accessDenied": "Acesso negado",
+        "noPermission": "Você não tem permissão para acessar esta página."
+    }
+}

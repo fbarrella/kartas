@@ -1,74 +1,79 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useOutletContext, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 import Breadcrumb from '../components/Breadcrumb';
 import { getInitials, getAvatarColor } from '../utils/avatar';
 import '../components/navigation.css';
 
-const STATUS_OPTIONS = [
-    { value: 'backlog', label: 'Backlog', color: 'var(--color-neutral-400)' },
-    { value: 'refining', label: 'Refining', color: 'var(--color-info)' },
-    { value: 'ready', label: 'Ready', color: 'var(--color-success)' },
-    { value: 'in_development', label: 'In Development', color: 'var(--color-warning)' },
-    { value: 'review', label: 'Review', color: 'var(--color-secondary)' },
-    { value: 'test', label: 'Test', color: 'var(--color-info)' },
-    { value: 'done', label: 'Done', color: 'var(--color-success)' },
-    { value: 'cancelled', label: 'Cancelled', color: 'var(--color-danger)' }
-];
+const STATUS_ORDER = ['backlog', 'refining', 'ready', 'in_development', 'review', 'test', 'done', 'cancelled'];
+const STATUS_COLORS = {
+    backlog: 'var(--color-neutral-400)',
+    refining: 'var(--color-info)',
+    ready: 'var(--color-success)',
+    in_development: 'var(--color-warning)',
+    review: 'var(--color-secondary)',
+    test: 'var(--color-info)',
+    done: 'var(--color-success)',
+    cancelled: 'var(--color-danger)'
+};
 
-const getStatusColor = (status) => STATUS_OPTIONS.find(opt => opt.value === status)?.color || 'var(--color-neutral-400)';
-const getStatusLabel = (status) => STATUS_OPTIONS.find(opt => opt.value === status)?.label || status;
+const getStatusColor = (status) => STATUS_COLORS[status] || 'var(--color-neutral-400)';
+const getStatusLabel = (status, t) => (STATUS_ORDER.includes(status) ? t(`users:detail.statuses.${status}`) : status);
 
 const ACTIVITY_LIMIT = 15;
 
-const describeActivity = (item) => {
+const describeActivity = (item, t) => {
     const { actionType, entityType, fieldChanged, oldValue, newValue, storyCode } = item;
 
     if (entityType === 'story') {
-        if (actionType === 'created') return `Created story ${storyCode} — ${newValue}`;
-        if (actionType === 'commented') return `Commented on ${storyCode}: "${newValue}"`;
+        if (actionType === 'created') return t('users:detail.activityMessages.createdStory', { storyCode, value: newValue });
+        if (actionType === 'commented') return t('users:detail.activityMessages.commented', { storyCode, value: newValue });
         if (actionType === 'moved') {
             return oldValue != null
-                ? `Moved ${storyCode} from ${getStatusLabel(oldValue)} to ${getStatusLabel(newValue)}`
-                : `Moved ${storyCode} to ${getStatusLabel(newValue)}`;
+                ? t('users:detail.activityMessages.movedFromTo', { storyCode, from: getStatusLabel(oldValue, t), to: getStatusLabel(newValue, t) })
+                : t('users:detail.activityMessages.movedTo', { storyCode, to: getStatusLabel(newValue, t) });
         }
-        return `Updated ${(fieldChanged || 'a field').replace('_', ' ')} on ${storyCode}`;
+        const field = fieldChanged ? fieldChanged.replace('_', ' ') : t('users:detail.activityMessages.genericField');
+        return t('users:detail.activityMessages.updatedField', { field, storyCode });
     }
     if (entityType === 'sub_task') {
-        if (actionType === 'created') return `Added sub-item "${newValue}" on ${storyCode}`;
+        if (actionType === 'created') return t('users:detail.activityMessages.addedSubItem', { storyCode, value: newValue });
         if (actionType === 'moved') {
             return oldValue != null
-                ? `Moved a sub-item on ${storyCode} from ${getStatusLabel(oldValue)} to ${getStatusLabel(newValue)}`
-                : `Moved a sub-item on ${storyCode} to ${getStatusLabel(newValue)}`;
+                ? t('users:detail.activityMessages.movedSubItemFromTo', { storyCode, from: getStatusLabel(oldValue, t), to: getStatusLabel(newValue, t) })
+                : t('users:detail.activityMessages.movedSubItemTo', { storyCode, to: getStatusLabel(newValue, t) });
         }
-        return `Updated a sub-item on ${storyCode}`;
+        return t('users:detail.activityMessages.updatedSubItem', { storyCode });
     }
     if (entityType === 'epic') {
-        return actionType === 'created' ? `Created epic "${newValue}"` : `Updated epic "${newValue}"`;
+        return actionType === 'created'
+            ? t('users:detail.activityMessages.createdEpic', { value: newValue })
+            : t('users:detail.activityMessages.updatedEpic', { value: newValue });
     }
     if (entityType === 'sprint') {
-        if (actionType === 'created') return `Created sprint "${newValue}"`;
-        if (fieldChanged === 'status') return `Sprint status changed to ${newValue}`;
-        return `Updated sprint "${newValue}"`;
+        if (actionType === 'created') return t('users:detail.activityMessages.createdSprint', { value: newValue });
+        if (fieldChanged === 'status') return t('users:detail.activityMessages.sprintStatusChanged', { value: newValue });
+        return t('users:detail.activityMessages.updatedSprint', { value: newValue });
     }
-    return `${actionType} ${entityType}`;
+    return t('users:detail.activityMessages.generic', { actionType, entityType });
 };
 
-const formatRelativeTime = (isoString) => {
+const formatRelativeTime = (isoString, t) => {
     const diffMs = Date.now() - new Date(isoString).getTime();
     const diffMin = Math.floor(diffMs / 60000);
-    if (diffMin < 1) return 'just now';
-    if (diffMin < 60) return `${diffMin}m ago`;
+    if (diffMin < 1) return t('users:detail.relativeTime.justNow');
+    if (diffMin < 60) return t('users:detail.relativeTime.minutesAgo', { count: diffMin });
     const diffHours = Math.floor(diffMin / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffHours < 24) return t('users:detail.relativeTime.hoursAgo', { count: diffHours });
     const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 30) return `${diffDays}d ago`;
+    if (diffDays < 30) return t('users:detail.relativeTime.daysAgo', { count: diffDays });
     return new Date(isoString).toLocaleDateString();
 };
 
-const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
-
 const UserDetail = () => {
+    const { t } = useTranslation(['users', 'common']);
+    const roleLabel = (role) => t(`users:roles.${role}`, role);
     const { projectId, userId } = useParams();
     const { projectName, defaultLandingPage } = useOutletContext();
     const [member, setMember] = useState(null);
@@ -131,16 +136,16 @@ const UserDetail = () => {
     };
 
     if (memberLoading) {
-        return <div className="container mt-lg">Loading...</div>;
+        return <div className="container mt-lg">{t('common:loading')}</div>;
     }
 
     if (!member) {
         return (
             <div className="container mt-lg">
                 <div className="card">
-                    <h2>Member Not Found</h2>
+                    <h2>{t('users:detail.memberNotFound')}</h2>
                     <Link to={`/project/${projectId}/team`} className="btn btn-primary mt-md">
-                        Back to Team Members
+                        {t('users:detail.backToTeam')}
                     </Link>
                 </div>
             </div>
@@ -152,10 +157,10 @@ const UserDetail = () => {
     return (
         <div>
             <Breadcrumb items={[
-                { label: 'Projects', to: '/' },
+                { label: t('users:detail.projects'), to: '/' },
                 { label: projectName, to: `/project/${projectId}/${defaultLandingPage}` },
-                { label: 'Team Members', to: `/project/${projectId}/team` },
-                { label: `${fullName}'s Details` },
+                { label: t('users:detail.teamMembers'), to: `/project/${projectId}/team` },
+                { label: t('users:detail.detailsTitle', { name: fullName }) },
             ]} />
 
             <div className="mb-lg">
@@ -168,29 +173,29 @@ const UserDetail = () => {
                 }}>
                     {getInitials(member.firstName, member.lastName)}
                 </div>
-                <h2 style={{ margin: 0 }}>{fullName}'s Details</h2>
+                <h2 style={{ margin: 0 }}>{t('users:detail.detailsTitle', { name: fullName })}</h2>
                 <p className="text-muted mt-xs">
-                    {capitalize(member.role)} · {member.email}
+                    {roleLabel(member.role)} · {member.email}
                 </p>
             </div>
 
             {tasksLoading ? (
-                <div className="text-center">Loading tasks...</div>
+                <div className="text-center">{t('users:detail.loadingTasks')}</div>
             ) : tasks.length === 0 ? (
                 <div className="card text-center">
-                    <h3>No Tasks Assigned</h3>
-                    <p className="text-muted mt-md">{member.firstName} doesn't have any tasks assigned in this project</p>
+                    <h3>{t('users:detail.noTasksTitle')}</h3>
+                    <p className="text-muted mt-md">{t('users:detail.noTasksSubtitle', { firstName: member.firstName })}</p>
                 </div>
             ) : (
                 <div className="card">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                             <tr style={{ borderBottom: '2px solid var(--color-border)' }}>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Task</th>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Epic</th>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Sprint</th>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Status</th>
-                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>Points</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('users:detail.task')}</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('users:detail.epic')}</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('users:detail.sprint')}</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('common:status')}</th>
+                                <th style={{ padding: 'var(--spacing-sm)', textAlign: 'left' }}>{t('users:detail.points')}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -207,7 +212,7 @@ const UserDetail = () => {
                                             <strong>{task.code}</strong> — {task.title}
                                             {task.itemType === 'subtask' && (
                                                 <span className="badge badge-info" style={{ marginLeft: '6px', fontSize: '10px', padding: '2px 6px' }}>
-                                                    Sub-item
+                                                    {t('users:detail.subItem')}
                                                 </span>
                                             )}
                                         </Link>
@@ -241,7 +246,7 @@ const UserDetail = () => {
                                             borderRadius: 'var(--radius-sm)',
                                             whiteSpace: 'nowrap'
                                         }}>
-                                            {getStatusLabel(task.status)}
+                                            {getStatusLabel(task.status, t)}
                                         </span>
                                     </td>
                                     <td style={{ padding: 'var(--spacing-sm)' }}>{task.storyPoints ?? '—'}</td>
@@ -254,13 +259,13 @@ const UserDetail = () => {
 
             {/* Activity — hard-capped at 15 most recent, no "Load More" */}
             <div className="mt-xl">
-                <h2 className="mb-lg">Activity</h2>
+                <h2 className="mb-lg">{t('users:detail.activity')}</h2>
                 {activityLoading ? (
-                    <div className="text-center">Loading activity...</div>
+                    <div className="text-center">{t('users:detail.loadingActivity')}</div>
                 ) : activityItems.length === 0 ? (
                     <div className="card text-center">
-                        <h3>No Activity Yet</h3>
-                        <p className="text-muted mt-md">{member.firstName}'s recent actions in this project will show up here</p>
+                        <h3>{t('users:detail.noActivityTitle')}</h3>
+                        <p className="text-muted mt-md">{t('users:detail.noActivitySubtitle', { firstName: member.firstName })}</p>
                     </div>
                 ) : (
                     <div className="card">
@@ -275,9 +280,9 @@ const UserDetail = () => {
                                         alignItems: 'center'
                                     }}
                                 >
-                                    <span>{describeActivity(item)}</span>
+                                    <span>{describeActivity(item, t)}</span>
                                     <span className="text-muted text-small" style={{ whiteSpace: 'nowrap', marginLeft: 'var(--spacing-md)' }}>
-                                        {formatRelativeTime(item.changedAt)}
+                                        {formatRelativeTime(item.changedAt, t)}
                                     </span>
                                 </div>
                             );

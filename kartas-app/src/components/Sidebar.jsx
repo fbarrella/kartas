@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { getProjectInitials, getAvatarColor } from '../utils/avatar';
 import './navigation.css';
 
 const Sidebar = ({ projectId, projectName, projectDescription }) => {
+    const { t } = useTranslation(['navigation', 'common']);
     const [isCollapsed, setIsCollapsed] = useState(() => {
         const saved = localStorage.getItem('sidebarCollapsed');
         return saved === 'true';
@@ -22,7 +24,7 @@ const Sidebar = ({ projectId, projectName, projectDescription }) => {
     const navItems = [
         {
             path: `/project/${projectId}/for-you`,
-            label: 'For You',
+            label: t('navigation:sidebar.forYou'),
             icon: (
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                     <path d="M6 3H18C18.5523 3 19 3.44772 19 4V21L12 17L5 21V4C5 3.44772 5.44772 3 6 3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -31,7 +33,7 @@ const Sidebar = ({ projectId, projectName, projectDescription }) => {
         },
         {
             path: `/project/${projectId}/backlog`,
-            label: 'Backlog',
+            label: t('navigation:sidebar.backlog'),
             icon: (
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                     <path d="M9 5H7C6.46957 5 5.96086 5.21071 5.58579 5.58579C5.21071 5.96086 5 6.46957 5 7V19C5 19.5304 5.21071 20.0391 5.58579 20.4142C5.96086 20.7893 6.46957 21 7 21H17C17.5304 21 18.0391 20.7893 18.4142 20.4142C18.7893 20.0391 19 19.5304 19 19V7C19 6.46957 18.7893 5.96086 18.4142 5.58579C18.0391 5.21071 17.5304 5 17 5H15M9 5C9 5.53043 9.21071 6.03914 9.58579 6.41421C9.96086 6.78929 10.4696 7 11 7H13C13.5304 7 14.0391 6.78929 14.4142 6.41421C14.7893 6.03914 15 5.53043 15 5M9 5C9 4.46957 9.21071 3.96086 9.58579 3.58579C9.96086 3.21071 10.4696 3 11 3H13C13.5304 3 14.0391 3.21071 14.4142 3.58579C14.7893 3.96086 15 4.46957 15 5M9 12H15M9 16H15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -40,7 +42,7 @@ const Sidebar = ({ projectId, projectName, projectDescription }) => {
         },
         {
             path: `/project/${projectId}/epics`,
-            label: 'Epics',
+            label: t('navigation:sidebar.epics'),
             icon: (
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                     <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -49,7 +51,7 @@ const Sidebar = ({ projectId, projectName, projectDescription }) => {
         },
         {
             path: `/project/${projectId}/sprints`,
-            label: 'Sprints',
+            label: t('navigation:sidebar.sprints'),
             icon: (
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                     <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -58,7 +60,7 @@ const Sidebar = ({ projectId, projectName, projectDescription }) => {
         },
         {
             path: `/project/${projectId}/kanban`,
-            label: 'Kanban',
+            label: t('navigation:sidebar.kanban'),
             icon: (
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                     <path d="M3 3H10V13H3V3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -70,7 +72,7 @@ const Sidebar = ({ projectId, projectName, projectDescription }) => {
         },
         {
             path: `/project/${projectId}/reports`,
-            label: 'Reports',
+            label: t('navigation:sidebar.reports'),
             icon: (
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                     <path d="M3 3V21H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -80,7 +82,7 @@ const Sidebar = ({ projectId, projectName, projectDescription }) => {
         },
         {
             path: `/project/${projectId}/team`,
-            label: 'Team Members',
+            label: t('navigation:sidebar.teamMembers'),
             icon: (
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                     <path d="M17 21V19C17 17.9391 16.5786 16.9217 15.8284 16.1716C15.0783 15.4214 14.0609 15 13 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -92,7 +94,7 @@ const Sidebar = ({ projectId, projectName, projectDescription }) => {
         },
         {
             path: `/project/${projectId}/settings`,
-            label: 'Project Settings',
+            label: t('navigation:sidebar.projectSettings'),
             icon: (
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                     <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -117,7 +119,7 @@ const Sidebar = ({ projectId, projectName, projectDescription }) => {
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                                 <path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
-                            <span>Collapse</span>
+                            <span>{t('navigation:sidebar.collapse')}</span>
                         </>
                     )}
                 </button>
@@ -157,7 +159,7 @@ const Sidebar = ({ projectId, projectName, projectDescription }) => {
                 <button
                     onClick={() => navigate('/')}
                     className="sidebar-exit-btn"
-                    title="Exit Project"
+                    title={t('navigation:sidebar.exitProject')}
                 >
                     <div className="sidebar-icon">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -166,7 +168,7 @@ const Sidebar = ({ projectId, projectName, projectDescription }) => {
                             <path d="M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                     </div>
-                    <span className="sidebar-label">Exit Project</span>
+                    <span className="sidebar-label">{t('navigation:sidebar.exitProject')}</span>
                 </button>
             </div>
         </div>

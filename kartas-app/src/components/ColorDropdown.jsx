@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const ColorDot = ({ color }) => (
     <span
@@ -15,7 +16,9 @@ const ColorDot = ({ color }) => (
 
 // Generic replacement for a native <select> when options need a color swatch
 // (e.g. epics) — native <option> elements can't render a background color.
-const ColorDropdown = ({ options, value, onChange, placeholder = 'Select…' }) => {
+const ColorDropdown = ({ options, value, onChange, placeholder }) => {
+    const { t } = useTranslation(['navigation', 'common']);
+    const resolvedPlaceholder = placeholder ?? t('navigation:colorDropdown.placeholder');
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
 
@@ -63,7 +66,7 @@ const ColorDropdown = ({ options, value, onChange, placeholder = 'Select…' }) 
             >
                 <ColorDot color={selected?.color} />
                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {selected ? selected.label : placeholder}
+                    {selected ? selected.label : resolvedPlaceholder}
                 </span>
             </button>
 

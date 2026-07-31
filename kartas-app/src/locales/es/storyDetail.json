@@ -1,0 +1,93 @@
+{
+    "types": {
+        "story": "Historia",
+        "task": "Tarea",
+        "bug": "Error",
+        "subTask": "Subtarea",
+        "subTest": "Subprueba"
+    },
+    "statuses": {
+        "backlog": "Backlog",
+        "refining": "En refinamiento",
+        "ready": "Lista",
+        "inDevelopment": "En desarrollo",
+        "review": "Revisión",
+        "test": "Prueba",
+        "done": "Hecho",
+        "cancelled": "Cancelada"
+    },
+    "fields": {
+        "type": "Tipo",
+        "assignee": "Responsable",
+        "unassigned": "Sin asignar",
+        "storyPoints": "Puntos de historia",
+        "epic": "Épica",
+        "noEpic": "Sin épica",
+        "blocked": "Bloqueada",
+        "notBlocked": "No bloqueada"
+    },
+    "detail": {
+        "loading": "Cargando historia...",
+        "notFound": "Historia no encontrada",
+        "backToBacklog": "Volver al backlog",
+        "breadcrumbProjects": "Proyectos",
+        "breadcrumbProject": "Proyecto",
+        "breadcrumbEditStory": "Editar historia",
+        "clone": "Clonar",
+        "migrateToAnotherProject": "Migrar a otro proyecto",
+        "sprintsLabel": "Sprints",
+        "notInAnySprint": "No está en ningún sprint",
+        "removeFromSprint": "Quitar del sprint",
+        "addToSprintPlaceholder": "Añadir a un sprint...",
+        "editDescription": "Editar descripción",
+        "noDescriptionYet": "Todavía no hay descripción",
+        "subItemsTitle": "Subelementos",
+        "addSubItem": "+ Añadir subelemento",
+        "noSubItemsYet": "Todavía no hay subelementos",
+        "commentsTitle": "Comentarios",
+        "edited": "(editado)",
+        "noCommentsYet": "Todavía no hay comentarios",
+        "commentPlaceholder": "Escribe un comentario... usa @ para mencionar a una persona o un ticket",
+        "postComment": "Publicar comentario",
+        "historyTitle": "Historial",
+        "noHistoryYet": "Todavía no hay historial",
+        "migrateModalTitle": "Migrar a otro proyecto",
+        "migrateModalBodyPrefix": "Mover",
+        "migrateModalBodySuffix": "al backlog de otro proyecto.",
+        "targetProjectLabel": "Proyecto de destino",
+        "selectProjectPlaceholder": "Selecciona un proyecto...",
+        "migrateWarningLabel": "Advertencia:",
+        "migrateWarningBody": "Esto eliminará la asignación de épica de la historia y la quitará de cualquier sprint. Las subtareas, los comentarios y el historial se moverán junto con ella.",
+        "migrating": "Migrando...",
+        "migrate": "Migrar",
+        "storyUpdatedSuccess": "¡Historia actualizada correctamente!",
+        "storyAddedToSprint": "¡Historia añadida al sprint!",
+        "storyRemovedFromSprint": "¡Historia eliminada del sprint!",
+        "failedToLoadStory": "No se pudo cargar la historia",
+        "failedToUpdateStory": "No se pudo actualizar la historia",
+        "failedToAddToSprint": "No se pudo añadir la historia al sprint",
+        "failedToRemoveFromSprint": "No se pudo eliminar la historia del sprint",
+        "failedToPostComment": "No se pudo publicar el comentario",
+        "failedToUpdateComment": "No se pudo actualizar el comentario",
+        "failedToDeleteComment": "No se pudo eliminar el comentario",
+        "confirmDeleteComment": "¿Eliminar este comentario?",
+        "confirmDeleteSubItem": "¿Eliminar este subelemento?",
+        "failedToMigrate": "No se pudo migrar la historia"
+    },
+    "history": {
+        "created": "{{user}} creó esto",
+        "statusChanged": "{{user}} cambió el estado a \"{{value}}\"",
+        "updatedField": "{{user}} actualizó {{field}}"
+    },
+    "subItemModal": {
+        "editTitle": "Editar subelemento",
+        "createTitle": "Crear subelemento",
+        "storyPointsPlaceholder": "Opcional",
+        "failedToSave": "No se pudo guardar el subelemento"
+    },
+    "markdownEditor": {
+        "write": "Escribir",
+        "preview": "Vista previa",
+        "nothingToPreview": "Todavía no hay nada que previsualizar."
+    }
+}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 
 // SRCH-02: navigation per result type, shared with SearchResults.jsx (SRCH-03)
@@ -76,6 +77,7 @@ export const SearchResultRow = ({ item, onClick }) => (
 );
 
 const ProjectSearch = ({ projectId }) => {
+    const { t } = useTranslation(['search', 'common']);
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
     const [hasMore, setHasMore] = useState(false);
@@ -135,7 +137,7 @@ const ProjectSearch = ({ projectId }) => {
             <input
                 type="text"
                 className="form-input"
-                placeholder="Search this project..."
+                placeholder={t('search:projectSearch.placeholder')}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onFocus={() => query.length >= 2 && results.length > 0 && setIsOpen(true)}
@@ -144,7 +146,7 @@ const ProjectSearch = ({ projectId }) => {
                 <div className="search-dropdown">
                     {loading ? (
                         <div style={{ padding: '12px', textAlign: 'center', color: 'var(--color-neutral-500)' }}>
-                            Searching...
+                            {t('search:projectSearch.searching')}
                         </div>
                     ) : results.length > 0 ? (
                         <>
@@ -157,13 +159,13 @@ const ProjectSearch = ({ projectId }) => {
                             ))}
                             {hasMore && (
                                 <div className="search-result-item" onClick={handleSeeMore}>
-                                    See more results…
+                                    {t('search:projectSearch.seeMore')}
                                 </div>
                             )}
                         </>
                     ) : (
                         <div style={{ padding: '12px', textAlign: 'center', color: 'var(--color-neutral-500)' }}>
-                            No results found
+                            {t('common:noResults')}
                         </div>
                     )}
                 </div>

@@ -1,13 +1,8 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useTranslation } from 'react-i18next';
 
 const STATUS_ORDER = ['backlog', 'refining', 'ready', 'in_development', 'review', 'test', 'done', 'cancelled'];
-
-const STATUS_LABELS = {
-    backlog: 'Backlog', refining: 'Refining', ready: 'Ready',
-    in_development: 'In Development', review: 'Review', test: 'Test',
-    done: 'Done', cancelled: 'Cancelled'
-};
 
 const STATUS_COLORS = {
     backlog: '#97A0AF', refining: '#6554C0', ready: '#00875A',
@@ -18,14 +13,17 @@ const STATUS_COLORS = {
 // Vertical stacked bar graph: one bar per assignee, segmented by status —
 // FY-01's "Team Workload" widget.
 const TeamWorkloadChart = ({ data }) => {
+    const { t } = useTranslation(['sprints', 'common']);
+
     if (!data || data.length === 0) {
         return (
             <div style={{ padding: 'var(--spacing-xl)', textAlign: 'center', color: 'var(--color-neutral-500)' }}>
-                No assigned work in this sprint yet.
+                {t('sprints:noWorkloadData')}
             </div>
         );
     }
 
+    const statusLabel = (status) => t(`sprints:statusLabels.${status}`, status);
     const statusesPresent = STATUS_ORDER.filter(status => data.some(row => row[status]));
 
     return (
@@ -45,9 +43,9 @@ const TeamWorkloadChart = ({ data }) => {
                         borderRadius: 'var(--radius-sm)'
                     }}
                 />
-                <Legend formatter={(value) => STATUS_LABELS[value] || value} />
+                <Legend />
                 {statusesPresent.map(status => (
-                    <Bar key={status} dataKey={status} stackId="workload" fill={STATUS_COLORS[status]} name={status} />
+                    <Bar key={status} dataKey={status} stackId="workload" fill={STATUS_COLORS[status]} name={statusLabel(status)} />
                 ))}
             </BarChart>
         </ResponsiveContainer>

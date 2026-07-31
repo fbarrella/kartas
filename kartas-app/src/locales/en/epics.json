@@ -1,0 +1,83 @@
+{
+    "pageTitle": "Epics",
+    "breadcrumbProjects": "Projects",
+    "breadcrumbEpics": "Epics",
+    "breadcrumbEditEpic": "Edit Epic",
+    "breadcrumbProjectFallback": "Project",
+    "createEpic": "+ Create Epic",
+    "createEpicButton": "Create Epic",
+    "showCompleted": "Show completed epics",
+    "loadingEpics": "Loading epics...",
+    "loadingEpic": "Loading epic...",
+    "confirmDelete": "Are you sure you want to delete this epic? This action cannot be undone.",
+    "emptyState": {
+        "title": "No Epics Yet",
+        "subtitleManage": "Create your first epic to organize your stories",
+        "subtitleView": "No epics have been created for this project yet"
+    },
+    "noEpicsToShow": {
+        "title": "No Epics to Show",
+        "subtitle": "All epics are completed or cancelled. Check \"Show completed epics\" to see them."
+    },
+    "progress": "Progress",
+    "start": "Start:",
+    "end": "End:",
+    "stories": "Stories:",
+    "createdBy": "Created by:",
+    "cannotDeleteTooltip": "Cannot delete epic with stories",
+    "deleteTooltip": "Delete epic",
+    "titleLabel": "Title *",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "color": "Color",
+    "statusLabels": {
+        "planning": "Planning",
+        "in_progress": "In Progress",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+    },
+    "colorLabels": {
+        "blue": "Blue",
+        "green": "Green",
+        "orange": "Orange",
+        "red": "Red",
+        "purple": "Purple",
+        "cyan": "Cyan",
+        "brightRed": "Bright Red",
+        "brightGreen": "Bright Green"
+    },
+    "storyStatusLabels": {
+        "backlog": "Backlog",
+        "refining": "Refining",
+        "ready": "Ready",
+        "in_development": "In Development",
+        "review": "Review",
+        "test": "Test",
+        "done": "Done",
+        "cancelled": "Cancelled"
+    },
+    "errors": {
+        "loadEpics": "Failed to load epics",
+        "loadEpic": "Failed to load epic",
+        "saveEpic": "Failed to save epic",
+        "updateEpic": "Failed to update epic",
+        "deleteEpic": "Failed to delete epic"
+    },
+    "detail": {
+        "notFoundTitle": "Epic Not Found",
+        "backToEpics": "Back to Epics",
+        "createdBy": "Created By",
+        "editDescription": "Edit Description",
+        "noDescription": "No description yet",
+        "updatedSuccess": "Epic updated successfully!",
+        "associatedStories": "Associated Stories",
+        "noStories": "No stories associated with this epic yet.",
+        "table": {
+            "id": "ID",
+            "title": "Title",
+            "status": "Status",
+            "points": "Points",
+            "assignee": "Assignee"
+        }
+    }
+}
