@@ -4,6 +4,76 @@ Development log for all Kartas changes, across every phase. Each entry records w
 
 ---
 
+## [2026-07-31] — MAIL-03 — Admin Email Settings UI
+
+- **Author**: Claude
+- **PRD Requirement**: MAIL-03
+- **Summary**: New `AdminEmailSettings.jsx`, mirroring `AdminPaletteEditor.jsx`'s structure (own `loading`/`error`/`saving`/`successMessage` state, fetch-on-mount, `api.get`/`api.put`, matching `alert alert-success` styling) so the two admin cards on the Settings page stay visually consistent. Fetches `GET /system-settings/email` (`MAIL-01`) and renders a form: Provider select (SMTP/Gmail), conditional field groups for whichever provider is selected (SMTP: host/port/TLS toggle/user/password; Gmail: address/app password), From address, a plain `<textarea>` for the custom invite message (no markdown editor — matches `CMT-02`'s "no visual changes on plain text" precedent), and invite expiry in days. Every field disables and shows a "Set via environment variable" hint when its `source` is `'env'`. Password fields use a dedicated `PasswordField`: env-locked shows a masked, disabled `••••••••`; DB-sourced starts blank (never pre-filled with a fake placeholder) with a `configured`-aware placeholder — submitting blank means "leave unchanged," enforced by only including a password key in the `PUT` payload when it's non-empty. The submit payload itself only includes keys that are actually `editable`, so an env-locked field's draft value (a disabled input's displayed value) is never sent, even though the backend's own `pick()` logic would silently ignore it anyway. Wired into `Settings.jsx`'s existing Admin tab (from `SET-01`), replacing the placeholder comment left there.
+- **Files Changed**:
+  - `kartas-app/src/components/AdminEmailSettings.jsx` (new)
+  - `kartas-app/src/pages/Settings.jsx` — imports and renders `AdminEmailSettings` inside the Admin tab's "Email Configuration" card
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean; confirmed via `docker-compose logs app` that the dev container picked up the change with no import/resolution errors after a fresh restart (one stale error in the log predates this change — the already-documented `SET-01` premature-import incident, confirmed by timestamp, not a new issue). No browser-automation tool available this session — manual click-through (confirm env-locked fields — `provider`/`gmailUser`/`emailFrom`, all real in this dev environment — render disabled with the env hint and the real secret is never visible; confirm SMTP fields can be edited and saved; confirm the custom invite message and expiry fields round-trip) handed off to the user, consistent with `MAIL-01`'s backend already being curl-verified against this exact live configuration and `MAIL-02`/`MAIL-04`'s real end-to-end invite-send regression check.
+
+---
+
+## [2026-07-31] — MAIL-04 — Customizable Invite Message & Expiry
+
+- **Author**: Claude
+- **PRD Requirement**: MAIL-04
+- **Summary**: `inviteController.js`'s `generateInvite` now calls `getEmailConfig()` and uses `emailConfig.inviteExpiryDays` (admin-configurable via `MAIL-01`'s settings, default 7) instead of the previously hardcoded `7 * 24 * 60 * 60 * 1000`. `emailConfig.inviteMessage`, when set, is passed through to `sendInviteEmail` and spliced into both the plain-text and HTML invite email bodies as a lead paragraph ahead of the standard "You've been invited..." copy — the invite link and expiry lines are always present regardless of customization. The message is not HTML-escaped: only admins can set it, matching the same trust level already given to the unescaped `role` interpolation in the same template — an accepted low-risk choice, not a gap.
+- **Files Changed**:
+  - `kartas-api/src/controllers/inviteController.js` — `generateInvite` uses `getEmailConfig()` for expiry + message
+  - `kartas-api/src/utils/mailer.js` — `sendInviteEmail` accepts `inviteMessage`, splices it as a lead paragraph in both text/HTML bodies
+- **Migration**: N/A (uses `MAIL-01`'s existing `system_email_settings` columns)
+- **Status**: Done
+- **Verification**: Set `inviteMessage`/`inviteExpiryDays` via `PUT /api/system-settings/email` to `"We would love to have you on the team!"` / `3`, then called `POST /api/invites/generate` — confirmed `expiresAt` landed exactly 3 days out (custom value, not the old hardcoded 7) and `emailSent: true` (send succeeded with the custom message spliced in via the same live Gmail relay). All test settings/invite rows/temp user cleaned up afterward (see `MAIL-02` entry below — same verification pass covered both).
+
+---
+
+## [2026-07-31] — MAIL-02 — Runtime Nodemailer Reconfiguration
+
+- **Author**: Claude
+- **PRD Requirement**: MAIL-02
+- **Summary**: Fixed the actual bug this requirement targets: `kartas-api/src/config/email.js` previously computed `transporter`/`isEmailConfigured`/`emailConfigStatus` once at module load time (frozen by Node's ES-module caching), so admin edits to `system_email_settings` (via `MAIL-01`'s new endpoints) would never take effect without a full server restart. Replaced with an async `getEmailConfig()` that queries `system_email_settings` fresh on every call and resolves each field env-wins-else-database (identical precedence to `systemSettingsController.js`'s per-field logic), plus a pure `buildTransporter(cfg)` that takes an already-resolved config rather than re-querying — so a single send only reads the DB once. Deliberately no caching: invite volume is tiny, `nodemailer.createTransport()` is cheap (no connection opens until `.sendMail()` runs), and a cache would need its own invalidation-on-settings-change logic that "just rebuild every time" gets for free. `kartas-api/src/utils/mailer.js`'s `sendInviteEmail` updated to `await getEmailConfig()` once and pass the result to `buildTransporter()`.
+- **Files Changed**:
+  - `kartas-api/src/config/email.js` — replaced frozen module-load-time consts with async `getEmailConfig()` + pure `buildTransporter(cfg)`
+  - `kartas-api/src/utils/mailer.js` — `sendInviteEmail` updated to the new async API
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: Since this refactor touches the real invite-email send path (flagged explicitly in the sub-phase plan as needing more than curl), triggered two genuine end-to-end sends through the live Gmail relay using a temporary seeded admin (deleted afterward along with its refresh token) — targeted at disposable-inbox addresses (`@mailinator.com`) rather than any real person's mailbox, so no third party was affected. Confirmed `POST /api/invites/generate` returns `emailSent: true` with no `emailReason`/`emailDetail`, proving the refactored `getEmailConfig()`/`buildTransporter()` path builds a working transporter and sends successfully against the live env-configured Gmail credentials, immediately after a full API container restart (ruling out any stale-module-cache false positive). All test invite rows, the temp admin user, and its refresh token were deleted afterward; `system_email_settings` reset to its pre-test defaults.
+
+---
+
+## [2026-07-31] — MAIL-01 — System Email Settings Backend
+
+- **Author**: Claude
+- **PRD Requirement**: MAIL-01
+- **Summary**: New `system_email_settings` singleton table (same `id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1)` pattern as `PAL-01`'s `system_theme_settings`) holds admin-configurable SMTP/Gmail credentials, the `From` address, and the invite message/expiry-days that `MAIL-04` will consume. Every credential field follows an env-wins-else-database precedence: `systemSettingsController.js`'s new `getEmail`/`updateEmail` methods check a fixed list of env vars (`EMAIL_PROVIDER`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `EMAIL_FROM`) per field; if set, that field reports `source: "env"` and `editable: false` and any submitted value for it is silently discarded server-side on `PUT` (never persisted over the DB value), even though a disabled frontend input would submit its displayed value on a plain form POST. Secret fields (`smtpPassword`, `gmailAppPassword`) never echo their real value in either direction — only `{source, editable, configured}` — matching this session's established secret-masking convention. Both endpoints are admin-only (`requireAdmin`), unlike `PAL-01`'s public `GET /theme`, since email config is operational/sensitive with no non-admin read need. Manual validation guard (`provider` must be `smtp`/`gmail`, `smtpPort`/`inviteExpiryDays` must be valid integers in range) follows the same hand-written pattern as `updateTheme`, since `validationResult()` is never enforced anywhere in this codebase.
+- **Files Changed**:
+  - `kartas-api/src/migrations/017_add_system_email_settings.sql` — new table + seed row
+  - `kartas-api/src/controllers/systemSettingsController.js` — `EMAIL_FIELDS` descriptor list, `getEmail`, `updateEmail`
+  - `kartas-api/src/routes/systemSettings.js` — `GET`/`PUT /api/system-settings/email`, both `requireAdmin`
+- **Migration**: `017_add_system_email_settings.sql` — idempotent (`CREATE TABLE IF NOT EXISTS` + `ON CONFLICT (id) DO NOTHING`), ran via `docker-compose exec -T api npm run migrate`
+- **Status**: Done
+- **Verification**: Curl-verified end-to-end against the real dev environment's live Gmail env configuration using a temporary seeded admin user (bcrypt-hashed password, real login for a real JWT, deleted afterward along with its `refresh_tokens` row). Confirmed: (1) `GET /api/system-settings/email` returns `source: "env"`/`editable: false` for `provider`/`gmailUser`/`emailFrom` (the real env-configured fields) without ever exposing `GMAIL_APP_PASSWORD`'s value; (2) `PUT` with DB-only fields (`smtpHost`, `smtpUser`, `smtpPassword`, `inviteMessage`, `inviteExpiryDays`) correctly persisted and were reflected on a subsequent `GET`, with the password field showing only `configured: true`; (3) a `PUT` attempting to override `provider`/`gmailUser` (env-locked fields) was correctly ignored — the response still showed the real env values, confirming the env-lock-preservation logic in `updateEmail`'s `pick()` helper; (4) invalid `provider` (`"yahoo"`), out-of-range `smtpPort` (`999999`), and non-positive `inviteExpiryDays` (`0`) each correctly returned `400` with a descriptive error. All test data cleaned up afterward: `system_email_settings` row reset to its pre-test state (all credential/message columns back to `NULL`, `invite_expiry_days` back to `7`), temp admin user and its refresh token deleted, temp token file removed.
+
+---
+
+## [2026-07-31] — SET-01 — Two-Tab Settings Page
+
+- **Author**: Claude
+- **PRD Requirement**: SET-01
+- **Summary**: `Settings.jsx` gains "Personal"/"Admin" tabs, using the same ad hoc `useState` + `btn-primary`/`btn-secondary`-toggling mechanic already established by `MarkdownEditor.jsx`'s Write/Preview toggle (no dedicated `.tab` CSS class exists anywhere in this codebase, confirmed via grep — not worth inventing one for this single use). The entire tab bar — including the "Personal" button — only renders for admins (`isAdmin`); a non-admin sees no tab affordance at all and the existing "Appearance" card renders directly, matching the PRD's explicit "a non-admin sees only a single unlabeled settings view." The existing admin-only "System Color Palette" card is now the Admin tab's content, unchanged internally. Content container widened from `600px` to `760px` to comfortably fit `MAIL-03`'s upcoming email settings form.
+- **Files Changed**:
+  - `kartas-app/src/pages/Settings.jsx` — new `activeTab`/`isAdmin` state, tab bar, content gating
+- **Migration**: N/A
+- **Status**: Done
+- **Verification**: `npm run build` clean; confirmed via `docker-compose logs app` that the final file state loads with no errors (one transient error appeared mid-edit from a premature `AdminEmailSettings` import added ahead of its own requirement, `MAIL-03` — reverted immediately, confirmed absent from the final file). No browser-automation tool available this session — manual click-through (confirm a non-admin sees no tab bar at all, confirm an admin sees both tabs and can switch between them, confirm the System Color Palette card still works unchanged under the Admin tab) handed off to the user.
+
+---
+
 ## [2026-07-31] — Fix: Sub-Task Search Results Didn't Open the Sub-Item Modal (follow-up to SRCH-02)
 
 - **Author**: Claude
