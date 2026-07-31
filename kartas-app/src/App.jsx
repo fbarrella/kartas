@@ -17,6 +17,8 @@ import StoryDetail from './pages/StoryDetail';
 import Sprints from './pages/Sprints';
 import KanbanBoard from './pages/KanbanBoard';
 import Epics from './pages/Epics';
+import EpicDetail from './pages/EpicDetail';
+import SearchResults from './pages/SearchResults';
 import UserManagement from './pages/UserManagement';
 import UserProfile from './pages/UserProfile';
 import Settings from './pages/Settings';
@@ -108,6 +110,8 @@ function AppRoutes() {
                 <Route path="team" element={<ProjectView />} />
                 <Route path="settings" element={<ProjectSettings />} />
                 <Route path="story/:storyId" element={<StoryDetail />} />
+                <Route path="epic/:epicId" element={<EpicDetail />} />
+                <Route path="search" element={<SearchResults />} />
                 <Route path="user/:userId" element={<UserDetail />} />
             </Route>
 

@@ -17,7 +17,6 @@ const Epics = () => {
     const [epics, setEpics] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
-    const [editingEpic, setEditingEpic] = useState(null);
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -66,35 +65,23 @@ const Epics = () => {
         }
     };
 
-    const handleOpenModal = (epic = null) => {
-        if (epic) {
-            setEditingEpic(epic);
-            setFormData({
-                title: epic.title,
-                description: epic.description || '',
-                startDate: epic.start_date ? epic.start_date.split('T')[0] : '',
-                endDate: epic.end_date ? epic.end_date.split('T')[0] : '',
-                status: epic.status || 'planning',
-                color: epic.color || '#0052CC'
-            });
-        } else {
-            setEditingEpic(null);
-            setFormData({
-                title: '',
-                description: '',
-                startDate: '',
-                endDate: '',
-                status: 'planning',
-                color: '#0052CC'
-            });
-        }
+    // EPD-02: this modal is now create-only — editing an epic happens on its
+    // own detail page (EpicDetail.jsx), which the card itself links to.
+    const handleOpenModal = () => {
+        setFormData({
+            title: '',
+            description: '',
+            startDate: '',
+            endDate: '',
+            status: 'planning',
+            color: '#0052CC'
+        });
         setShowModal(true);
         setError('');
     };
 
     const handleCloseModal = () => {
         setShowModal(false);
-        setEditingEpic(null);
         setError('');
     };
 
@@ -103,11 +90,7 @@ const Epics = () => {
         setError('');
 
         try {
-            if (editingEpic) {
-                await api.put(`/epics/${editingEpic.id}`, formData);
-            } else {
-                await api.post(`/project/${projectId}/epics`, formData);
-            }
+            await api.post(`/project/${projectId}/epics`, formData);
             handleCloseModal();
             fetchEpics();
         } catch (error) {
@@ -219,7 +202,7 @@ const Epics = () => {
                     {visibleEpics.map((epic) => (
                         <Link
                             key={epic.id}
-                            to={`/project/${projectId}/backlog?epic=${epic.id}`}
+                            to={`/project/${projectId}/epic/${epic.id}`}
                             style={{ textDecoration: 'none', color: 'inherit' }}
                         >
                             <div className="card" style={{
@@ -326,17 +309,11 @@ const Epics = () => {
                                 {canManageEpics && (
                                     <div className="flex flex-gap-sm mt-md">
                                         <button
-                                            onClick={() => handleOpenModal(epic)}
-                                            className="btn btn-secondary btn-sm"
-                                            style={{ flex: 1 }}
-                                        >
-                                            Edit
-                                        </button>
-                                        <button
                                             onClick={() => handleDelete(epic.id)}
                                             className="btn btn-danger btn-sm"
                                             disabled={parseInt(epic.story_count) > 0}
                                             title={parseInt(epic.story_count) > 0 ? 'Cannot delete epic with stories' : 'Delete epic'}
+                                            style={{ flex: 1 }}
                                         >
                                             Delete
                                         </button>
@@ -365,7 +342,7 @@ const Epics = () => {
                     <div className="card" style={{ maxWidth: '600px', width: '100%', margin: 'var(--spacing-md)' }}
                         onClick={(e) => e.stopPropagation()}>
                         <div className="card-header">
-                            <h3 className="card-title">{editingEpic ? 'Edit Epic' : 'Create Epic'}</h3>
+                            <h3 className="card-title">Create Epic</h3>
                         </div>
 
                         <form onSubmit={handleSubmit}>
@@ -476,7 +453,7 @@ const Epics = () => {
                                     Cancel
                                 </button>
                                 <button type="submit" className="btn btn-primary">
-                                    {editingEpic ? 'Update Epic' : 'Create Epic'}
+                                    Create Epic
                                 </button>
                             </div>
                         </form>
