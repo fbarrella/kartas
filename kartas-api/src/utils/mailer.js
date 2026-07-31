@@ -1,22 +1,33 @@
-import { transporter, emailConfig, isEmailConfigured, emailConfigStatus } from '../config/email.js';
+import { getEmailConfig, buildTransporter } from '../config/email.js';
 
 // Best-effort invite email send. Never throws — the invite link is the
 // source of truth; email delivery is a convenience on top of it.
-export async function sendInviteEmail({ to, inviteLink, role, expiresAt }) {
-    if (!isEmailConfigured) {
-        return { sent: false, reason: 'not_configured', detail: emailConfigStatus };
+export async function sendInviteEmail({ to, inviteLink, role, expiresAt, inviteMessage }) {
+    const cfg = await getEmailConfig();
+    if (!cfg.isConfigured) {
+        return { sent: false, reason: 'not_configured', detail: cfg.statusMessage };
     }
 
+    // MAIL-04: an admin-set custom message is a lead paragraph ahead of the
+    // standard invite copy — the link + expiry lines are always present
+    // regardless of customization. Not HTML-escaped: only admins can set
+    // this, and admins are already a trusted role throughout this app's
+    // existing model (matches the untouched `role` interpolation below).
+    const leadText = inviteMessage
+        ? `${inviteMessage}\n\nYou've been invited to join Kartas as a ${role}.`
+        : `You've been invited to join Kartas as a ${role}.`;
+    const leadHtml = inviteMessage
+        ? `<p>${inviteMessage}</p><p>You've been invited to join Kartas as a <strong>${role}</strong>.</p>`
+        : `<p>You've been invited to join Kartas as a <strong>${role}</strong>.</p>`;
+
     try {
-        await transporter.sendMail({
-            from: emailConfig.from,
+        await buildTransporter(cfg).sendMail({
+            from: cfg.from,
             to,
             subject: 'You’ve been invited to Kartas',
-            text: `You've been invited to join Kartas as a ${role}.\n\n` +
-                  `Click the link below to complete your registration:\n${inviteLink}\n\n` +
+            text: `${leadText}\n\nClick the link below to complete your registration:\n${inviteLink}\n\n` +
                   `This link expires on ${new Date(expiresAt).toLocaleString()}.`,
-            html: `<p>You've been invited to join Kartas as a <strong>${role}</strong>.</p>` +
-                  `<p><a href="${inviteLink}">Click here to complete your registration</a></p>` +
+            html: `${leadHtml}<p><a href="${inviteLink}">Click here to complete your registration</a></p>` +
                   `<p>This link expires on ${new Date(expiresAt).toLocaleString()}.</p>`
         });
         return { sent: true };

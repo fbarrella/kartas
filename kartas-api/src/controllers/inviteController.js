@@ -3,6 +3,7 @@ import { query } from '../config/database.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { sendInviteEmail } from '../utils/mailer.js';
+import { getEmailConfig } from '../config/email.js';
 
 export const inviteController = {
     // Generate invite token
@@ -28,7 +29,9 @@ export const inviteController = {
 
             // Generate secure token
             const token = crypto.randomBytes(32).toString('hex');
-            const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+            // MAIL-04: admin-configurable expiry (system_email_settings.invite_expiry_days), defaults to 7
+            const emailConfig = await getEmailConfig();
+            const expiresAt = new Date(Date.now() + emailConfig.inviteExpiryDays * 24 * 60 * 60 * 1000);
 
             // Store invite
             await query(
@@ -47,7 +50,8 @@ export const inviteController = {
                 to: email,
                 inviteLink,
                 role: role || 'member',
-                expiresAt
+                expiresAt,
+                inviteMessage: emailConfig.inviteMessage
             });
 
             res.json({
