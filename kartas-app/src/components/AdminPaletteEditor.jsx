@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useStepUp } from '../contexts/StepUpContext';
 import { BASE_CATEGORIES, PRESETS, deriveTokens, setCachedSystemTheme, getCachedSystemTheme } from '../utils/systemTheme';
 
 // Applies a draft (not-yet-saved) palette directly, without touching the shared
@@ -41,9 +42,11 @@ const PresetThumbnail = ({ preset, selected, onClick, disabled, title }) => (
 const AdminPaletteEditor = () => {
     const { t } = useTranslation(['settings', 'common']);
     const { user } = useAuth();
+    const { requestStepUp } = useStepUp();
     // TFA-09: every mutating action in this component (preset select, custom
-    // save) is gated on the backend behind requireTwoFactor — mirrored here
-    // as a disabled state, not the real enforcement.
+    // save) is gated on the backend behind requireTwoFactor (+ STEPUP-01's
+    // requireStepUp) — mirrored here as a disabled state, not the real
+    // enforcement.
     const twoFactorRequired = !user?.twoFactorEnabled;
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -76,17 +79,22 @@ const AdminPaletteEditor = () => {
         setSuccessMessage('');
         setSaving(true);
         try {
-            const response = await api.put('/system-settings/theme', payload);
+            // STEPUP-02: a fresh 2FA re-verification is required on top of
+            // the existing twoFactorEnabled precondition.
+            const stepUpToken = await requestStepUp();
+            const response = await api.put('/system-settings/theme', payload, { headers: { 'X-Step-Up-Token': stepUpToken } });
             setCurrent(response.data);
             setCachedSystemTheme(response.data);
             setSuccessMessage(t('settings:paletteEditor.saveSuccess'));
             setTimeout(() => setSuccessMessage(''), 3000);
             return true;
         } catch (err) {
-            setError(err.response?.data?.error || t('settings:paletteEditor.saveError'));
-            // Revert the live preview back to whatever is actually persisted.
-            const cached = getCachedSystemTheme();
-            if (cached) previewDraft(cached.lightPalette, cached.darkPalette);
+            if (err?.message !== 'cancelled') {
+                setError(err.response?.data?.error || err.message || t('settings:paletteEditor.saveError'));
+                // Revert the live preview back to whatever is actually persisted.
+                const cached = getCachedSystemTheme();
+                if (cached) previewDraft(cached.lightPalette, cached.darkPalette);
+            }
             return false;
         } finally {
             setSaving(false);

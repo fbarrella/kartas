@@ -1,5 +1,6 @@
 import { query } from '../config/database.js';
 import { getEmailConfig } from '../config/email.js';
+import { getRecaptchaConfig } from '../config/recaptcha.js';
 
 const BASE_CATEGORIES = ['primary', 'secondary', 'success', 'warning', 'danger', 'info', 'neutral', 'background', 'text'];
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
@@ -28,6 +29,12 @@ const EMAIL_FIELDS = [
 
 const envValueFor = (envVars) => envVars.map((v) => process.env[v]).find((v) => v !== undefined && v !== '');
 const isEnvLocked = (envVars) => envValueFor(envVars) !== undefined;
+
+// RECAP-01: same shape as EMAIL_FIELDS above.
+const RECAPTCHA_FIELDS = [
+    { key: 'siteKey', column: 'site_key', envVars: ['RECAPTCHA_SITE_KEY'], secret: false },
+    { key: 'secretKey', column: 'secret_key', envVars: ['RECAPTCHA_SECRET_KEY'], secret: true }
+];
 
 export const systemSettingsController = {
     // Any authenticated user — needed to render the app's actual current colors (PAL-04)
@@ -216,6 +223,90 @@ export const systemSettingsController = {
             return systemSettingsController.getEmail(req, res);
         } catch (error) {
             console.error('Error updating system email settings:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
+    // RECAP-01: deliberately unauthenticated — Login/Register/AdminSetup all
+    // need the effective site key before any access token exists. Leaks
+    // nothing a real rendered reCAPTCHA widget wouldn't already expose
+    // client-side once it loads.
+    async getRecaptchaSiteKey(req, res) {
+        try {
+            const cfg = await getRecaptchaConfig();
+            res.json({ siteKey: cfg.siteKey });
+        } catch (error) {
+            console.error('Error fetching reCAPTCHA site key:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
+    // Admin-only (gated by requireAdmin in the route).
+    async getRecaptcha(req, res) {
+        try {
+            const result = await query('SELECT * FROM system_recaptcha_settings WHERE id = 1');
+            if (result.rows.length === 0) {
+                return res.status(404).json({ error: 'System reCAPTCHA settings not found' });
+            }
+            const row = result.rows[0];
+
+            const fields = {};
+            for (const f of RECAPTCHA_FIELDS) {
+                const envValue = envValueFor(f.envVars);
+                const source = envValue !== undefined ? 'env' : 'database';
+                if (f.secret) {
+                    fields[f.key] = {
+                        source,
+                        editable: source !== 'env',
+                        configured: source === 'env' ? true : !!row[f.column]
+                    };
+                } else {
+                    fields[f.key] = {
+                        source,
+                        editable: source !== 'env',
+                        value: source === 'env' ? envValue : row[f.column]
+                    };
+                }
+            }
+
+            res.json({ fields, updatedAt: row.updated_at });
+        } catch (error) {
+            console.error('Error fetching system reCAPTCHA settings:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
+    // Admin-only. Manual validation guard, matching updateEmail's convention.
+    async updateRecaptcha(req, res) {
+        try {
+            const { siteKey, secretKey } = req.body;
+
+            const current = (await query('SELECT * FROM system_recaptcha_settings WHERE id = 1')).rows[0];
+            if (!current) {
+                return res.status(404).json({ error: 'System reCAPTCHA settings not found' });
+            }
+
+            const pick = (submitted, column, envVars) =>
+                isEnvLocked(envVars) ? current[column] : (submitted !== undefined ? submitted : current[column]);
+
+            const next = {
+                site_key: pick(siteKey, 'site_key', ['RECAPTCHA_SITE_KEY']),
+                // Blank submission means "leave unchanged" for a secret field.
+                secret_key: isEnvLocked(['RECAPTCHA_SECRET_KEY'])
+                    ? current.secret_key
+                    : (secretKey ? secretKey : current.secret_key)
+            };
+
+            await query(
+                `UPDATE system_recaptcha_settings
+                 SET site_key = $1, secret_key = $2, updated_by = $3, updated_at = CURRENT_TIMESTAMP
+                 WHERE id = 1`,
+                [next.site_key, next.secret_key, req.user.userId]
+            );
+
+            return systemSettingsController.getRecaptcha(req, res);
+        } catch (error) {
+            console.error('Error updating system reCAPTCHA settings:', error);
             res.status(500).json({ error: 'Server error' });
         }
     }

@@ -7,6 +7,7 @@ import Breadcrumb from '../components/Breadcrumb';
 import AdminPaletteEditor from '../components/AdminPaletteEditor';
 import AdminEmailSettings from '../components/AdminEmailSettings';
 import AdminBackupSettings from '../components/AdminBackupSettings';
+import AdminRecaptchaSettings from '../components/AdminRecaptchaSettings';
 import TwoFactorSettings from '../components/TwoFactorSettings';
 import '../components/navigation.css';
 import kartasLogoWhite from '../assets/kartas-logo-white.png';
@@ -180,6 +181,14 @@ const Settings = () => {
                                 {t('settings:page.backups.description')}
                             </p>
                             <AdminBackupSettings />
+                        </div>
+
+                        <div className="card mt-lg">
+                            <h2>{t('settings:page.recaptcha.title')}</h2>
+                            <p className="text-muted mb-md" style={{ fontSize: 'var(--font-size-sm)' }}>
+                                {t('settings:page.recaptcha.description')}
+                            </p>
+                            <AdminRecaptchaSettings />
                         </div>
                     </>
                 )}

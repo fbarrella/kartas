@@ -4,6 +4,100 @@ Development log for all Kartas changes, across every phase. Each entry records w
 
 ---
 
+## [2026-08-02] — RECAP-01/RECAP-02/RECAP-03 — Admin-Configurable reCAPTCHA
+
+- **Author**: Claude
+- **PRD Requirement**: RECAP-01, RECAP-02, RECAP-03
+- **Summary**: reCAPTCHA (Phase 8's `CAPTCHA-01`/`02`) becomes admin-configurable, mirroring `MAIL-01`/`MAIL-02`'s (Phase 7) exact env-wins-over-database pattern — with one genuine architectural difference this sub-phase had to solve. New singleton `system_recaptcha_settings` table (`site_key`, `secret_key`, same `id=1` convention as every other system-settings table). New `config/recaptcha.js`'s `getRecaptchaConfig()` mirrors `getEmailConfig()`'s shape exactly (resolved fresh every call, no caching) but exposes **two independent booleans** (`hasSiteKey`/`hasSecretKey`) instead of email's single `isConfigured` — the frontend widget only needs a site key, the backend verification only needs a secret key, and either can be configured without the other. `utils/recaptcha.js`'s `verifyRecaptcha()` now resolves its secret through this new config layer instead of reading `process.env.RECAPTCHA_SECRET_KEY` directly — confirmed via a direct call that it correctly picks up a database-set secret when no env var exists. New admin-only `GET`/`PUT /api/system-settings/recaptcha` (site key plain, secret key masked, same convention as email) — `PUT` gated `requireAdmin` → `requireTwoFactor` → `requireStepUp`, matching every other admin-settings save this phase. **The architectural piece**: unlike email (fully server-side, never exposed to the frontend), reCAPTCHA's site key must reach the browser, and the old `CAPTCHA-02` implementation baked it into `import.meta.env.VITE_RECAPTCHA_SITE_KEY` — a Vite build/dev-server-start-time constant that an admin-configured database value could never override without a rebuild. New `GET /api/system-settings/recaptcha/site-key` — the **only unauthenticated route in `systemSettings.js`'s entire surface** (registered directly on `app` in `index.js`, before the router's `authenticateToken`-wrapped mount, since `Login.jsx`/`Register.jsx`/`AdminSetup.jsx` need it before any access token exists) — solves this by having the frontend fetch the effective site key at runtime instead. `RecaptchaWidget.jsx`'s old module-level `isRecaptchaConfigured` constant is gone, replaced by a `useRecaptchaSiteKey()` hook (module-scope-cached fetch); all three pages' submit-disabled logic now reads `{siteKey, loading}` from that hook instead of a static import. New `AdminRecaptchaSettings.jsx` (mirrors `AdminEmailSettings.jsx`'s structure exactly) wired into `Settings.jsx`'s Admin tab as a new card after Backups.
+- **Files Changed**:
+  - `kartas-api/src/migrations/025_add_system_recaptcha_settings.sql` — new singleton table
+  - `kartas-api/src/config/recaptcha.js` (new) — `getRecaptchaConfig`
+  - `kartas-api/src/utils/recaptcha.js` — `verifyRecaptcha` resolves secret via the new config layer
+  - `kartas-api/src/controllers/systemSettingsController.js` — new `getRecaptchaSiteKey`/`getRecaptcha`/`updateRecaptcha`
+  - `kartas-api/src/routes/systemSettings.js` — new admin `GET`/`PUT /recaptcha`
+  - `kartas-api/src/index.js` — public `GET /recaptcha/site-key` registered before the authenticated router mount
+  - `kartas-app/src/components/RecaptchaWidget.jsx` — `isRecaptchaConfigured` removed, replaced by `useRecaptchaSiteKey()`
+  - `kartas-app/src/pages/Login.jsx`, `Register.jsx`, `AdminSetup.jsx` — updated to the new hook
+  - `kartas-app/src/components/AdminRecaptchaSettings.jsx` (new)
+  - `kartas-app/src/pages/Settings.jsx` — new card wired in
+  - `kartas-app/src/locales/{en,es,pt-BR}/settings.json` — new `page.recaptcha`/`recaptchaSettings.*` keys
+- **Migration**: `025_add_system_recaptcha_settings.sql`
+- **Status**: Done — `npm run build` clean, dev server HMR clean. Backend fully curl-verified: the public site-key endpoint works with zero auth headers; the skip-path (this dev environment's actual current state — both keys blank) still lets `admin/setup`/`login` reach their real logic untouched; `GET /recaptcha` returns the correct per-field shape; `PUT` correctly 403s `TWO_FACTOR_REQUIRED` then `STEP_UP_REQUIRED` before succeeding with a valid grant; the secret is confirmed masked (`configured: true`, never echoed) on every subsequent `GET`. **Confirmed the actual point of this sub-phase**: saved a real site key via the admin endpoint and immediately queried the public site-key endpoint again with no server restart — it reflected the new value instantly, proving the runtime-configurability the old build-time constant couldn't provide. Also directly confirmed `verifyRecaptcha()` now resolves a database-only secret (no env var set) and correctly attempts real verification against Google (`skipped: false`). All test values reset and the temp admin cleaned up afterward.
+
+**Phase 9 is now complete** (`STEPUP-01`/`02`, `TRUST-01`/`02`, `PROJ-01`/`02`/`03`, `RECAP-01`/`02`/`03`) — see the `README.md` update logged separately below/above per this phase's process rules.
+
+---
+
+## [2026-08-02] — PROJ-01/PROJ-02/PROJ-03 — Admin-Only Project Settings Panel (Rename, Description, Delete)
+
+- **Author**: Claude
+- **PRD Requirement**: PROJ-01, PROJ-02, PROJ-03
+- **Summary**: `PROJ-01`: `updateProject` (`PUT /api/projects/:projectId`) — confirmed via investigation to have zero 2FA involvement despite already being owner/admin-gated — gains the same two-layer gate `deleteProject`/`deleteUser`/`removeMember` already got in sub-phase `9.1` (`twoFactorEnabled` check, then `hasValidStepUpGrant(req)`). `deleteProject` itself needed no further backend work — it already had the full gate from `9.1`. `PROJ-02`/`PROJ-03`: the first-ever admin-only content in `ProjectSettings.jsx` (previously a single per-user landing-page-picker form with no role branching at all) — a new "Project Management" card, gated on `canManageProject` (computed the same way `ProjectView.jsx`'s `canManageMembers` already is, from the project's member list). Name and Description save independently, each requiring the literal word `CONFIRM` typed into a dedicated field (mirroring `BKP-04`'s Phase 7 fixed-phrase pattern) plus a fresh `requestStepUp()` re-verification before the `PUT` fires. Delete Project — **the first-ever UI trigger for `DELETE /api/projects/:projectId` in this app's history**, closing a gap flagged since Phase 8 — requires typing the project's exact current name (not a fixed word, per the resolved design decision: this forces confirming *which* project is being destroyed, GitHub's own convention) plus the same step-up flow, then navigates to `/` on success.
+- **Files Changed**:
+  - `kartas-api/src/controllers/projectController.js` — `updateProject` gains `twoFactorEnabled`/`hasValidStepUpGrant` checks
+  - `kartas-app/src/pages/ProjectSettings.jsx` — new "Project Management" card (rename, description, delete)
+  - `kartas-app/src/locales/{en,es,pt-BR}/project.json` — new `settings.projectManagement.*` keys
+- **Migration**: N/A
+- **Status**: Done — `npm run build` clean, dev server HMR clean. Backend fully curl-verified with a temp admin enrolled in real TOTP: confirmed `TWO_FACTOR_REQUIRED` fires with no 2FA, `STEP_UP_REQUIRED` fires with 2FA-but-no-grant on both `updateProject` and `deleteProject`, a valid grant successfully renames a project, a garbage step-up token is rejected on delete. Per Process Requirement 5 (destructive-action care) — since this is the app's first-ever working delete-project path — every failure path was proven safe first, and the one real deletion performed was against a disposable test project created specifically for this verification (`POST /projects` → renamed → deleted → confirmed `404` afterward), never against real data. All seeded rows cleaned up.
+
+---
+
+## [2026-08-02] — TRUST-01/TRUST-02 — Trusted Devices ("Remember This Browser")
+
+- **Author**: Claude
+- **PRD Requirement**: TRUST-01, TRUST-02
+- **Summary**: A per-browser, opt-in "trust this browser for 30 days" bypass for the login-time 2FA challenge — and, per `nextsteps.txt`'s explicit wording, strictly scoped to login only, never anything `STEPUP-01`/`02` gates. New `trusted_devices` table (`user_id`, plaintext `token` — same rationale as `step_up_grants`/`refresh_tokens`, a high-entropy random value, not a low-entropy secret — `label` best-effort-parsed from the `User-Agent` header, `expires_at`, `last_used_at`). `authController.verifyTwoFactor`'s success path now accepts an optional `trustDevice: boolean`: when true, mints a device token (30-day expiry) and includes it in the response. `authController.login` accepts an optional `trustedDeviceToken`: right after confirming `two_factor_enabled`, it's checked against `trusted_devices` — a match skips the challenge entirely and calls `issueSession` directly (updating `last_used_at`); anything else (absent, expired, wrong account) silently falls through to the normal challenge flow, never an error. New `GET`/`DELETE /api/users/2fa/trusted-devices` (list, revoke one, revoke all) in `twoFactorController.js`, and `disable` now also wipes all of a user's trusted devices — a device trust with no active 2FA method behind it must not silently persist past a disable cycle. On the frontend: `Login.jsx`'s 2FA challenge screen gained a "Trust this browser for 30 days" checkbox; `AuthContext.jsx`'s `login()`/`verifyTwoFactor()` read/write the resulting token under a per-**email**-namespaced `localStorage` key (`trustedDevice_<email>` — email, not user id, since that's the only stable identifier known before the server confirms who's logging in); `TwoFactorSettings.jsx` gained a "Trusted Devices" list (label, expiry, per-row Revoke, Revoke All), visible only when 2FA is enabled.
+- **Files Changed**:
+  - `kartas-api/src/migrations/024_add_trusted_devices.sql` — new `trusted_devices` table
+  - `kartas-api/src/controllers/authController.js` — `login`/`verifyTwoFactor` gain trusted-device logic, new `parseDeviceLabel` helper
+  - `kartas-api/src/controllers/twoFactorController.js` — new `listTrustedDevices`/`revokeTrustedDevice`/`revokeAllTrustedDevices`, `disable` wipes devices
+  - `kartas-api/src/routes/twoFactor.js` — new trusted-device routes
+  - `kartas-app/src/contexts/AuthContext.jsx` — `login`/`verifyTwoFactor` read/write the per-email token
+  - `kartas-app/src/pages/Login.jsx` — "Trust this browser" checkbox
+  - `kartas-app/src/components/TwoFactorSettings.jsx` — Trusted Devices management section
+  - `kartas-app/src/locales/{en,es,pt-BR}/auth.json`, `settings.json` — new translation keys
+- **Migration**: `024_add_trusted_devices.sql`
+- **Status**: Done — `npm run build` clean, dev server HMR clean. Curl-verified end-to-end with a temp user enrolled in real TOTP: a login completed with `trustDevice: true` returns a `trustedDeviceToken`; a subsequent login using that token skips the challenge entirely (direct session, no `requiresTwoFactor`); an absent/wrong token still requires the challenge, no error. **Critically re-verified the separation `nextsteps.txt` asked for**: elevated the test user to admin and confirmed that even on a "trusted" browser session that skipped its login challenge, a `STEPUP-01`-gated action (`POST /backup/run`) still correctly returned `STEP_UP_REQUIRED` — trusted-device status never leaks into step-up gating. Also verified: the device list/revoke endpoints, that revoking a device actually restores the login challenge on the next attempt, and that disabling 2FA wipes all trusted devices for that account (confirmed via direct row count before/after). All seeded data cleaned up.
+
+---
+
+## [2026-08-02] — STEPUP-02 — Step-Up Re-Verification for Dangerous Actions (frontend + retrofit)
+
+- **Author**: Claude
+- **PRD Requirement**: STEPUP-02
+- **Summary**: The frontend half of `STEPUP-01` — a single shared step-up modal, mounted once at the app root via a new `StepUpContext`/`StepUpProvider` (wrapping `AppRoutes` alongside `AuthProvider` in `App.jsx`), exposing `requestStepUp()` to any component via `useStepUp()`. Mirrors `TwoFactorSettings.jsx`'s code-entry-with-resend UX (Phase 8) rather than inventing new UI: a code field, "Use a backup code instead" toggle, and — for email-method users — a resend action with the same 60-second cooldown pattern. `requestStepUp()` caches a verified grant **in memory only** (never `localStorage` — a step-up grant must never survive a page reload) and resolves immediately with the cached token on subsequent calls within its 5-minute window, only opening the modal when no valid cached grant exists. Wired into all five of Phase 8's already-shipped gated triggers, each now calling `requestStepUp()` immediately before its real request and attaching the resulting token as an `X-Step-Up-Token` header on that one call only (never set as a default `api` header): `UserManagement.jsx`'s delete-user, `ProjectView.jsx`'s remove-member, `AdminPaletteEditor.jsx`'s `persist()` (covers both preset-click and custom-palette save — both mutate), `AdminEmailSettings.jsx`'s save, and `AdminBackupSettings.jsx`'s save/"Back up now"/"Restore" (all three, not just the settings save). A small necessary backend addition rode along: `STEPUP-01` built `request`/`verify` but no `resend`, which the modal's email-method UX needs — added `POST /api/auth/2fa/step-up/resend` (authenticated, ownership-scoped), reusing the existing `resendEmailChallenge` helper exactly like `TFA-03`'s enrollment-resend and `TFA-05`'s login-resend already do.
+- **Files Changed**:
+  - `kartas-api/src/controllers/authController.js` — new `resendStepUp`
+  - `kartas-api/src/routes/auth.js` — new `POST /2fa/step-up/resend`
+  - `kartas-app/src/contexts/StepUpContext.jsx` (new) — `StepUpProvider`/`useStepUp`, the shared modal
+  - `kartas-app/src/App.jsx` — `StepUpProvider` mounted
+  - `kartas-app/src/pages/UserManagement.jsx`, `ProjectView.jsx` — gated actions call `requestStepUp()`
+  - `kartas-app/src/components/AdminPaletteEditor.jsx`, `AdminEmailSettings.jsx`, `AdminBackupSettings.jsx` — same
+  - `kartas-app/src/locales/{en,es,pt-BR}/common.json` — new `stepUp.*` keys
+- **Migration**: N/A
+- **Status**: Done — `npm run build` clean, dev server HMR clean across every edited file. Backend contract re-verified via curl end-to-end using the **exact header name/casing the frontend actually sends** (`X-Step-Up-Token`), confirming the full request → verify → gated-action cycle works through real HTTP headers, not just the already-proven logic from `STEPUP-01`. Also verified the new resend endpoint's edge cases: missing `challengeId` (400), and resending against a TOTP-method challenge (correctly rejected as not applicable — resend is email-only). Real click-through (confirming the modal actually appears, a wrong code is rejected, and a second gated action shortly after correctly skips re-prompting) not performed by the agent — no browser-automation tool available this session, consistent with every prior frontend requirement across Phases 7–9; **this sub-phase's regression risk (modifying five already-shipped, already-working buttons) makes that manual pass more important than usual before sub-phase 9.3 builds further on top.**
+
+---
+
+## [2026-08-02] — STEPUP-01 — Step-Up Re-Verification for Dangerous Actions (backend)
+
+- **Author**: Claude
+- **PRD Requirement**: STEPUP-01
+- **Summary**: Phase 8's `TFA-08`/`TFA-09` gated destructive actions and admin-settings saves purely on `req.user.twoFactorEnabled` — a static boolean, never requiring the caller to actually prove fresh possession of their second factor at the moment of the action. This requirement replaces that with a real, short-lived, reusable-within-window re-verification ("step-up" — an additive session elevation, not a forced re-login, per current best-practice research), applied uniformly to every action Phase 8 already gated. New `step_up_grants` table (`user_id`, `token` — plaintext, matching `refresh_tokens.token`'s existing precedent since this is a high-entropy random value, not a low-entropy secret needing bcrypt — `expires_at`). New authenticated `POST /api/auth/2fa/step-up/request` (creates a `two_factor_challenges` row, `purpose: 'step_up'`, identical shape to how `login()` already creates challenges) and `POST /api/auth/2fa/step-up/verify` (same TOTP/email/backup-code verification and 5-attempt lockout as the existing `verifyTwoFactor`, scoped to the caller's own challenges; on success, mints a grant token valid 5 minutes). New `requireStepUp` middleware (`middleware/auth.js`) and a parallel `hasValidStepUpGrant(req)` helper (`utils/stepUp.js`) for the three controllers that gate inline rather than via route middleware — both check an `X-Step-Up-Token` header against `step_up_grants`, **not consumed on match** (reusable for the full 5-minute window, so several consecutive admin actions don't each demand a separate code). Wired in on top of, not replacing, every existing `twoFactorEnabled` check: `routes/systemSettings.js`'s five mutating routes (`PUT theme`/`email`/`backup`, `POST backup/run`/`restore`), and `userController.deleteUser`/`projectController.deleteProject`/`projectController.removeMember`.
+- **Files Changed**:
+  - `kartas-api/src/migrations/023_add_step_up_grants.sql` — new `step_up_grants` table
+  - `kartas-api/src/utils/stepUp.js` (new) — `hasValidStepUpGrant`
+  - `kartas-api/src/middleware/auth.js` — new `requireStepUp`
+  - `kartas-api/src/controllers/authController.js` — new `requestStepUp`/`verifyStepUp`
+  - `kartas-api/src/routes/auth.js` — new `POST /2fa/step-up/request`, `POST /2fa/step-up/verify` (authenticated)
+  - `kartas-api/src/routes/systemSettings.js` — `requireStepUp` chained after `requireTwoFactor` on all five mutating routes
+  - `kartas-api/src/controllers/userController.js` — `deleteUser` gains the inline check
+  - `kartas-api/src/controllers/projectController.js` — `deleteProject`/`removeMember` gain the inline check
+- **Migration**: `023_add_step_up_grants.sql`
+- **Status**: Done — curl-verified end-to-end against a temp admin enrolled in real TOTP: confirmed `TWO_FACTOR_REQUIRED` still fires with no 2FA at all (unchanged baseline); confirmed the **new** `STEP_UP_REQUIRED` fires once 2FA is enabled but no fresh grant exists (a real, verified behavior change to five already-shipped, already-working Phase 8 routes); full request→verify flow including wrong-code rejection; a single grant successfully reused across three different actions (`PUT theme`, `POST backup/run`, `DELETE /users/:id`) within its window, confirming the reusable-not-single-use design; a garbage token and a since-expired grant (expired directly in the DB rather than waiting 5 real minutes) both correctly rejected. Hit the same `system_theme_settings.updated_by` FK cleanup wrinkle as Phase 8's equivalent verification (a test `PUT theme` round-trip stamps the temp user's id into that column) — same fix applied (null it before deleting the temp user). All seeded rows cleaned up.
+
+---
+
 ## [2026-08-02] — KFA-01/ICON-01/KW-01 — Kanban Assignee Filter, Gear Settings Icon, Wider Columns
 
 - **Author**: Claude

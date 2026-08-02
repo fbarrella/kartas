@@ -26,6 +26,10 @@
             "title": "Backups",
             "description": "Somente administradores. Configure backups automáticos do banco de dados, execute um sob demanda e restaure a partir de um backup anterior."
         },
+        "recaptcha": {
+            "title": "reCAPTCHA",
+            "description": "Somente administradores. Configure o Google reCAPTCHA para as páginas de Login, Cadastro e Configuração de Administrador. Campos definidos por variáveis de ambiente têm prioridade e não podem ser editados aqui."
+        },
         "twoFactor": {
             "title": "Autenticação de Dois Fatores",
             "description": "Adicione uma camada extra de segurança à sua conta. Uma vez ativada, exclusões e alterações nas configurações de administrador que você fizer também exigirão isso."
@@ -93,7 +97,17 @@
             "disabling": "Desativando...",
             "error": "Falha ao desativar a autenticação de dois fatores"
         },
-        "passwordLabel": "Senha Atual"
+        "passwordLabel": "Senha Atual",
+        "trustedDevices": {
+            "title": "Dispositivos Confiáveis",
+            "empty": "Nenhum dispositivo confiável.",
+            "revoke": "Revogar",
+            "revokeAll": "Revogar Todos",
+            "unknownDevice": "Dispositivo desconhecido",
+            "expires": "Expira em {{date}}",
+            "loadError": "Falha ao carregar dispositivos confiáveis",
+            "revokeError": "Falha ao revogar dispositivo confiável"
+        }
     },
     "paletteEditor": {
         "loading": "Carregando as configurações de tema do sistema...",
@@ -188,5 +202,15 @@
         "confirmLabel": "Digite {{word}} para confirmar",
         "restoreButton": "Restaurar Banco de Dados",
         "restoring": "Restaurando..."
+    },
+    "recaptchaSettings": {
+        "loading": "Carregando as configurações de reCAPTCHA do sistema...",
+        "unavailable": "As configurações de reCAPTCHA do sistema não estão disponíveis",
+        "loadError": "Falha ao carregar as configurações de reCAPTCHA do sistema",
+        "saveSuccess": "Configurações de reCAPTCHA salvas",
+        "saveError": "Falha ao salvar as configurações de reCAPTCHA",
+        "siteKey": "Chave do Site",
+        "secretKey": "Chave Secreta",
+        "saveButton": "Salvar Configurações de reCAPTCHA"
     }
 }

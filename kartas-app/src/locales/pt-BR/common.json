@@ -32,6 +32,23 @@
     "upload": "Enviar arquivo",
     "someone": "Alguém",
     "twoFactorRequiredTooltip": "Ative a Autenticação de Dois Fatores em Configurações para usar esta ação",
+    "stepUp": {
+        "title": "Confirme que é Você",
+        "subtitleTotp": "Digite o código de 6 dígitos do seu app autenticador para continuar",
+        "subtitleEmail": "Digite o código de 6 dígitos enviado para seu e-mail para continuar",
+        "subtitleBackupCode": "Digite um dos seus códigos de backup para continuar",
+        "codeLabel": "Código de Verificação",
+        "backupCodeLabel": "Código de Backup",
+        "verifyButton": "Verificar",
+        "verifying": "Verificando...",
+        "useBackupCode": "Usar um código de backup em vez disso",
+        "useVerificationCode": "Usar seu código de verificação em vez disso",
+        "resendButton": "Reenviar código",
+        "resendCooldown": "Reenviar em {{seconds}}s",
+        "resendError": "Falha ao reenviar o código",
+        "verifyError": "Código inválido",
+        "startError": "Falha ao iniciar a verificação"
+    },
     "relativeTime": {
         "justNow": "agora mesmo",
         "minutesAgo": "há {{count}}m",

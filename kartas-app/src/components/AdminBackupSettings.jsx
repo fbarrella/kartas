@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useStepUp } from '../contexts/StepUpContext';
 
 // BKP-03/BKP-04: mirrors AdminEmailSettings.jsx's structure (own loading/error/
 // saving/successMessage state, fetch-on-mount, api.get/api.put). Unlike email
@@ -37,6 +38,7 @@ const PasswordField = ({ label, configured, value, onChange }) => {
 const AdminBackupSettings = () => {
     const { t } = useTranslation(['settings', 'common']);
     const { user } = useAuth();
+    const { requestStepUp } = useStepUp();
     // TFA-09: mirrors the backend's requireTwoFactor gate on the save/run/
     // restore routes — a disabled-button UX backstop, not the real enforcement.
     const twoFactorRequired = !user?.twoFactorEnabled;
@@ -136,13 +138,18 @@ const AdminBackupSettings = () => {
         if (draft.s3SecretAccessKey) payload.s3SecretAccessKey = draft.s3SecretAccessKey;
 
         try {
-            const response = await api.put('/system-settings/backup', payload);
+            // STEPUP-02: a fresh 2FA re-verification is required on top of
+            // the existing twoFactorEnabled precondition.
+            const stepUpToken = await requestStepUp();
+            const response = await api.put('/system-settings/backup', payload, { headers: { 'X-Step-Up-Token': stepUpToken } });
             setData(response.data);
             setDraft(draftFrom(response.data));
             setSuccessMessage(t('settings:backupSettings.saveSuccess'));
             setTimeout(() => setSuccessMessage(''), 3000);
         } catch (err) {
-            setError(err.response?.data?.error || t('settings:backupSettings.saveError'));
+            if (err?.message !== 'cancelled') {
+                setError(err.response?.data?.error || err.message || t('settings:backupSettings.saveError'));
+            }
         } finally {
             setSaving(false);
         }
@@ -153,7 +160,10 @@ const AdminBackupSettings = () => {
         setRunMessage('');
         setRunError('');
         try {
-            const response = await api.post('/system-settings/backup/run');
+            // STEPUP-02: a fresh 2FA re-verification is required on top of
+            // the existing twoFactorEnabled precondition.
+            const stepUpToken = await requestStepUp();
+            const response = await api.post('/system-settings/backup/run', null, { headers: { 'X-Step-Up-Token': stepUpToken } });
             if (response.data.status === 'success') {
                 setRunMessage(t('settings:backupSettings.backupCompleted', { filename: response.data.filename }));
             } else {
@@ -161,7 +171,9 @@ const AdminBackupSettings = () => {
             }
             fetchHistory(0);
         } catch (err) {
-            setRunError(err.response?.data?.error || t('settings:backupSettings.runError'));
+            if (err?.message !== 'cancelled') {
+                setRunError(err.response?.data?.error || err.message || t('settings:backupSettings.runError'));
+            }
         } finally {
             setRunningBackup(false);
         }
@@ -205,10 +217,15 @@ const AdminBackupSettings = () => {
                 }
                 payload = { backupHistoryId: restoreHistoryId };
             }
-            await api.post('/system-settings/backup/restore', payload);
+            // STEPUP-02: a fresh 2FA re-verification is required on top of
+            // the existing twoFactorEnabled precondition.
+            const stepUpToken = await requestStepUp();
+            await api.post('/system-settings/backup/restore', payload, { headers: { 'X-Step-Up-Token': stepUpToken } });
             setRestoreSuccess(t('settings:backupSettings.restoreSuccess'));
         } catch (err) {
-            setRestoreError(err.response?.data?.error || t('settings:backupSettings.restoreError'));
+            if (err?.message !== 'cancelled') {
+                setRestoreError(err.response?.data?.error || err.message || t('settings:backupSettings.restoreError'));
+            }
         } finally {
             setRestoring(false);
             setConfirmPhrase('');

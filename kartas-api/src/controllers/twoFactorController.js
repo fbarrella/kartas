@@ -262,10 +262,61 @@ export const twoFactorController = {
                 [req.user.userId]
             );
             await query('DELETE FROM two_factor_backup_codes WHERE user_id = $1', [req.user.userId]);
+            // TRUST-01: a device trust with no active 2FA method behind it is
+            // meaningless and must not silently persist past a disable cycle.
+            await query('DELETE FROM trusted_devices WHERE user_id = $1', [req.user.userId]);
 
             res.json({ message: 'Two-factor authentication disabled' });
         } catch (error) {
             console.error('Error disabling two-factor authentication:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
+    // TRUST-01: list/revoke the caller's own trusted devices. Never returns
+    // the token itself — only enough to identify a row to revoke.
+    async listTrustedDevices(req, res) {
+        try {
+            const result = await query(
+                'SELECT id, label, expires_at, last_used_at, created_at FROM trusted_devices WHERE user_id = $1 ORDER BY created_at DESC',
+                [req.user.userId]
+            );
+            res.json(result.rows.map((row) => ({
+                id: row.id,
+                label: row.label,
+                expiresAt: row.expires_at,
+                lastUsedAt: row.last_used_at,
+                createdAt: row.created_at
+            })));
+        } catch (error) {
+            console.error('Error listing trusted devices:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
+    async revokeTrustedDevice(req, res) {
+        try {
+            const { id } = req.params;
+            const result = await query(
+                'DELETE FROM trusted_devices WHERE id = $1 AND user_id = $2 RETURNING id',
+                [id, req.user.userId]
+            );
+            if (result.rows.length === 0) {
+                return res.status(404).json({ error: 'Trusted device not found' });
+            }
+            res.json({ message: 'Trusted device revoked' });
+        } catch (error) {
+            console.error('Error revoking trusted device:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
+    async revokeAllTrustedDevices(req, res) {
+        try {
+            await query('DELETE FROM trusted_devices WHERE user_id = $1', [req.user.userId]);
+            res.json({ message: 'All trusted devices revoked' });
+        } catch (error) {
+            console.error('Error revoking trusted devices:', error);
             res.status(500).json({ error: 'Server error' });
         }
     }

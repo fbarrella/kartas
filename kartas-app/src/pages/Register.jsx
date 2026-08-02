@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '../services/api';
-import RecaptchaWidget, { isRecaptchaConfigured } from '../components/RecaptchaWidget';
+import RecaptchaWidget, { useRecaptchaSiteKey } from '../components/RecaptchaWidget';
 import kartasLogo from '../assets/kartas-logo.png';
 
 const Register = () => {
@@ -21,7 +21,8 @@ const Register = () => {
     });
     const [error, setError] = useState('');
 
-    // CAPTCHA-02
+    // CAPTCHA-02/RECAP-03
+    const { siteKey: recaptchaSiteKey, loading: recaptchaLoading } = useRecaptchaSiteKey();
     const [recaptchaToken, setRecaptchaToken] = useState(null);
     const [recaptchaResetKey, setRecaptchaResetKey] = useState(0);
 
@@ -179,7 +180,7 @@ const Register = () => {
                     <button
                         type="submit"
                         className="btn btn-primary btn-block"
-                        disabled={isRecaptchaConfigured && !recaptchaToken}
+                        disabled={!recaptchaLoading && recaptchaSiteKey && !recaptchaToken}
                     >
                         {t('auth:register.createAccountButton')}
                     </button>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
-import RecaptchaWidget, { isRecaptchaConfigured } from '../components/RecaptchaWidget';
+import RecaptchaWidget, { useRecaptchaSiteKey } from '../components/RecaptchaWidget';
 import kartasLogo from '../assets/kartas-logo.png';
 
 const Login = () => {
@@ -28,8 +28,10 @@ const Login = () => {
     const [twoFactorCode, setTwoFactorCode] = useState('');
     const [useBackupCode, setUseBackupCode] = useState(false);
     const [resendCooldown, setResendCooldown] = useState(0);
+    const [trustDevice, setTrustDevice] = useState(false); // TRUST-02
 
-    // CAPTCHA-02
+    // CAPTCHA-02/RECAP-03
+    const { siteKey: recaptchaSiteKey, loading: recaptchaLoading } = useRecaptchaSiteKey();
     const [recaptchaToken, setRecaptchaToken] = useState(null);
     const [recaptchaResetKey, setRecaptchaResetKey] = useState(0);
 
@@ -99,7 +101,7 @@ const Login = () => {
         setError('');
         setLoading(true);
 
-        const result = await verifyTwoFactor(twoFactorChallenge.challengeId, twoFactorCode, useBackupCode);
+        const result = await verifyTwoFactor(twoFactorChallenge.challengeId, twoFactorCode, useBackupCode, trustDevice, formData.email);
 
         setLoading(false);
 
@@ -180,15 +182,22 @@ const Login = () => {
                             />
                         </div>
 
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="flex flex-gap-sm" style={{ alignItems: 'center' }}>
+                                <input type="checkbox" checked={trustDevice} onChange={(e) => setTrustDevice(e.target.checked)} />
+                                {t('auth:twoFactor.trustDevice')}
+                            </label>
+                        </div>
+
                         {error && (
-                            <div className="form-error mb-md">
+                            <div className="form-error mt-md mb-md">
                                 {error}
                             </div>
                         )}
 
                         <button
                             type="submit"
-                            className="btn btn-primary btn-lg"
+                            className="btn btn-primary btn-lg mt-md"
                             style={{ width: '100%' }}
                             disabled={loading}
                         >
@@ -327,7 +336,7 @@ const Login = () => {
                         type="submit"
                         className="btn btn-primary btn-lg"
                         style={{ width: '100%' }}
-                        disabled={loading || (isRecaptchaConfigured && !recaptchaToken)}
+                        disabled={loading || (!recaptchaLoading && recaptchaSiteKey && !recaptchaToken)}
                     >
                         {loading ? t('auth:login.signingIn') : t('auth:login.signInButton')}
                     </button>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useStepUp } from '../contexts/StepUpContext';
 
 // MAIL-03: mirrors AdminPaletteEditor.jsx's structure (own loading/error/saving/
 // successMessage state, fetch-on-mount, api.get/api.put) so the two admin cards
@@ -58,6 +59,7 @@ const PasswordField = ({ label, field, value, onChange }) => {
 const AdminEmailSettings = () => {
     const { t } = useTranslation(['settings', 'common']);
     const { user } = useAuth();
+    const { requestStepUp } = useStepUp();
     // TFA-09: mirrors the backend's requireTwoFactor gate on PUT /email — a
     // disabled-button UX backstop, not the real enforcement.
     const twoFactorRequired = !user?.twoFactorEnabled;
@@ -121,13 +123,18 @@ const AdminEmailSettings = () => {
         if (fields.emailFrom.editable) payload.emailFrom = draft.emailFrom || null;
 
         try {
-            const response = await api.put('/system-settings/email', payload);
+            // STEPUP-02: a fresh 2FA re-verification is required on top of
+            // the existing twoFactorEnabled precondition.
+            const stepUpToken = await requestStepUp();
+            const response = await api.put('/system-settings/email', payload, { headers: { 'X-Step-Up-Token': stepUpToken } });
             setData(response.data);
             setDraft(draftFrom(response.data));
             setSuccessMessage(t('settings:emailSettings.saveSuccess'));
             setTimeout(() => setSuccessMessage(''), 3000);
         } catch (err) {
-            setError(err.response?.data?.error || t('settings:emailSettings.saveError'));
+            if (err?.message !== 'cancelled') {
+                setError(err.response?.data?.error || err.message || t('settings:emailSettings.saveError'));
+            }
         } finally {
             setSaving(false);
         }

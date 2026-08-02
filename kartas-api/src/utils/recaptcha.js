@@ -1,11 +1,13 @@
+import { getRecaptchaConfig } from '../config/recaptcha.js';
+
 const SITEVERIFY_URL = 'https://www.google.com/recaptcha/api/siteverify';
 
-// CAPTCHA-01: if RECAPTCHA_SECRET_KEY is unset, the check no-ops rather than
-// blocking — mirrors config/email.js's "unconfigured means the feature is
-// silently off" convention, so local dev needs zero Google setup. Node 18's
-// built-in fetch is used; no new HTTP client dependency.
+// CAPTCHA-01/RECAP-01: if no secret key is configured (env or database), the
+// check no-ops rather than blocking — mirrors config/email.js's "unconfigured
+// means the feature is silently off" convention, so local dev needs zero
+// Google setup. Node 18's built-in fetch is used; no new HTTP client dependency.
 export async function verifyRecaptcha(token, remoteIp) {
-    const secret = process.env.RECAPTCHA_SECRET_KEY;
+    const { secretKey: secret } = await getRecaptchaConfig();
 
     if (!secret) {
         return { success: true, skipped: true };

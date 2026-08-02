@@ -26,6 +26,10 @@
             "title": "Copias de Seguridad",
             "description": "Solo administradores. Configura copias de seguridad automáticas de la base de datos, ejecuta una manualmente y restaura desde una copia anterior."
         },
+        "recaptcha": {
+            "title": "reCAPTCHA",
+            "description": "Solo administradores. Configura Google reCAPTCHA para las páginas de Inicio de Sesión, Registro y Configuración de Administrador. Los campos definidos mediante variables de entorno tienen prioridad y no se pueden editar aquí."
+        },
         "twoFactor": {
             "title": "Autenticación de Dos Factores",
             "description": "Añade una capa extra de seguridad a tu cuenta. Una vez activada, las eliminaciones y los cambios en la configuración de administrador que realices también la requerirán."
@@ -93,7 +97,17 @@
             "disabling": "Desactivando...",
             "error": "No se pudo desactivar la autenticación de dos factores"
         },
-        "passwordLabel": "Contraseña Actual"
+        "passwordLabel": "Contraseña Actual",
+        "trustedDevices": {
+            "title": "Dispositivos de Confianza",
+            "empty": "No hay dispositivos de confianza.",
+            "revoke": "Revocar",
+            "revokeAll": "Revocar Todos",
+            "unknownDevice": "Dispositivo desconocido",
+            "expires": "Expira el {{date}}",
+            "loadError": "No se pudieron cargar los dispositivos de confianza",
+            "revokeError": "No se pudo revocar el dispositivo de confianza"
+        }
     },
     "paletteEditor": {
         "loading": "Cargando la configuración del tema del sistema...",
@@ -188,5 +202,15 @@
         "confirmLabel": "Escribe {{word}} para confirmar",
         "restoreButton": "Restaurar Base de Datos",
         "restoring": "Restaurando..."
+    },
+    "recaptchaSettings": {
+        "loading": "Cargando la configuración de reCAPTCHA del sistema...",
+        "unavailable": "La configuración de reCAPTCHA del sistema no está disponible",
+        "loadError": "No se pudo cargar la configuración de reCAPTCHA del sistema",
+        "saveSuccess": "Configuración de reCAPTCHA guardada",
+        "saveError": "No se pudo guardar la configuración de reCAPTCHA",
+        "siteKey": "Clave del Sitio",
+        "secretKey": "Clave Secreta",
+        "saveButton": "Guardar Configuración de reCAPTCHA"
     }
 }

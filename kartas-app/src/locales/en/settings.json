@@ -26,6 +26,10 @@
             "title": "Backups",
             "description": "Admin-only. Configure automatic database backups, trigger one on demand, and restore from a previous backup."
         },
+        "recaptcha": {
+            "title": "reCAPTCHA",
+            "description": "Admin-only. Configure Google reCAPTCHA for the Login, Register, and Admin Setup pages. Fields set via environment variables take precedence and can't be edited here."
+        },
         "twoFactor": {
             "title": "Two-Factor Authentication",
             "description": "Add an extra layer of security to your account. Once enabled, deletions and admin settings changes you make also require it."
@@ -93,7 +97,17 @@
             "disabling": "Disabling...",
             "error": "Failed to disable two-factor authentication"
         },
-        "passwordLabel": "Current Password"
+        "passwordLabel": "Current Password",
+        "trustedDevices": {
+            "title": "Trusted Devices",
+            "empty": "No trusted devices.",
+            "revoke": "Revoke",
+            "revokeAll": "Revoke All",
+            "unknownDevice": "Unknown device",
+            "expires": "Expires {{date}}",
+            "loadError": "Failed to load trusted devices",
+            "revokeError": "Failed to revoke trusted device"
+        }
     },
     "paletteEditor": {
         "loading": "Loading system theme settings...",
@@ -188,5 +202,15 @@
         "confirmLabel": "Type {{word}} to confirm",
         "restoreButton": "Restore Database",
         "restoring": "Restoring..."
+    },
+    "recaptchaSettings": {
+        "loading": "Loading system reCAPTCHA settings...",
+        "unavailable": "System reCAPTCHA settings unavailable",
+        "loadError": "Failed to load system reCAPTCHA settings",
+        "saveSuccess": "reCAPTCHA settings saved",
+        "saveError": "Failed to save reCAPTCHA settings",
+        "siteKey": "Site Key",
+        "secretKey": "Secret Key",
+        "saveButton": "Save reCAPTCHA Settings"
     }
 }

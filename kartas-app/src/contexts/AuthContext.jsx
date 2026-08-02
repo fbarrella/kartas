@@ -180,9 +180,14 @@ export const AuthProvider = ({ children }) => {
         return userData;
     };
 
+    // TRUST-01/02: namespaced by email (not user id — email is the only
+    // stable identifier known before the server confirms who's logging in).
+    const trustedDeviceKey = (email) => `trustedDevice_${email.trim().toLowerCase()}`;
+
     const login = async (email, password, recaptchaToken) => {
         try {
-            const response = await api.post('/auth/login', { email, password, recaptchaToken });
+            const trustedDeviceToken = localStorage.getItem(trustedDeviceKey(email)) || undefined;
+            const response = await api.post('/auth/login', { email, password, recaptchaToken, trustedDeviceToken });
 
             if (response.data.requiresTwoFactor) {
                 const { method, challengeId } = response.data;
@@ -199,11 +204,16 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // TFA-07: completes a 2FA-challenged login started by login() above.
-    const verifyTwoFactor = async (challengeId, code, isBackupCode = false) => {
+    // TFA-07/TRUST-02: completes a 2FA-challenged login started by login()
+    // above. `email` is only used to namespace the trusted-device token in
+    // localStorage if the caller opts to trust this browser.
+    const verifyTwoFactor = async (challengeId, code, isBackupCode = false, trustDevice = false, email = '') => {
         try {
-            const response = await api.post('/auth/2fa/verify', { challengeId, code, isBackupCode });
+            const response = await api.post('/auth/2fa/verify', { challengeId, code, isBackupCode, trustDevice });
             const userData = establishSession(response.data);
+            if (response.data.trustedDeviceToken && email) {
+                localStorage.setItem(trustedDeviceKey(email), response.data.trustedDeviceToken);
+            }
             return { success: true, user: userData };
         } catch (error) {
             return {

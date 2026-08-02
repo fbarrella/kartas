@@ -45,6 +45,10 @@ const TwoFactorSettings = () => {
     const [copied, setCopied] = useState(false);
     const [resendCooldown, setResendCooldown] = useState(0);
 
+    // TRUST-02
+    const [trustedDevices, setTrustedDevices] = useState(null);
+    const [devicesError, setDevicesError] = useState('');
+
     const isEnabled = !!user?.twoFactorEnabled;
 
     useEffect(() => {
@@ -52,6 +56,40 @@ const TwoFactorSettings = () => {
         const timer = setInterval(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
         return () => clearInterval(timer);
     }, [resendCooldown]);
+
+    useEffect(() => {
+        if (!isEnabled) return;
+        fetchTrustedDevices();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isEnabled]);
+
+    const fetchTrustedDevices = async () => {
+        try {
+            const response = await api.get('/users/2fa/trusted-devices');
+            setTrustedDevices(response.data);
+        } catch (err) {
+            console.error('Error fetching trusted devices:', err);
+            setDevicesError(t('settings:twoFactor.trustedDevices.loadError'));
+        }
+    };
+
+    const revokeDevice = async (id) => {
+        try {
+            await api.delete(`/users/2fa/trusted-devices/${id}`);
+            fetchTrustedDevices();
+        } catch (err) {
+            setDevicesError(err.response?.data?.error || t('settings:twoFactor.trustedDevices.revokeError'));
+        }
+    };
+
+    const revokeAllDevices = async () => {
+        try {
+            await api.delete('/users/2fa/trusted-devices');
+            fetchTrustedDevices();
+        } catch (err) {
+            setDevicesError(err.response?.data?.error || t('settings:twoFactor.trustedDevices.revokeError'));
+        }
+    };
 
     const resetModalState = () => {
         setView(null);
@@ -228,6 +266,43 @@ const TwoFactorSettings = () => {
                     </>
                 )}
             </div>
+
+            {isEnabled && trustedDevices && (
+                <div className="mt-lg">
+                    <div className="flex flex-between" style={{ alignItems: 'center' }}>
+                        <h4 style={{ margin: 0 }}>{t('settings:twoFactor.trustedDevices.title')}</h4>
+                        {trustedDevices.length > 0 && (
+                            <button type="button" className="btn btn-secondary btn-sm" onClick={revokeAllDevices}>
+                                {t('settings:twoFactor.trustedDevices.revokeAll')}
+                            </button>
+                        )}
+                    </div>
+                    {devicesError && <div className="form-error mt-sm">{devicesError}</div>}
+                    {trustedDevices.length === 0 ? (
+                        <p className="text-muted mt-sm">{t('settings:twoFactor.trustedDevices.empty')}</p>
+                    ) : (
+                        <div className="mt-sm">
+                            {trustedDevices.map((device) => (
+                                <div
+                                    key={device.id}
+                                    className="flex flex-between"
+                                    style={{ alignItems: 'center', padding: 'var(--spacing-sm) 0', borderBottom: '1px solid var(--color-border)' }}
+                                >
+                                    <div>
+                                        <div>{device.label || t('settings:twoFactor.trustedDevices.unknownDevice')}</div>
+                                        <small className="text-muted">
+                                            {t('settings:twoFactor.trustedDevices.expires', { date: new Date(device.expiresAt).toLocaleDateString() })}
+                                        </small>
+                                    </div>
+                                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => revokeDevice(device.id)}>
+                                        {t('settings:twoFactor.trustedDevices.revoke')}
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {view === 'choose-method' && (
                 <ModalShell onClose={resetModalState}>

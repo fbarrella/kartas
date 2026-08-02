@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
-import RecaptchaWidget, { isRecaptchaConfigured } from '../components/RecaptchaWidget';
+import RecaptchaWidget, { useRecaptchaSiteKey } from '../components/RecaptchaWidget';
 import kartasLogo from '../assets/kartas-logo.png';
 
 const AdminSetup = () => {
@@ -20,7 +20,8 @@ const AdminSetup = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // CAPTCHA-02
+    // CAPTCHA-02/RECAP-03
+    const { siteKey: recaptchaSiteKey, loading: recaptchaLoading } = useRecaptchaSiteKey();
     const [recaptchaToken, setRecaptchaToken] = useState(null);
     const [recaptchaResetKey, setRecaptchaResetKey] = useState(0);
 
@@ -157,7 +158,7 @@ const AdminSetup = () => {
                         type="submit"
                         className="btn btn-primary btn-lg"
                         style={{ width: '100%' }}
-                        disabled={loading || (isRecaptchaConfigured && !recaptchaToken)}
+                        disabled={loading || (!recaptchaLoading && recaptchaSiteKey && !recaptchaToken)}
                     >
                         {loading ? t('auth:adminSetup.creatingAdmin') : t('auth:adminSetup.createAdminButton')}
                     </button>

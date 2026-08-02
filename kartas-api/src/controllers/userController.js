@@ -1,5 +1,6 @@
 import { query } from '../config/database.js';
 import bcrypt from 'bcrypt';
+import { hasValidStepUpGrant } from '../utils/stepUp.js';
 
 export const userController = {
     // Get all users (admin only)
@@ -336,6 +337,14 @@ export const userController = {
                 return res.status(403).json({
                     error: 'Two-factor authentication is required to delete a user',
                     code: 'TWO_FACTOR_REQUIRED'
+                });
+            }
+
+            // STEPUP-01: a fresh re-verification, not just "2FA enabled at all".
+            if (!(await hasValidStepUpGrant(req))) {
+                return res.status(403).json({
+                    error: 'A fresh two-factor re-verification is required to delete a user',
+                    code: 'STEP_UP_REQUIRED'
                 });
             }
 

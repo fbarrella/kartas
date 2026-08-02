@@ -36,4 +36,10 @@ router.post('/logout', authController.logout);
 router.post('/2fa/verify', authController.verifyTwoFactor);
 router.post('/2fa/resend', authController.resendTwoFactorChallenge);
 
+// STEPUP-01: authenticated — unlike login's challenge, a step-up challenge
+// proves fresh 2FA possession for an already-logged-in session.
+router.post('/2fa/step-up/request', authenticateToken, authController.requestStepUp);
+router.post('/2fa/step-up/verify', authenticateToken, authController.verifyStepUp);
+router.post('/2fa/step-up/resend', authenticateToken, authController.resendStepUp);
+
 export default router;

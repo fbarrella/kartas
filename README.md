@@ -96,6 +96,12 @@ A modern, comprehensive alternative to Jira for agile team management, built wit
 - **Kanban Assignee Filter**: Click a sprint-participant avatar next to the Kanban board's elapsed-time bar to show only that person's cards; click again (or "Show all users") to clear the filter
 - **UI Polish**: The system Settings menu icon changed from a sun to a gear, now that Settings covers far more than dark mode; Kanban columns are a bit wider for readability
 
+### Phase 9 Additions
+- **Step-Up Re-Verification**: Deleting a user, deleting a project, removing a team member, and every admin-only settings save (color palette, email, backups, reCAPTCHA) now require a fresh, short-lived 2FA code check at the moment of the action — not just having 2FA enabled. One re-verification stays valid for a few minutes, so a few consecutive admin actions don't each demand a separate code
+- **Trusted Devices**: An opt-in "trust this browser for 30 days" checkbox on the 2FA login challenge, so a recognized browser skips the code step on future logins — password is always still required, and dangerous actions always still require a fresh code regardless of device trust. Trusted devices can be viewed and revoked individually (or all at once) from Settings
+- **Admin-Only Project Settings**: Project owners/admins can rename a project, change its description, or delete it entirely from the project's Settings page — each action gated behind a typed confirmation (the project's exact name, for delete) and a fresh 2FA re-verification
+- **Configurable reCAPTCHA**: Admins can now set the reCAPTCHA site/secret keys at runtime from Settings, the same way email delivery works — environment variables still take precedence and lock the fields read-only when set, with the secret key never echoed back
+
 ### Additional Features
 - **Story Detail Page**: Full-page view with all story information
 - **Team Collaboration**: Assign stories to team members
@@ -221,6 +227,7 @@ This project is being developed in phases:
 - **Phase 6**: ✅ Kanban polish (participant avatars, view/edit modal parity) · ✅ Story comments & @mentions (people and tickets) · ✅ Story change history · ✅ "For You" page overhaul (customizable widget grid, Team Workload chart, Sprint Countdown, Latest Activities) · ✅ Dark mode · ✅ Admin-customizable system color palette · ✅ Uniform page margins
 - **Phase 7**: ✅ Drag-and-drop library migration, tooltips & epic filter colors · ✅ Clone/migrate stories · ✅ Per-sprint backlog blocks · ✅ Epic Detail page & combined search · ✅ Two-tab Settings page & runtime email configuration · ✅ Database backup & restore · ✅ Internationalization (English, Spanish, Brazilian Portuguese)
 - **Phase 8**: ✅ Two-factor authentication (TOTP & email, backup codes, gated deletions & admin settings) · ✅ Google reCAPTCHA on Login/Register/Admin Setup · ✅ Kanban assignee filter · ✅ Settings icon & Kanban column width polish
+- **Phase 9**: ✅ Step-up re-verification for dangerous actions (fresh 2FA code, not just "enabled") · ✅ Trusted devices ("remember this browser") · ✅ Admin-only Project Settings (rename, description, delete) · ✅ Admin-configurable reCAPTCHA
 
 See [`DEVLOG.md`](./DEVLOG.md) for the detailed, dated changelog of every change, across every phase.
 

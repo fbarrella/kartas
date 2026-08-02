@@ -14,4 +14,9 @@ router.post('/email/resend', twoFactorController.resendEmail);
 router.post('/backup-codes/regenerate', twoFactorController.regenerateBackupCodes);
 router.post('/disable', twoFactorController.disable);
 
+// TRUST-01
+router.get('/trusted-devices', twoFactorController.listTrustedDevices);
+router.delete('/trusted-devices/:id', twoFactorController.revokeTrustedDevice);
+router.delete('/trusted-devices', twoFactorController.revokeAllTrustedDevices);
+
 export default router;
