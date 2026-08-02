@@ -111,7 +111,8 @@ export const userController = {
             const userId = req.user.userId;
 
             const result = await query(
-                `SELECT id, email, first_name, last_name, role, avatar_url, theme_preference, language_preference, created_at
+                `SELECT id, email, first_name, last_name, role, avatar_url, theme_preference, language_preference,
+                        two_factor_enabled, two_factor_method, created_at
                  FROM users WHERE id = $1`,
                 [userId]
             );
@@ -131,6 +132,8 @@ export const userController = {
                 avatarUrl: user.avatar_url,
                 themePreference: user.theme_preference,
                 languagePreference: user.language_preference,
+                twoFactorEnabled: user.two_factor_enabled,
+                twoFactorMethod: user.two_factor_method,
                 createdAt: user.created_at
             });
         } catch (error) {

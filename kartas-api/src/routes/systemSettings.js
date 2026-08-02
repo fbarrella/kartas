@@ -21,6 +21,9 @@ router.put('/theme', requireAdmin, systemSettingsController.updateTheme);
 router.get('/email', requireAdmin, systemSettingsController.getEmail);
 router.put('/email', requireAdmin, systemSettingsController.updateEmail);
 
+// TFA-03: authenticated only, no requireAdmin — see systemSettingsController.getEmailStatus
+router.get('/email/status', systemSettingsController.getEmailStatus);
+
 // BKP-01/02/03/04: backup settings, history, manual trigger, download, and
 // restore — kept in a dedicated backupController.js rather than
 // systemSettingsController.js given the amount of logic involved.

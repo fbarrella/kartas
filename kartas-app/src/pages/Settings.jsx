@@ -7,6 +7,7 @@ import Breadcrumb from '../components/Breadcrumb';
 import AdminPaletteEditor from '../components/AdminPaletteEditor';
 import AdminEmailSettings from '../components/AdminEmailSettings';
 import AdminBackupSettings from '../components/AdminBackupSettings';
+import TwoFactorSettings from '../components/TwoFactorSettings';
 import '../components/navigation.css';
 import kartasLogoWhite from '../assets/kartas-logo-white.png';
 
@@ -125,6 +126,16 @@ const Settings = () => {
                             </select>
                             <small className="text-muted" style={{ display: 'block', marginTop: 'var(--spacing-sm)' }}>{t('settings:page.appearance.languageHelp')}</small>
                         </div>
+                    </div>
+                )}
+
+                {(!isAdmin || activeTab === 'personal') && (
+                    <div className="card mt-lg">
+                        <h2>{t('settings:page.twoFactor.title')}</h2>
+                        <p className="text-muted mb-md" style={{ fontSize: 'var(--font-size-sm)' }}>
+                            {t('settings:page.twoFactor.description')}
+                        </p>
+                        <TwoFactorSettings />
                     </div>
                 )}
 

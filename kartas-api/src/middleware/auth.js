@@ -15,7 +15,7 @@ export const authenticateToken = async (req, res, next) => {
 
         // Verify user still exists
         const result = await query(
-            'SELECT id, email, role, first_name, last_name FROM users WHERE id = $1',
+            'SELECT id, email, role, first_name, last_name, two_factor_enabled FROM users WHERE id = $1',
             [decoded.userId]
         );
 
@@ -27,7 +27,8 @@ export const authenticateToken = async (req, res, next) => {
             userId: decoded.userId,
             email: decoded.email,
             role: decoded.role,
-            ...result.rows[0]
+            ...result.rows[0],
+            twoFactorEnabled: result.rows[0].two_factor_enabled
         };
 
         next();
@@ -55,3 +56,22 @@ export const requireRole = (...roles) => {
 
 export const requireAdmin = requireRole('admin');
 export const requireProjectOwner = requireRole('admin', 'project_owner');
+
+// TFA-01: gates an action behind the requester's own 2FA being enabled — used
+// alongside requireAdmin/requireProjectOwner wherever the PRD requires 2FA as
+// a precondition (destructive deletions, admin settings saves), not as a
+// replacement for those role checks.
+export const requireTwoFactor = (req, res, next) => {
+    if (!req.user) {
+        return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    if (!req.user.twoFactorEnabled) {
+        return res.status(403).json({
+            error: 'Two-factor authentication is required for this action',
+            code: 'TWO_FACTOR_REQUIRED'
+        });
+    }
+
+    next();
+};

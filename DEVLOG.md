@@ -4,6 +4,52 @@ Development log for all Kartas changes, across every phase. Each entry records w
 
 ---
 
+## [2026-08-02] — TFA-06/TFA-07 — Two-Factor Authentication (frontend)
+
+- **Author**: Claude
+- **PRD Requirement**: TFA-06, TFA-07
+- **Summary**: The 2FA frontend, wired to sub-phase 8.1's backend. `TFA-06` added a new "Two-Factor Authentication" card (`TwoFactorSettings.jsx`) to `Settings.jsx`'s **Personal** tab — deliberately not admin-gated, since every user manages their own 2FA regardless of role. Disabled state offers a method-choice modal ("Authenticator App" always enabled; "Email" disabled with a tooltip unless `GET /system-settings/email/status` reports `isConfigured: true`); each path's setup/confirm flow ends in a backup-codes-once modal (10 codes, copy-all action, a mandatory "I've saved these" checkbox gating the close button — the overlay's own click-outside-to-close is also suppressed until acknowledged). Enabled state offers "Regenerate backup codes" and "Disable", both password-re-entry modals. Every modal reuses `CloneStoryModal.jsx`'s existing fixed-overlay + `.card` pattern (no generic `Modal` shell exists in this codebase by design) via a small local `ModalShell` wrapper. `TFA-07` added the login-page challenge step to `Login.jsx` — mirrors the existing first-login password-change inline-swap pattern (`showPasswordChange`): when `login()` returns `{requiresTwoFactor, method, challengeId}` instead of a session, the form swaps to a code-entry screen with a "Use a backup code instead" toggle and, for the email method, a 60-second-cooldown "Resend code" action. `AuthContext.jsx` gained `establishSession()` (extracted from `login()`'s success path, mirroring the backend's `issueSession` split so the non-2FA and 2FA-verified login paths can never diverge in behavior), `verifyTwoFactor()`, `resendTwoFactorCode()`, and `setTwoFactorState()` (syncs the cached/in-memory user after Settings enables or disables 2FA without a second round-trip to `/users/profile`). Both new pages read/write namespaced i18n keys (`settings:twoFactor.*`, `auth:twoFactor.*`) across all three locales (`en`/`es`/`pt-BR`), matching this codebase's post-`I18N-02` convention that all new UI ships translated from day one rather than needing a second extraction pass later.
+- **Small backend fix included**: `userController.getProfile` (used by `AuthContext.checkExistingAuth` to validate/refresh the cached session on every page load) didn't return `two_factor_enabled`/`two_factor_method` — added them, matching `themePreference`/`languagePreference`'s existing precedent, so a pre-2FA cached session correctly picks up 2FA state on refresh instead of showing it as permanently unknown.
+- **Files Changed**:
+  - `kartas-app/src/contexts/AuthContext.jsx` — extracted `establishSession`; new `verifyTwoFactor`, `resendTwoFactorCode`, `setTwoFactorState`; `login` branches on `requiresTwoFactor`
+  - `kartas-app/src/pages/Login.jsx` — new inline 2FA challenge step, shared `handleAuthSuccess` helper
+  - `kartas-app/src/components/TwoFactorSettings.jsx` (new) — full enable/manage/disable UI
+  - `kartas-app/src/pages/Settings.jsx` — new card on the Personal tab
+  - `kartas-app/src/locales/{en,es,pt-BR}/settings.json` — `page.twoFactor` + `twoFactor.*` keys
+  - `kartas-app/src/locales/{en,es,pt-BR}/auth.json` — `twoFactor.*` keys
+  - `kartas-api/src/controllers/userController.js` — `getProfile` returns `twoFactorEnabled`/`twoFactorMethod`
+- **Migration**: N/A
+- **Status**: Done — `cd kartas-app && npm run build` clean, dev server (Vite HMR) picked up every change with no compile errors across all edited files, all six new/edited locale JSON files validated as parseable. No browser-automation tool available this session, so interactive click-through (enable TOTP via the actual UI, log out and back in through the challenge screen, use a backup code, disable) was not performed by the agent — handed off for manual verification, consistent with this phase's established practice for anything screen-navigable. Backend contract (endpoint shapes, error codes) was already curl-verified end-to-end in the prior `TFA-01`–`TFA-05` entry, so this UI is wired against a proven-correct API.
+
+---
+
+## [2026-08-02] — TFA-01/TFA-02/TFA-03/TFA-04/TFA-05 — Two-Factor Authentication (backend foundation)
+
+- **Author**: Claude
+- **PRD Requirement**: TFA-01, TFA-02, TFA-03, TFA-04, TFA-05
+- **Summary**: Full backend for Phase 8's per-user, opt-in two-factor authentication — the first sub-phase (8.1) of the new Phase 8 PRD. Supports two methods: TOTP (authenticator app, always available) and email-delivered codes (only offerable when the system's email settings are actually working, checked via a new non-admin-gated `GET /system-settings/email/status`). `TFA-01` added the schema (`users.two_factor_enabled/two_factor_method/totp_secret/totp_secret_pending`, new `two_factor_backup_codes` and `two_factor_challenges` tables) and extended `authenticateToken` to expose `req.user.twoFactorEnabled`, plus a new `requireTwoFactor` middleware (not wired into any route yet — that's `TFA-09` in sub-phase 8.3). `TFA-02`/`TFA-03` added TOTP and email enrollment (`twoFactorController.js`, new `/api/users/2fa/*` routes) — both follow a pending-then-confirmed pattern: nothing activates until one real code is verified. `TFA-04` added backup-code generation (`utils/twoFactor.js`'s `generateBackupCodes`, 10 single-use codes, bcrypt-hashed, shown once) and a password-re-auth-gated regenerate endpoint. `TFA-05` is the login step-up itself: `authController.login`'s token-issuing logic was extracted into a shared `issueSession(user)` helper (used by both the non-2FA path and the new verify endpoint, so their response shapes can't drift); a 2FA-enabled user's login now returns `{requiresTwoFactor, method, challengeId}` instead of tokens, completed via new unauthenticated `POST /api/auth/2fa/verify` (TOTP, email, or backup code — 5-attempt lockout per challenge, generic failure message that never reveals which check failed) and `POST /api/auth/2fa/resend`. Also added a `disable` endpoint (password re-auth, clears the method/secret/backup codes) since `TFA-06`'s Settings UI (sub-phase 8.2) needs it and it was trivial to build alongside `TFA-04`'s identical re-auth pattern.
+- **Bug found and fixed during verification**: `issueSession`'s refresh-token `jwt.sign` call was deterministic per wall-clock second (HS256, no random payload component), so two logins for the same user within the same second produced an identical token string and hit `refresh_tokens.token`'s unique constraint, 500ing the request. Pre-existing in the original `login`/`createAdmin` code, never triggered before since a human wouldn't normally log in twice in one second — surfaced directly by curl-testing the new login→verify sequence back-to-back. Fixed by adding a random `jti` to the refresh token's payload in `issueSession`.
+- **otplib version pin, worth remembering**: `otplib@latest` resolves to v13, a rewrite that removes the classic `authenticator` export this implementation (and the PRD's acceptance criteria) depends on. Pinned to `otplib@^12.0.1`, confirmed working via `authenticator.generateSecret()/keyuri()/verify()`. `qrcode@^1.5.4` had no surprises.
+- **Files Changed**:
+  - `kartas-api/src/migrations/020_add_two_factor_auth.sql` — `users` gains `two_factor_enabled`, `two_factor_method`, `totp_secret`, `totp_secret_pending`
+  - `kartas-api/src/migrations/021_add_two_factor_backup_codes.sql` — new `two_factor_backup_codes` table
+  - `kartas-api/src/migrations/022_add_two_factor_challenges.sql` — new `two_factor_challenges` table
+  - `kartas-api/package.json` — added `otplib`, `qrcode`
+  - `kartas-api/src/middleware/auth.js` — `authenticateToken` exposes `req.user.twoFactorEnabled`; new `requireTwoFactor` export
+  - `kartas-api/src/utils/twoFactor.js` (new) — `generateBackupCodes`, `createEmailChallenge`, `resendEmailChallenge`
+  - `kartas-api/src/utils/mailer.js` — new `sendTwoFactorCodeEmail`, same never-throws contract as `sendInviteEmail`
+  - `kartas-api/src/controllers/twoFactorController.js` (new) — TOTP/email setup+confirm+resend, backup-code regeneration, disable
+  - `kartas-api/src/routes/twoFactor.js` (new) — mounted at `/api/users/2fa`
+  - `kartas-api/src/controllers/systemSettingsController.js` — new `getEmailStatus` (no admin gate)
+  - `kartas-api/src/routes/systemSettings.js` — new `GET /email/status` route
+  - `kartas-api/src/controllers/authController.js` — extracted `issueSession`; `login` branches on `two_factor_enabled`; new `verifyTwoFactor`/`resendTwoFactorChallenge`
+  - `kartas-api/src/routes/auth.js` — new `POST /2fa/verify`, `POST /2fa/resend` (unauthenticated)
+  - `kartas-api/src/index.js` — mounted `twoFactorRoutes`
+- **Migration**: `020_add_two_factor_auth.sql`, `021_add_two_factor_backup_codes.sql`, `022_add_two_factor_challenges.sql`
+- **Status**: Done — curl-verified end-to-end against a temp test user (TOTP setup/confirm, login challenge, wrong-code rejection, 5-attempt lockout, backup-code consumption + reuse rejection, disable with wrong/correct password, email setup/wrong-code/resend-cooldown). Email path's full success round-trip (entering a real received code) not verified — this dev environment sends through a real Gmail account with no inbox access from this session; the failure/throttle logic and the send-success signal (`emailSent: true`) were confirmed, and the success path reuses the same `bcrypt.compare` pattern already proven correct elsewhere (TOTP confirm, backup codes, password re-auth). All seeded rows (user, refresh tokens, backup codes, challenges) cleaned up via cascade delete.
+
+---
+
 ## [2026-07-31] — I18N-01/I18N-02/I18N-03/I18N-04 — Internationalization (English, Spanish, Brazilian Portuguese)
 
 - **Author**: Claude

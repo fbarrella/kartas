@@ -36,3 +36,29 @@ export async function sendInviteEmail({ to, inviteLink, role, expiresAt, inviteM
         return { sent: false, reason: 'send_failed', detail: error.message };
     }
 }
+
+// TFA-03/TFA-05: best-effort 2FA code send. Same never-throws contract as
+// sendInviteEmail — the challenge row in the database is the source of
+// truth for verification; email is just a delivery channel on top of it.
+export async function sendTwoFactorCodeEmail({ to, code }) {
+    const cfg = await getEmailConfig();
+    if (!cfg.isConfigured) {
+        return { sent: false, reason: 'not_configured', detail: cfg.statusMessage };
+    }
+
+    try {
+        await buildTransporter(cfg).sendMail({
+            from: cfg.from,
+            to,
+            subject: 'Your Kartas verification code',
+            text: `Your verification code is: ${code}\n\n` +
+                  `This code will expire shortly. If you didn't request this, you can ignore this email.`,
+            html: `<p>Your verification code is: <strong>${code}</strong></p>` +
+                  `<p>This code will expire shortly. If you didn't request this, you can ignore this email.</p>`
+        });
+        return { sent: true };
+    } catch (error) {
+        console.error('Error sending two-factor code email:', error);
+        return { sent: false, reason: 'send_failed', detail: error.message };
+    }
+}

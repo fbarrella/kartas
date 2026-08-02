@@ -161,20 +161,34 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // TFA-05/TFA-07: the single place a successful authentication (with or
+    // without a 2FA step-up) turns into a stored session — used by both
+    // login()'s non-2FA path and verifyTwoFactor()'s success path, so they
+    // can never drift apart. Mirrors the backend's own issueSession() split.
+    const establishSession = (sessionData) => {
+        const { user: userData, accessToken, refreshToken } = sessionData;
+
+        localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem('refreshToken', refreshToken);
+        localStorage.setItem('user', JSON.stringify(userData));
+
+        setUser(userData);
+        applyTheme(userData.themePreference);
+        applyLanguage(userData.languagePreference);
+
+        return userData;
+    };
+
     const login = async (email, password) => {
         try {
             const response = await api.post('/auth/login', { email, password });
 
-            const { user: userData, accessToken, refreshToken } = response.data;
+            if (response.data.requiresTwoFactor) {
+                const { method, challengeId } = response.data;
+                return { success: false, requiresTwoFactor: true, method, challengeId };
+            }
 
-            localStorage.setItem('accessToken', accessToken);
-            localStorage.setItem('refreshToken', refreshToken);
-            localStorage.setItem('user', JSON.stringify(userData));
-
-            setUser(userData);
-            applyTheme(userData.themePreference);
-            applyLanguage(userData.languagePreference);
-
+            const userData = establishSession(response.data);
             return { success: true, user: userData };
         } catch (error) {
             return {
@@ -182,6 +196,45 @@ export const AuthProvider = ({ children }) => {
                 error: error.response?.data?.error || 'Login failed'
             };
         }
+    };
+
+    // TFA-07: completes a 2FA-challenged login started by login() above.
+    const verifyTwoFactor = async (challengeId, code, isBackupCode = false) => {
+        try {
+            const response = await api.post('/auth/2fa/verify', { challengeId, code, isBackupCode });
+            const userData = establishSession(response.data);
+            return { success: true, user: userData };
+        } catch (error) {
+            return {
+                success: false,
+                error: error.response?.data?.error || 'Verification failed'
+            };
+        }
+    };
+
+    const resendTwoFactorCode = async (challengeId) => {
+        try {
+            await api.post('/auth/2fa/resend', { challengeId });
+            return { success: true };
+        } catch (error) {
+            return {
+                success: false,
+                error: error.response?.data?.error || 'Failed to resend code'
+            };
+        }
+    };
+
+    // TFA-06: called after Settings enables/disables 2FA — those endpoints
+    // (totp/confirm, email/confirm, disable) already updated the database;
+    // this just keeps the in-memory/cached user in sync without a second
+    // round-trip to /users/profile.
+    const setTwoFactorState = (twoFactorEnabled, twoFactorMethod) => {
+        setUser((prev) => {
+            if (!prev) return prev;
+            const updated = { ...prev, twoFactorEnabled, twoFactorMethod };
+            localStorage.setItem('user', JSON.stringify(updated));
+            return updated;
+        });
     };
 
     const logout = async () => {
@@ -261,6 +314,9 @@ export const AuthProvider = ({ children }) => {
         adminExists,
         createAdmin,
         login,
+        verifyTwoFactor,
+        resendTwoFactorCode,
+        setTwoFactorState,
         logout,
         changePassword,
         updateThemePreference,

@@ -25,7 +25,72 @@
         "backups": {
             "title": "Copias de Seguridad",
             "description": "Solo administradores. Configura copias de seguridad automáticas de la base de datos, ejecuta una manualmente y restaura desde una copia anterior."
+        },
+        "twoFactor": {
+            "title": "Autenticación de Dos Factores",
+            "description": "Añade una capa extra de seguridad a tu cuenta. Una vez activada, las eliminaciones y los cambios en la configuración de administrador que realices también la requerirán."
         }
+    },
+    "twoFactor": {
+        "statusDisabled": "No activada",
+        "statusEnabledTotp": "Activada mediante Aplicación de Autenticación",
+        "statusEnabledEmail": "Activada mediante Correo Electrónico",
+        "enableButton": "Activar Autenticación de Dos Factores",
+        "regenerateButton": "Regenerar códigos de respaldo",
+        "disableButton": "Desactivar Autenticación de Dos Factores",
+        "chooseMethod": {
+            "title": "Elige un Método",
+            "totpOption": "Aplicación de Autenticación",
+            "totpOptionHelp": "Usa una app como Google Authenticator o Authy.",
+            "emailOption": "Correo Electrónico",
+            "emailOptionHelp": "Recibe códigos en la dirección de correo de tu cuenta.",
+            "emailUnavailable": "Pide a un administrador que configure el correo electrónico primero.",
+            "startError": "No se pudo iniciar la configuración"
+        },
+        "totpSetup": {
+            "title": "Configurar Aplicación de Autenticación",
+            "instructions": "Escanea este código QR con tu app de autenticación, o introduce el secreto manualmente.",
+            "secretLabel": "Secreto",
+            "codeLabel": "Introduce el código de 6 dígitos de tu app",
+            "verifyButton": "Verificar y Activar",
+            "verifying": "Verificando...",
+            "confirmError": "Código no válido"
+        },
+        "emailSetup": {
+            "title": "Configurar Verificación por Correo",
+            "instructions": "Enviamos un código de verificación a tu dirección de correo electrónico.",
+            "codeLabel": "Introduce el código de 6 dígitos",
+            "verifyButton": "Verificar y Activar",
+            "verifying": "Verificando...",
+            "confirmError": "Código no válido",
+            "resendButton": "Reenviar código",
+            "resendCooldown": "Reenviar en {{seconds}}s",
+            "resendSuccess": "Código reenviado",
+            "resendError": "No se pudo reenviar el código"
+        },
+        "backupCodes": {
+            "title": "Guarda Tus Códigos de Respaldo",
+            "description": "Usa uno de estos códigos para iniciar sesión si pierdes el acceso a tu app de autenticación o correo electrónico. Cada código funciona una sola vez.",
+            "copyAll": "Copiar Todos",
+            "copied": "¡Copiado!",
+            "acknowledge": "Ya guardé estos códigos en un lugar seguro",
+            "close": "Cerrar"
+        },
+        "regenerateModal": {
+            "title": "Regenerar Códigos de Respaldo",
+            "description": "Esto invalida tus códigos de respaldo actuales. Introduce tu contraseña para confirmar.",
+            "confirmButton": "Regenerar",
+            "regenerating": "Regenerando...",
+            "error": "No se pudieron regenerar los códigos de respaldo"
+        },
+        "disableModal": {
+            "title": "Desactivar Autenticación de Dos Factores",
+            "description": "Esto elimina la capa extra de seguridad de tu cuenta, incluido el acceso a cualquier acción que la requiera. Introduce tu contraseña para confirmar.",
+            "confirmButton": "Desactivar",
+            "disabling": "Desactivando...",
+            "error": "No se pudo desactivar la autenticación de dos factores"
+        },
+        "passwordLabel": "Contraseña Actual"
     },
     "paletteEditor": {
         "loading": "Cargando la configuración del tema del sistema...",

@@ -31,4 +31,9 @@ router.post('/refresh', authController.refreshToken);
 router.post('/change-password', authenticateToken, validatePasswordChange, authController.changePassword);
 router.post('/logout', authController.logout);
 
+// TFA-05: no authenticateToken — completing a 2FA challenge IS how a
+// challenged login becomes an authenticated session.
+router.post('/2fa/verify', authController.verifyTwoFactor);
+router.post('/2fa/resend', authController.resendTwoFactorChallenge);
+
 export default router;

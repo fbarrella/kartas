@@ -1,9 +1,61 @@
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+import { authenticator } from 'otplib';
 import { query } from '../config/database.js';
 import { jwtConfig } from '../config/auth.js';
+import { createEmailChallenge, resendEmailChallenge } from '../utils/twoFactor.js';
 
 const SALT_ROUNDS = 10;
+const LOGIN_CHALLENGE_TTL_MS = 10 * 60 * 1000;
+const MAX_CHALLENGE_ATTEMPTS = 5;
+
+// TFA-05: the single place a successful authentication (with or without a
+// 2FA step-up) turns into real tokens — used by both login()'s non-2FA path
+// and verifyTwoFactor()'s success path, so their response shapes can never
+// drift apart.
+async function issueSession(user) {
+    const accessToken = jwt.sign(
+        { userId: user.id, email: user.email, role: user.role },
+        jwtConfig.secret,
+        { expiresIn: jwtConfig.expiresIn }
+    );
+
+    // jti (random, not just userId) guarantees a unique token string even
+    // when two sessions are issued for the same user within the same
+    // wall-clock second — jwt.sign's HS256 output is otherwise deterministic
+    // per (payload, iat, secret), and refresh_tokens.token is UNIQUE. Found
+    // via a genuine collision while curl-testing the login->2fa/verify
+    // sequence back-to-back.
+    const refreshToken = jwt.sign(
+        { userId: user.id, jti: crypto.randomBytes(16).toString('hex') },
+        jwtConfig.refreshSecret,
+        { expiresIn: jwtConfig.refreshExpiresIn }
+    );
+
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    await query(
+        'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
+        [user.id, refreshToken, expiresAt]
+    );
+
+    return {
+        user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.first_name,
+            lastName: user.last_name,
+            role: user.role,
+            firstLogin: user.first_login,
+            themePreference: user.theme_preference,
+            languagePreference: user.language_preference,
+            twoFactorEnabled: user.two_factor_enabled,
+            twoFactorMethod: user.two_factor_method
+        },
+        accessToken,
+        refreshToken
+    };
+}
 
 export const authController = {
     // Check if admin exists (for first-run setup)
@@ -117,40 +169,31 @@ export const authController = {
                 return res.status(401).json({ error: 'Invalid credentials' });
             }
 
-            // Generate tokens
-            const accessToken = jwt.sign(
-                { userId: user.id, email: user.email, role: user.role },
-                jwtConfig.secret,
-                { expiresIn: jwtConfig.expiresIn }
-            );
+            // TFA-05: non-2FA accounts authenticate exactly as before. A 2FA-
+            // enabled account gets a challenge instead of tokens — no user
+            // object, no tokens, so a partially-completed login never leaks
+            // profile data before the second factor is proven.
+            if (!user.two_factor_enabled) {
+                const session = await issueSession(user);
+                return res.json(session);
+            }
 
-            const refreshToken = jwt.sign(
-                { userId: user.id },
-                jwtConfig.refreshSecret,
-                { expiresIn: jwtConfig.refreshExpiresIn }
-            );
+            if (user.two_factor_method === 'email') {
+                const { challengeId } = await createEmailChallenge({
+                    userId: user.id,
+                    purpose: 'login',
+                    to: user.email,
+                    expiresInMs: LOGIN_CHALLENGE_TTL_MS
+                });
+                return res.json({ requiresTwoFactor: true, method: 'email', challengeId });
+            }
 
-            // Store refresh token
-            const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-            await query(
-                'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
-                [user.id, refreshToken, expiresAt]
+            const challengeResult = await query(
+                `INSERT INTO two_factor_challenges (user_id, purpose, method, expires_at)
+                 VALUES ($1, 'login', 'totp', $2) RETURNING id`,
+                [user.id, new Date(Date.now() + LOGIN_CHALLENGE_TTL_MS)]
             );
-
-            res.json({
-                user: {
-                    id: user.id,
-                    email: user.email,
-                    firstName: user.first_name,
-                    lastName: user.last_name,
-                    role: user.role,
-                    firstLogin: user.first_login,
-                    themePreference: user.theme_preference,
-                    languagePreference: user.language_preference
-                },
-                accessToken,
-                refreshToken
-            });
+            res.json({ requiresTwoFactor: true, method: 'totp', challengeId: challengeResult.rows[0].id });
         } catch (error) {
             console.error('Error logging in:', error);
             res.status(500).json({ error: 'Server error' });
@@ -267,6 +310,114 @@ export const authController = {
             res.json({ message: 'Logged out successfully' });
         } catch (error) {
             console.error('Error logging out:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
+    // TFA-05: completes a 2FA-challenged login. No authenticateToken — this
+    // endpoint IS how a challenged login becomes an authenticated session.
+    // Every failure path returns the same generic message, never revealing
+    // which specific check failed (method, code, backup code).
+    async verifyTwoFactor(req, res) {
+        try {
+            const { challengeId, code, isBackupCode } = req.body;
+
+            if (!challengeId || !code) {
+                return res.status(400).json({ error: 'challengeId and code are required' });
+            }
+
+            const challengeResult = await query(
+                `SELECT * FROM two_factor_challenges WHERE id = $1 AND purpose = 'login'`,
+                [challengeId]
+            );
+
+            if (challengeResult.rows.length === 0) {
+                return res.status(400).json({ error: 'Invalid or expired challenge' });
+            }
+
+            const challenge = challengeResult.rows[0];
+
+            if (challenge.consumed_at || new Date(challenge.expires_at) < new Date() || challenge.attempts >= MAX_CHALLENGE_ATTEMPTS) {
+                return res.status(400).json({ error: 'Invalid or expired challenge' });
+            }
+
+            const userResult = await query('SELECT * FROM users WHERE id = $1', [challenge.user_id]);
+
+            if (userResult.rows.length === 0) {
+                return res.status(400).json({ error: 'Invalid or expired challenge' });
+            }
+
+            const user = userResult.rows[0];
+
+            let valid = false;
+            let matchedBackupCodeId = null;
+
+            if (isBackupCode) {
+                const backupCodes = await query(
+                    'SELECT id, code_hash FROM two_factor_backup_codes WHERE user_id = $1 AND used_at IS NULL',
+                    [user.id]
+                );
+                for (const row of backupCodes.rows) {
+                    if (await bcrypt.compare(code, row.code_hash)) {
+                        valid = true;
+                        matchedBackupCodeId = row.id;
+                        break;
+                    }
+                }
+            } else if (challenge.method === 'totp') {
+                valid = authenticator.verify({ token: code, secret: user.totp_secret, window: 1 });
+            } else if (challenge.method === 'email') {
+                valid = await bcrypt.compare(code, challenge.code_hash);
+            }
+
+            if (!valid) {
+                const newAttempts = challenge.attempts + 1;
+                const lockedOut = newAttempts >= MAX_CHALLENGE_ATTEMPTS;
+
+                await query(
+                    `UPDATE two_factor_challenges SET attempts = $1${lockedOut ? ', consumed_at = CURRENT_TIMESTAMP' : ''} WHERE id = $2`,
+                    [newAttempts, challenge.id]
+                );
+
+                return res.status(400).json({
+                    error: lockedOut ? 'Too many failed attempts. Please log in again.' : 'Invalid code'
+                });
+            }
+
+            await query('UPDATE two_factor_challenges SET consumed_at = CURRENT_TIMESTAMP WHERE id = $1', [challenge.id]);
+
+            if (matchedBackupCodeId) {
+                await query('UPDATE two_factor_backup_codes SET used_at = CURRENT_TIMESTAMP WHERE id = $1', [matchedBackupCodeId]);
+            }
+
+            const session = await issueSession(user);
+            res.json(session);
+        } catch (error) {
+            console.error('Error verifying two-factor challenge:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
+    async resendTwoFactorChallenge(req, res) {
+        try {
+            const { challengeId } = req.body;
+
+            if (!challengeId) {
+                return res.status(400).json({ error: 'challengeId is required' });
+            }
+
+            const result = await resendEmailChallenge({ challengeId, purpose: 'login' });
+
+            if (result.error === 'not_found') {
+                return res.status(400).json({ error: 'Invalid or expired challenge' });
+            }
+            if (result.error === 'cooldown') {
+                return res.status(429).json({ error: 'Please wait before requesting another code' });
+            }
+
+            res.json({ message: 'Code resent' });
+        } catch (error) {
+            console.error('Error resending two-factor challenge code:', error);
             res.status(500).json({ error: 'Server error' });
         }
     }

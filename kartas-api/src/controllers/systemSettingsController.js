@@ -1,4 +1,5 @@
 import { query } from '../config/database.js';
+import { getEmailConfig } from '../config/email.js';
 
 const BASE_CATEGORIES = ['primary', 'secondary', 'success', 'warning', 'danger', 'info', 'neutral', 'background', 'text'];
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
@@ -91,6 +92,19 @@ export const systemSettingsController = {
             });
         } catch (error) {
             console.error('Error updating system theme settings:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    },
+
+    // TFA-03: deliberately NOT admin-gated, unlike every other route in this
+    // file — any user needs to know whether email 2FA is offerable before
+    // choosing it in Settings. Leaks no secrets, just a boolean.
+    async getEmailStatus(req, res) {
+        try {
+            const cfg = await getEmailConfig();
+            res.json({ isConfigured: cfg.isConfigured });
+        } catch (error) {
+            console.error('Error fetching email status:', error);
             res.status(500).json({ error: 'Server error' });
         }
     },

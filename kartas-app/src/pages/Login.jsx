@@ -7,7 +7,7 @@ import kartasLogo from '../assets/kartas-logo.png';
 const Login = () => {
     const navigate = useNavigate();
     const { t } = useTranslation(['auth', 'common']);
-    const { login, user, changePassword } = useAuth();
+    const { login, verifyTwoFactor, resendTwoFactorCode, user, changePassword } = useAuth();
 
     const [formData, setFormData] = useState({
         email: '',
@@ -21,6 +21,18 @@ const Login = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [showPasswordChange, setShowPasswordChange] = useState(false);
+
+    // TFA-07: set when login() reports requiresTwoFactor instead of success.
+    const [twoFactorChallenge, setTwoFactorChallenge] = useState(null); // { challengeId, method }
+    const [twoFactorCode, setTwoFactorCode] = useState('');
+    const [useBackupCode, setUseBackupCode] = useState(false);
+    const [resendCooldown, setResendCooldown] = useState(0);
+
+    useEffect(() => {
+        if (resendCooldown <= 0) return;
+        const timer = setInterval(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
+        return () => clearInterval(timer);
+    }, [resendCooldown]);
 
     useEffect(() => {
         if (user && !user.firstLogin) {
@@ -42,6 +54,18 @@ const Login = () => {
         });
     };
 
+    // TFA-07: shared by both the non-2FA login success path and the
+    // post-verification success path below, so the two entry points can't
+    // diverge in how they decide what screen comes next.
+    const handleAuthSuccess = (authUser) => {
+        if (authUser.firstLogin) {
+            setShowPasswordChange(true);
+            setPasswordChangeData((prev) => ({ ...prev, currentPassword: formData.password }));
+        } else {
+            navigate('/');
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
@@ -51,16 +75,39 @@ const Login = () => {
 
         setLoading(false);
 
-        if (result.success) {
-            if (result.user.firstLogin) {
-                setShowPasswordChange(true);
-                setPasswordChangeData({
-                    ...passwordChangeData,
-                    currentPassword: formData.password
-                });
-            } else {
-                navigate('/');
+        if (result.requiresTwoFactor) {
+            setTwoFactorChallenge({ challengeId: result.challengeId, method: result.method });
+            if (result.method === 'email') {
+                setResendCooldown(60);
             }
+        } else if (result.success) {
+            handleAuthSuccess(result.user);
+        } else {
+            setError(result.error);
+        }
+    };
+
+    const handleVerifyTwoFactor = async (e) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+
+        const result = await verifyTwoFactor(twoFactorChallenge.challengeId, twoFactorCode, useBackupCode);
+
+        setLoading(false);
+
+        if (result.success) {
+            handleAuthSuccess(result.user);
+        } else {
+            setError(result.error);
+        }
+    };
+
+    const handleResendTwoFactorCode = async () => {
+        setError('');
+        const result = await resendTwoFactorCode(twoFactorChallenge.challengeId);
+        if (result.success) {
+            setResendCooldown(60);
         } else {
             setError(result.error);
         }
@@ -95,6 +142,79 @@ const Login = () => {
             setError(result.error);
         }
     };
+
+    if (twoFactorChallenge) {
+        return (
+            <div className="flex flex-center" style={{ minHeight: '100vh', backgroundColor: 'var(--color-background)' }}>
+                <div className="card" style={{ maxWidth: '450px', width: '100%' }}>
+                    <div className="card-header">
+                        <h2 className="card-title">{t('auth:twoFactor.title')}</h2>
+                        <p className="text-muted mt-sm">
+                            {useBackupCode
+                                ? t('auth:twoFactor.subtitleBackupCode')
+                                : twoFactorChallenge.method === 'email'
+                                    ? t('auth:twoFactor.subtitleEmail')
+                                    : t('auth:twoFactor.subtitleTotp')}
+                        </p>
+                    </div>
+
+                    <form onSubmit={handleVerifyTwoFactor}>
+                        <div className="form-group">
+                            <label className="form-label">
+                                {useBackupCode ? t('auth:twoFactor.backupCodeLabel') : t('auth:twoFactor.codeLabel')}
+                            </label>
+                            <input
+                                type="text"
+                                className="form-input"
+                                value={twoFactorCode}
+                                onChange={(e) => setTwoFactorCode(e.target.value)}
+                                autoFocus
+                                required
+                            />
+                        </div>
+
+                        {error && (
+                            <div className="form-error mb-md">
+                                {error}
+                            </div>
+                        )}
+
+                        <button
+                            type="submit"
+                            className="btn btn-primary btn-lg"
+                            style={{ width: '100%' }}
+                            disabled={loading}
+                        >
+                            {loading ? t('auth:twoFactor.verifying') : t('auth:twoFactor.verifyButton')}
+                        </button>
+                    </form>
+
+                    <div className="flex flex-between mt-md" style={{ alignItems: 'center' }}>
+                        <button
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => { setUseBackupCode(!useBackupCode); setTwoFactorCode(''); setError(''); }}
+                        >
+                            {useBackupCode ? t('auth:twoFactor.useVerificationCode') : t('auth:twoFactor.useBackupCode')}
+                        </button>
+
+                        {twoFactorChallenge.method === 'email' && !useBackupCode && (
+                            <button
+                                type="button"
+                                className="btn btn-secondary btn-sm"
+                                onClick={handleResendTwoFactorCode}
+                                disabled={resendCooldown > 0}
+                            >
+                                {resendCooldown > 0
+                                    ? t('auth:twoFactor.resendCooldown', { seconds: resendCooldown })
+                                    : t('auth:twoFactor.resendButton')}
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     if (showPasswordChange) {
         return (
