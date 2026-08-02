@@ -29,6 +29,9 @@
         "twoFactor": {
             "title": "Autenticación de Dos Factores",
             "description": "Añade una capa extra de seguridad a tu cuenta. Una vez activada, las eliminaciones y los cambios en la configuración de administrador que realices también la requerirán."
+        },
+        "twoFactorBanner": {
+            "message": "Activa la Autenticación de Dos Factores en tu cuenta (pestaña Personal) para guardar configuraciones o ejecutar copias de seguridad."
         }
     },
     "twoFactor": {

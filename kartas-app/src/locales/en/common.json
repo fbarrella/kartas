@@ -31,6 +31,7 @@
     "download": "Download",
     "upload": "Upload",
     "someone": "Someone",
+    "twoFactorRequiredTooltip": "Enable Two-Factor Authentication in Settings to use this action",
     "relativeTime": {
         "justNow": "just now",
         "minutesAgo": "{{count}}m ago",

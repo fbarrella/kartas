@@ -39,6 +39,7 @@ services:
       GMAIL_USER: ${GMAIL_USER}
       GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD}
       EMAIL_FROM: ${EMAIL_FROM}
+      RECAPTCHA_SECRET_KEY: ${RECAPTCHA_SECRET_KEY}
     ports:
       - "${API_PORT}:${API_PORT}"
     depends_on:
@@ -56,6 +57,7 @@ services:
     container_name: kartas-app
     environment:
       VITE_API_URL: ${VITE_API_URL}
+      VITE_RECAPTCHA_SITE_KEY: ${RECAPTCHA_SITE_KEY}
     ports:
       - "5173:5173"
     volumes:

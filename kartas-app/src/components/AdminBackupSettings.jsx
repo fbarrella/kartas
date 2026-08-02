@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import api from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 // BKP-03/BKP-04: mirrors AdminEmailSettings.jsx's structure (own loading/error/
 // saving/successMessage state, fetch-on-mount, api.get/api.put). Unlike email
@@ -35,6 +36,10 @@ const PasswordField = ({ label, configured, value, onChange }) => {
 
 const AdminBackupSettings = () => {
     const { t } = useTranslation(['settings', 'common']);
+    const { user } = useAuth();
+    // TFA-09: mirrors the backend's requireTwoFactor gate on the save/run/
+    // restore routes — a disabled-button UX backstop, not the real enforcement.
+    const twoFactorRequired = !user?.twoFactorEnabled;
     const dayNames = t('settings:backupSettings.days', { returnObjects: true });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -342,10 +347,21 @@ const AdminBackupSettings = () => {
                 </div>
 
                 <div className="flex flex-gap-sm mt-lg">
-                    <button type="submit" className="btn btn-primary" disabled={saving}>
+                    <button
+                        type="submit"
+                        className="btn btn-primary"
+                        disabled={saving || twoFactorRequired}
+                        title={twoFactorRequired ? t('common:twoFactorRequiredTooltip') : undefined}
+                    >
                         {saving ? t('common:saving') : t('settings:backupSettings.saveButton')}
                     </button>
-                    <button type="button" className="btn btn-secondary" disabled={runningBackup} onClick={handleRunNow}>
+                    <button
+                        type="button"
+                        className="btn btn-secondary"
+                        disabled={runningBackup || twoFactorRequired}
+                        title={twoFactorRequired ? t('common:twoFactorRequiredTooltip') : undefined}
+                        onClick={handleRunNow}
+                    >
                         {runningBackup ? t('settings:backupSettings.running') : t('settings:backupSettings.backUpNow')}
                     </button>
                 </div>
@@ -470,7 +486,8 @@ const AdminBackupSettings = () => {
                 <button
                     type="button"
                     className="btn btn-danger"
-                    disabled={confirmPhrase !== 'RESTORE' || restoring}
+                    disabled={confirmPhrase !== 'RESTORE' || restoring || twoFactorRequired}
+                    title={twoFactorRequired ? t('common:twoFactorRequiredTooltip') : undefined}
                     onClick={handleRestore}
                 >
                     {restoring ? t('settings:backupSettings.restoring') : t('settings:backupSettings.restoreButton')}

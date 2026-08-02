@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
+import RecaptchaWidget, { isRecaptchaConfigured } from '../components/RecaptchaWidget';
 import kartasLogo from '../assets/kartas-logo.png';
 
 const Login = () => {
@@ -27,6 +28,10 @@ const Login = () => {
     const [twoFactorCode, setTwoFactorCode] = useState('');
     const [useBackupCode, setUseBackupCode] = useState(false);
     const [resendCooldown, setResendCooldown] = useState(0);
+
+    // CAPTCHA-02
+    const [recaptchaToken, setRecaptchaToken] = useState(null);
+    const [recaptchaResetKey, setRecaptchaResetKey] = useState(0);
 
     useEffect(() => {
         if (resendCooldown <= 0) return;
@@ -71,7 +76,7 @@ const Login = () => {
         setError('');
         setLoading(true);
 
-        const result = await login(formData.email, formData.password);
+        const result = await login(formData.email, formData.password, recaptchaToken);
 
         setLoading(false);
 
@@ -84,6 +89,8 @@ const Login = () => {
             handleAuthSuccess(result.user);
         } else {
             setError(result.error);
+            // CAPTCHA-02: a stale/consumed token can't be silently resubmitted.
+            setRecaptchaResetKey((k) => k + 1);
         }
     };
 
@@ -308,6 +315,8 @@ const Login = () => {
                         />
                     </div>
 
+                    <RecaptchaWidget onChange={setRecaptchaToken} resetKey={recaptchaResetKey} />
+
                     {error && (
                         <div className="form-error mb-md">
                             {error}
@@ -318,7 +327,7 @@ const Login = () => {
                         type="submit"
                         className="btn btn-primary btn-lg"
                         style={{ width: '100%' }}
-                        disabled={loading}
+                        disabled={loading || (isRecaptchaConfigured && !recaptchaToken)}
                     >
                         {loading ? t('auth:login.signingIn') : t('auth:login.signInButton')}
                     </button>

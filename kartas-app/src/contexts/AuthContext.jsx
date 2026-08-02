@@ -132,13 +132,14 @@ export const AuthProvider = ({ children }) => {
         return () => { cancelled = true; };
     }, [user?.id]);
 
-    const createAdmin = async (email, password, firstName, lastName) => {
+    const createAdmin = async (email, password, firstName, lastName, recaptchaToken) => {
         try {
             const response = await api.post('/auth/admin/setup', {
                 email,
                 password,
                 firstName,
-                lastName
+                lastName,
+                recaptchaToken
             });
 
             const { user: userData, accessToken, refreshToken } = response.data;
@@ -179,9 +180,9 @@ export const AuthProvider = ({ children }) => {
         return userData;
     };
 
-    const login = async (email, password) => {
+    const login = async (email, password, recaptchaToken) => {
         try {
-            const response = await api.post('/auth/login', { email, password });
+            const response = await api.post('/auth/login', { email, password, recaptchaToken });
 
             if (response.data.requiresTwoFactor) {
                 const { method, challengeId } = response.data;

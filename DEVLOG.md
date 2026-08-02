@@ -4,6 +4,63 @@ Development log for all Kartas changes, across every phase. Each entry records w
 
 ---
 
+## [2026-08-02] — KFA-01/ICON-01/KW-01 — Kanban Assignee Filter, Gear Settings Icon, Wider Columns
+
+- **Author**: Claude
+- **PRD Requirement**: KFA-01, ICON-01, KW-01
+- **Summary**: The final three requirements of Phase 8 — small, independent UI changes with no backend/schema involved, closing out the phase. `KFA-01`: the previously decorative sprint-participant avatar row in `KanbanBoard.jsx` (next to the elapsed-time bar) is now clickable — a new `assigneeFilter` state, toggled per-avatar (click again to clear), with a highlighted ring (`box-shadow`) on the active avatar and a "Show all users" button appearing alongside the row whenever a filter is active. Implemented by wrapping each `AssigneeAvatarWithHoverCard` in a plain clickable `<div>` rather than modifying that shared component (it's reused elsewhere — Backlog, Story Detail — with no reason to touch its interface for a Kanban-only behavior). The existing `filterStories(stories)` helper (already shared by the type/search filter bar) gained one more predicate (`story.assigneeId !== assigneeFilter`), so it applies uniformly to both story and sub-task cards, and every column's count badge (already `filteredStories.length`) reflects the filter with no separate change needed. `ICON-01`: `UserDropdown.jsx`'s Settings link icon (a sun, left over from when Settings held only dark mode) is now the same gear/cog `<path>` `Sidebar.jsx` already uses for "Project Settings" — reused verbatim, just rescaled (`viewBox="0 0 24 24"` at this menu's existing `16×16` render size) rather than redrawn, for visual consistency between the app's two "settings" concepts. `KW-01`: Kanban column width bumped `300–350px → 360–410px` (flat +60px on both bounds, keeping the existing 50px spread) — a pure sizing tweak, same inline-style location `KFA-01` and this both touch.
+- **Files Changed**:
+  - `kartas-app/src/pages/KanbanBoard.jsx` — `assigneeFilter` state, clickable participant avatars, "Show all users" button, `filterStories` predicate, wider column `minWidth`/`maxWidth`
+  - `kartas-app/src/components/UserDropdown.jsx` — sun icon replaced with the gear path
+  - `kartas-app/src/locales/{en,es,pt-BR}/kanban.json` — new `showAllUsers` key
+- **Migration**: N/A
+- **Status**: Done — `cd kartas-app && npm run build` clean, dev server HMR picked up every change with no errors, all three edited locale JSON files validated as parseable. `KFA-01`'s click/toggle/highlight interaction and `KW-01`'s visual sizing weren't click-through verified by the agent (no browser-automation tool available this session, consistent with every prior frontend requirement this phase) — handed off for manual verification. `ICON-01` self-verified by confirming the pasted path is character-for-character identical to `Sidebar.jsx`'s source.
+
+**Phase 8 is now complete** (`TFA-01`–`TFA-09`, `CAPTCHA-01`/`CAPTCHA-02`, `KFA-01`/`ICON-01`/`KW-01`) — see the `README.md` update logged separately below/above per this phase's process rules.
+
+---
+
+## [2026-08-02] — CAPTCHA-01/CAPTCHA-02 — Google reCAPTCHA v2 on Login, Register & Admin Setup
+
+- **Author**: Claude
+- **PRD Requirement**: CAPTCHA-01, CAPTCHA-02
+- **Summary**: reCAPTCHA v2 checkbox verification on all three of the app's token-issuing entry points, per the resolved design decision (PRD Section 4) to use v2's unambiguous pass/fail over v3's score-threshold model, and to cover all three pages rather than just the literal sign-in form. `CAPTCHA-01`: new `RECAPTCHA_SITE_KEY`/`RECAPTCHA_SECRET_KEY` env vars (no database-backed admin settings — this PRD scopes CAPTCHA as env-var-only, like `JWT_SECRET`, not a runtime-editable settings card like `MAIL-01`/`BKP-01`). New `src/utils/recaptcha.js`'s `verifyRecaptcha(token, remoteIp)`: a no-op (`{success: true, skipped: true}`) when `RECAPTCHA_SECRET_KEY` is unset — mirrors `config/email.js`'s "unconfigured means the feature is silently off" convention, so local dev needs zero Google setup — otherwise a real `POST` to Google's `siteverify` endpoint via Node 18's built-in `fetch` (no new HTTP client dependency). Wired into `authController.login`, `authController.createAdmin`, and `inviteController.registerWithInvite`, each now reading an optional `recaptchaToken` from the request body and rejecting `400` on a failed/missing-when-required check, before any other logic in the handler runs. `CAPTCHA-02`: new `RecaptchaWidget.jsx` — no new npm dependency, per this codebase's established preference for avoiding unnecessary wrapper packages (same reasoning as the declined generic `Modal` shell); loads Google's plain `recaptcha/api.js` script once and renders the checkbox via `grecaptcha.render()`. Renders nothing when `VITE_RECAPTCHA_SITE_KEY` is unset, mirroring the backend's skip-when-unconfigured fallback. Mounted above the submit button on `Login.jsx`, `Register.jsx`, and `AdminSetup.jsx`; each page's submit button stays disabled until a token exists (only when the widget is actually configured/rendered), and each resets the widget (via a `resetKey` counter bump) on any failed submission so a stale or already-consumed token can't be silently resubmitted. `AuthContext.jsx`'s `login`/`createAdmin` gained a `recaptchaToken` parameter, forwarded straight through to their respective endpoints. `docker-compose.yml` maps the root `.env`'s `RECAPTCHA_SECRET_KEY` into the `api` service and `RECAPTCHA_SITE_KEY` into the `app` service as `VITE_RECAPTCHA_SITE_KEY` (mirroring how `VITE_API_URL` is already passed through) — both left blank in this dev environment's `.env`, so the feature is currently a no-op here, by design.
+- **Files Changed**:
+  - `kartas-api/src/utils/recaptcha.js` (new) — `verifyRecaptcha`
+  - `kartas-api/src/controllers/authController.js` — `login`/`createAdmin` gated
+  - `kartas-api/src/controllers/inviteController.js` — `registerWithInvite` gated
+  - `kartas-app/src/components/RecaptchaWidget.jsx` (new) — the v2 checkbox widget + `isRecaptchaConfigured` export
+  - `kartas-app/src/pages/Login.jsx`, `Register.jsx`, `AdminSetup.jsx` — widget mounted, submit gated, reset-on-failure
+  - `kartas-app/src/contexts/AuthContext.jsx` — `login`/`createAdmin` accept and forward `recaptchaToken`
+  - `docker-compose.yml` — `RECAPTCHA_SECRET_KEY` (api), `VITE_RECAPTCHA_SITE_KEY` (app)
+  - `.env` / `.env.example` — new blank `RECAPTCHA_SITE_KEY`/`RECAPTCHA_SECRET_KEY` vars
+- **Migration**: N/A
+- **Status**: Done — `cd kartas-app && npm run build` clean, dev server HMR picked up every file with no errors. Backend verified via curl: with `RECAPTCHA_SECRET_KEY` unset (this environment's actual current state), `login`/`admin/setup`/`invites/register` all pass straight through to their real business logic with no `recaptchaToken` at all. The "configured but check fails" path was verified directly against Google's real `siteverify` endpoint (not mocked) by invoking `verifyRecaptcha` with a bogus secret+token via a one-off env override — confirmed `{success: false}` for both a missing token and an invalid token/secret pair, without needing a real Google key pair for this half of the verification. **Not verified**: an actual successful/passing reCAPTCHA round-trip, which requires a real site/secret key pair from the user for this dev domain — noted as a distinct, explicit ask rather than assumed; the app works correctly without it since the feature is a clean no-op when unconfigured, exactly as designed.
+
+---
+
+## [2026-08-02] — TFA-08/TFA-09 — Two-Factor Authentication (gating destructive actions & admin settings)
+
+- **Author**: Claude
+- **PRD Requirement**: TFA-08, TFA-09
+- **Summary**: The last piece of the 2FA feature — gating specific actions behind the *actor's own* 2FA being enabled, per `nextsteps.txt`'s explicit ask, now that a real user has confirmed the enable/login-challenge/disable flow works end-to-end (manually verified by the user after sub-phase 8.2). `TFA-08` added an inline `!req.user.twoFactorEnabled` check (after the existing role/ownership check, matching each controller's existing style rather than introducing route-level middleware for these three specific endpoints) to `userController.deleteUser`, `projectController.deleteProject`, and `projectController.removeMember` — each returns `403 {error, code: 'TWO_FACTOR_REQUIRED'}`. The check applies to the *requester*, not the target, and fires regardless of whether they qualified via project ownership or global admin role. On the frontend, the existing delete-user button (`UserManagement.jsx`) and remove-member button (`ProjectView.jsx`) render disabled with a `title` tooltip when `!user.twoFactorEnabled` — a UX backstop, not the real enforcement. **No frontend trigger for project deletion exists anywhere in the codebase** (confirmed via investigation — the backend route works, nothing in the app calls it), so there was nothing to add a disabled state to there; flagged as a pre-existing gap, not something this requirement created or is expected to fix. `TFA-09` wired the `requireTwoFactor` middleware (built but unused since `TFA-01`) into `routes/systemSettings.js`, chained after `requireAdmin` on every *mutating* admin route: `PUT /theme`, `PUT /email`, `PUT /backup`, `POST /backup/run`, `POST /backup/restore` — deliberately including the backup run/restore actions, not just the three literal "settings" PUTs, since they're at least as consequential (see PRD Section 4's Design Decisions for the reasoning). Read-only `GET`s stay ungated. `Settings.jsx`'s Admin tab now shows a per-visit-dismissible banner when the admin viewing it lacks 2FA, and the Save/"Back up now"/Restore buttons in `AdminPaletteEditor.jsx`, `AdminEmailSettings.jsx`, and `AdminBackupSettings.jsx` (including the preset-thumbnail buttons, which persist immediately on click — not just the "Save custom palette" button) render disabled under the same condition.
+- **Files Changed**:
+  - `kartas-api/src/controllers/userController.js` — `deleteUser` 2FA check
+  - `kartas-api/src/controllers/projectController.js` — `deleteProject`/`removeMember` 2FA checks
+  - `kartas-api/src/routes/systemSettings.js` — `requireTwoFactor` chained onto every mutating route
+  - `kartas-app/src/pages/UserManagement.jsx` — delete-user button disabled state
+  - `kartas-app/src/pages/ProjectView.jsx` — remove-member button disabled state
+  - `kartas-app/src/pages/Settings.jsx` — Admin-tab 2FA-required banner
+  - `kartas-app/src/components/AdminPaletteEditor.jsx` — preset/save buttons gated (incl. `PresetThumbnail`'s new `disabled` prop)
+  - `kartas-app/src/components/AdminEmailSettings.jsx` — save button gated
+  - `kartas-app/src/components/AdminBackupSettings.jsx` — save/run/restore buttons gated
+  - `kartas-app/src/locales/{en,es,pt-BR}/common.json` — shared `twoFactorRequiredTooltip` key
+  - `kartas-app/src/locales/{en,es,pt-BR}/settings.json` — `page.twoFactorBanner` key
+- **Migration**: N/A
+- **Status**: Done — curl-verified end-to-end with the temp-test-user pattern: seeded a 2FA-less admin and confirmed `PUT /theme`/`POST /backup/run`/`DELETE /users/:id` all `403` with `code: TWO_FACTOR_REQUIRED`, confirmed `GET /theme` (read-only) is unaffected; enrolled a second temp admin in real TOTP (setup → generated a real code via a throwaway `otplib` script → confirm), then confirmed the identical requests succeed once 2FA is active, including a real login through the `/auth/2fa/verify` challenge. One real side effect from verification: the `PUT /theme` test round-tripped the actual palette (unchanged values) but stamped `system_theme_settings.updated_by` with the temp admin's id, which would have orphaned as a dangling FK reference on cleanup — caught and fixed by nulling `updated_by` before deleting the temp admin, rather than leaving a broken reference or falsely attributing it to a real admin. All seeded users and their cascaded rows cleaned up; the one real backup file/history row produced by the `POST /backup/run` test was left in place (a legitimate artifact, not test pollution, consistent with how Phase 7's `BKP-02` verification treated real backup runs). Frontend: `npm run build` clean.
+
+---
+
 ## [2026-08-02] — TFA-06/TFA-07 — Two-Factor Authentication (frontend)
 
 - **Author**: Claude

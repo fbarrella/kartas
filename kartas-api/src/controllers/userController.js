@@ -330,6 +330,15 @@ export const userController = {
                 return res.status(403).json({ error: 'Admin access required' });
             }
 
+            // TFA-08: the actor's own 2FA, not the target's — nextsteps.txt's
+            // "admin only deletion processes ... allowed only if 2FA is activated"
+            if (!req.user.twoFactorEnabled) {
+                return res.status(403).json({
+                    error: 'Two-factor authentication is required to delete a user',
+                    code: 'TWO_FACTOR_REQUIRED'
+                });
+            }
+
             const { id } = req.params;
 
             // Prevent deleting self

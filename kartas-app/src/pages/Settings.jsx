@@ -20,6 +20,9 @@ const Settings = () => {
     // SET-01: two tabs — "Admin" only ever shown/reachable for admins at all,
     // not just visually disabled for everyone else.
     const [activeTab, setActiveTab] = useState('personal');
+    // TFA-09: dismissible for this page visit only (not persisted) — reappears
+    // on next load until the admin actually enables 2FA.
+    const [twoFactorBannerDismissed, setTwoFactorBannerDismissed] = useState(false);
 
     const handleThemeToggle = async (e) => {
         setError('');
@@ -141,6 +144,20 @@ const Settings = () => {
 
                 {isAdmin && activeTab === 'admin' && (
                     <>
+                        {!user?.twoFactorEnabled && !twoFactorBannerDismissed && (
+                            <div className="card mb-lg" style={{ borderLeft: '4px solid var(--color-warning)' }}>
+                                <div className="flex flex-between" style={{ alignItems: 'center' }}>
+                                    <span>{t('settings:page.twoFactorBanner.message')}</span>
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary btn-sm"
+                                        onClick={() => setTwoFactorBannerDismissed(true)}
+                                    >
+                                        {t('common:close')}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                         <div className="card">
                             <h2>{t('settings:page.palette.title')}</h2>
                             <p className="text-muted mb-md" style={{ fontSize: 'var(--font-size-sm)' }}>

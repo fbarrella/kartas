@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '../services/api';
+import RecaptchaWidget, { isRecaptchaConfigured } from '../components/RecaptchaWidget';
 import kartasLogo from '../assets/kartas-logo.png';
 
 const Register = () => {
@@ -19,6 +20,10 @@ const Register = () => {
         confirmPassword: ''
     });
     const [error, setError] = useState('');
+
+    // CAPTCHA-02
+    const [recaptchaToken, setRecaptchaToken] = useState(null);
+    const [recaptchaResetKey, setRecaptchaResetKey] = useState(0);
 
     useEffect(() => {
         if (!token) {
@@ -60,7 +65,8 @@ const Register = () => {
                 token,
                 firstName: formData.firstName,
                 lastName: formData.lastName,
-                password: formData.password
+                password: formData.password,
+                recaptchaToken
             });
 
             // Store auth data
@@ -71,6 +77,8 @@ const Register = () => {
             navigate('/');
         } catch (error) {
             setError(error.response?.data?.error || t('auth:register.registrationFailed'));
+            // CAPTCHA-02: a stale/consumed token can't be silently resubmitted.
+            setRecaptchaResetKey((k) => k + 1);
         }
     };
 
@@ -162,11 +170,17 @@ const Register = () => {
                         />
                     </div>
 
+                    <RecaptchaWidget onChange={setRecaptchaToken} resetKey={recaptchaResetKey} />
+
                     {error && (
                         <div className="form-error mb-md">{error}</div>
                     )}
 
-                    <button type="submit" className="btn btn-primary btn-block">
+                    <button
+                        type="submit"
+                        className="btn btn-primary btn-block"
+                        disabled={isRecaptchaConfigured && !recaptchaToken}
+                    >
                         {t('auth:register.createAccountButton')}
                     </button>
                 </form>

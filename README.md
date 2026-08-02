@@ -90,6 +90,12 @@ A modern, comprehensive alternative to Jira for agile team management, built wit
 - **Backup & Restore**: Admins can configure scheduled database backups (local disk or S3, with a retention count), trigger one on demand, download any past backup, and restore the database from a backup — gated behind a typed `RESTORE` confirmation phrase given how destructive the action is
 - **Internationalization**: Full English, Spanish, and Brazilian Portuguese support across the entire app, as a per-user preference (not per-project) changeable anytime from Settings, applied instantly with no page reload
 
+### Phase 8 Additions
+- **Two-Factor Authentication**: A per-user, opt-in security option (not tied to role) supporting authenticator apps (TOTP, always available) or email-delivered codes (offered only when the system's email settings are working), managed from the Personal tab of Settings — QR code or manual-entry setup, one-time backup recovery codes, and a login-time challenge step with a backup-code fallback and email resend. Enabling it is also the precondition for a set of sensitive actions: deleting a user, deleting a project, and removing a team member all require the *acting* admin/project-owner to have 2FA enabled, as does saving any admin-only system setting (color palette, email configuration, backup settings) or running/restoring a backup
+- **reCAPTCHA**: Google reCAPTCHA v2 ("I'm not a robot") on the Login, Register, and Admin Setup pages, verified server-side — configured via environment variables and inactive by default, with no effect on any form until real keys are set
+- **Kanban Assignee Filter**: Click a sprint-participant avatar next to the Kanban board's elapsed-time bar to show only that person's cards; click again (or "Show all users") to clear the filter
+- **UI Polish**: The system Settings menu icon changed from a sun to a gear, now that Settings covers far more than dark mode; Kanban columns are a bit wider for readability
+
 ### Additional Features
 - **Story Detail Page**: Full-page view with all story information
 - **Team Collaboration**: Assign stories to team members
@@ -100,7 +106,8 @@ A modern, comprehensive alternative to Jira for agile team management, built wit
 - **Frontend**: React with Vite
 - **Backend**: Node.js with Express
 - **Database**: PostgreSQL
-- **Authentication**: OAuth 2.0 with JWT
+- **Authentication**: OAuth 2.0 with JWT, plus optional per-user two-factor authentication (TOTP via `otplib`, or email codes)
+- **Bot Protection**: Google reCAPTCHA v2 on Login/Register/Admin Setup (opt-in via environment variables)
 - **Internationalization**: i18next / react-i18next (English, Spanish, Brazilian Portuguese)
 - **Containerization**: Docker & Docker Compose
 
@@ -147,6 +154,15 @@ Invitations work with a copyable link out of the box — no email setup required
 docker-compose up -d --force-recreate
 ```
 Plain `docker-compose restart` does **not** re-read `.env` and will not pick up changes.
+
+### reCAPTCHA Configuration (optional)
+
+The Login, Register, and Admin Setup forms work without any CAPTCHA check out of the box. To enable Google reCAPTCHA v2, set these in `.env` before starting the stack (same `--force-recreate` requirement as above applies):
+
+- `RECAPTCHA_SITE_KEY` — public key, exposed to the frontend
+- `RECAPTCHA_SECRET_KEY` — server-only key, used for verification
+
+Get a key pair at the [Google reCAPTCHA admin console](https://www.google.com/recaptcha/admin).
 
 ### Local Development
 
@@ -204,6 +220,7 @@ This project is being developed in phases:
 - **Phase 5**: ✅ Navigation overhaul (top bar, breadcrumbs, sidebar project header) · ✅ Markdown descriptions (stories, epics, sub-items) · ✅ People-centric Kanban (avatar assignees, hover cards) · ✅ Per-project User Details page · ✅ Assignee management (unassign, Kanban context-menu parity) · ✅ Filter UI polish
 - **Phase 6**: ✅ Kanban polish (participant avatars, view/edit modal parity) · ✅ Story comments & @mentions (people and tickets) · ✅ Story change history · ✅ "For You" page overhaul (customizable widget grid, Team Workload chart, Sprint Countdown, Latest Activities) · ✅ Dark mode · ✅ Admin-customizable system color palette · ✅ Uniform page margins
 - **Phase 7**: ✅ Drag-and-drop library migration, tooltips & epic filter colors · ✅ Clone/migrate stories · ✅ Per-sprint backlog blocks · ✅ Epic Detail page & combined search · ✅ Two-tab Settings page & runtime email configuration · ✅ Database backup & restore · ✅ Internationalization (English, Spanish, Brazilian Portuguese)
+- **Phase 8**: ✅ Two-factor authentication (TOTP & email, backup codes, gated deletions & admin settings) · ✅ Google reCAPTCHA on Login/Register/Admin Setup · ✅ Kanban assignee filter · ✅ Settings icon & Kanban column width polish
 
 See [`DEVLOG.md`](./DEVLOG.md) for the detailed, dated changelog of every change, across every phase.
 

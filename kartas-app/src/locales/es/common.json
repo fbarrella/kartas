@@ -31,6 +31,7 @@
     "download": "Descargar",
     "upload": "Subir",
     "someone": "Alguien",
+    "twoFactorRequiredTooltip": "Activa la Autenticación de Dos Factores en Configuración para usar esta acción",
     "relativeTime": {
         "justNow": "justo ahora",
         "minutesAgo": "hace {{count}}m",

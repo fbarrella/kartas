@@ -9,6 +9,7 @@
     "noActiveSprintDescription": "Start a sprint to use the kanban board",
     "goToSprints": "Go to Sprints",
     "elapsedTime": "Elapsed Time",
+    "showAllUsers": "Show all users",
     "searchPlaceholder": "Search stories...",
     "allTypes": "All Types",
     "storiesType": "Stories",

@@ -309,6 +309,8 @@ const UserManagement = () => {
                                                         onClick={() => handleDeleteUser(user.id)}
                                                         className="btn btn-danger btn-sm"
                                                         style={{ padding: '4px 8px', fontSize: '0.8rem' }}
+                                                        disabled={!currentUser?.twoFactorEnabled}
+                                                        title={!currentUser?.twoFactorEnabled ? t('common:twoFactorRequiredTooltip') : undefined}
                                                     >
                                                         {t('common:delete')}
                                                     </button>

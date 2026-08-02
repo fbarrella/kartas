@@ -4,6 +4,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { sendInviteEmail } from '../utils/mailer.js';
 import { getEmailConfig } from '../config/email.js';
+import { verifyRecaptcha } from '../utils/recaptcha.js';
 
 export const inviteController = {
     // Generate invite token
@@ -103,7 +104,13 @@ export const inviteController = {
     // Register with invite token
     async registerWithInvite(req, res) {
         try {
-            const { token, password, firstName, lastName } = req.body;
+            const { token, password, firstName, lastName, recaptchaToken } = req.body;
+
+            // CAPTCHA-01: no-ops when RECAPTCHA_SECRET_KEY is unset.
+            const captchaResult = await verifyRecaptcha(recaptchaToken, req.ip);
+            if (!captchaResult.success) {
+                return res.status(400).json({ error: 'reCAPTCHA verification failed' });
+            }
 
             // Validate invite
             const inviteResult = await query(

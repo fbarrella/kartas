@@ -150,6 +150,8 @@ const ProjectView = () => {
                                                     onClick={() => handleRemoveMember(member.id)}
                                                     className="btn btn-danger btn-sm"
                                                     style={{ padding: '4px 8px', fontSize: '0.8rem' }}
+                                                    disabled={!user?.twoFactorEnabled}
+                                                    title={!user?.twoFactorEnabled ? t('common:twoFactorRequiredTooltip') : undefined}
                                                 >
                                                     {t('project:teamMembers.remove')}
                                                 </button>

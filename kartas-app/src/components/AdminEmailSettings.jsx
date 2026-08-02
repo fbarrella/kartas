@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import api from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 // MAIL-03: mirrors AdminPaletteEditor.jsx's structure (own loading/error/saving/
 // successMessage state, fetch-on-mount, api.get/api.put) so the two admin cards
@@ -56,6 +57,10 @@ const PasswordField = ({ label, field, value, onChange }) => {
 
 const AdminEmailSettings = () => {
     const { t } = useTranslation(['settings', 'common']);
+    const { user } = useAuth();
+    // TFA-09: mirrors the backend's requireTwoFactor gate on PUT /email — a
+    // disabled-button UX backstop, not the real enforcement.
+    const twoFactorRequired = !user?.twoFactorEnabled;
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [saving, setSaving] = useState(false);
@@ -211,7 +216,12 @@ const AdminEmailSettings = () => {
             </div>
 
             <div className="mt-lg">
-                <button type="submit" className="btn btn-primary" disabled={saving}>
+                <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={saving || twoFactorRequired}
+                    title={twoFactorRequired ? t('common:twoFactorRequiredTooltip') : undefined}
+                >
                     {saving ? t('common:saving') : t('settings:emailSettings.saveButton')}
                 </button>
             </div>

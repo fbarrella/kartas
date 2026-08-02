@@ -5,6 +5,7 @@ import { authenticator } from 'otplib';
 import { query } from '../config/database.js';
 import { jwtConfig } from '../config/auth.js';
 import { createEmailChallenge, resendEmailChallenge } from '../utils/twoFactor.js';
+import { verifyRecaptcha } from '../utils/recaptcha.js';
 
 const SALT_ROUNDS = 10;
 const LOGIN_CHALLENGE_TTL_MS = 10 * 60 * 1000;
@@ -77,7 +78,13 @@ export const authController = {
     // Create first admin account
     async createAdmin(req, res) {
         try {
-            const { email, password, firstName, lastName } = req.body;
+            const { email, password, firstName, lastName, recaptchaToken } = req.body;
+
+            // CAPTCHA-01: no-ops when RECAPTCHA_SECRET_KEY is unset.
+            const captchaResult = await verifyRecaptcha(recaptchaToken, req.ip);
+            if (!captchaResult.success) {
+                return res.status(400).json({ error: 'reCAPTCHA verification failed' });
+            }
 
             // Check if admin already exists
             const adminCheck = await query(
@@ -148,7 +155,13 @@ export const authController = {
     // Login
     async login(req, res) {
         try {
-            const { email, password } = req.body;
+            const { email, password, recaptchaToken } = req.body;
+
+            // CAPTCHA-01: no-ops when RECAPTCHA_SECRET_KEY is unset.
+            const captchaResult = await verifyRecaptcha(recaptchaToken, req.ip);
+            if (!captchaResult.success) {
+                return res.status(400).json({ error: 'reCAPTCHA verification failed' });
+            }
 
             // Find user
             const result = await query(

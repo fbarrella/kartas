@@ -9,6 +9,7 @@
     "noActiveSprintDescription": "Inicia un sprint para usar el tablero kanban",
     "goToSprints": "Ir a Sprints",
     "elapsedTime": "Tiempo Transcurrido",
+    "showAllUsers": "Mostrar todos los usuarios",
     "searchPlaceholder": "Buscar historias...",
     "allTypes": "Todos los Tipos",
     "storiesType": "Historias",

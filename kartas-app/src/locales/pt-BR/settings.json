@@ -29,6 +29,9 @@
         "twoFactor": {
             "title": "Autenticação de Dois Fatores",
             "description": "Adicione uma camada extra de segurança à sua conta. Uma vez ativada, exclusões e alterações nas configurações de administrador que você fizer também exigirão isso."
+        },
+        "twoFactorBanner": {
+            "message": "Ative a Autenticação de Dois Fatores na sua conta (aba Pessoal) para salvar configurações ou executar backups."
         }
     },
     "twoFactor": {

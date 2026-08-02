@@ -240,6 +240,15 @@ export const projectController = {
                 return res.status(403).json({ error: 'Only project owners can delete projects' });
             }
 
+            // TFA-08: the actor's own 2FA, regardless of whether they qualified
+            // via project ownership or global admin role.
+            if (!req.user.twoFactorEnabled) {
+                return res.status(403).json({
+                    error: 'Two-factor authentication is required to delete a project',
+                    code: 'TWO_FACTOR_REQUIRED'
+                });
+            }
+
             const result = await query(
                 'DELETE FROM projects WHERE id = $1 RETURNING id',
                 [projectId]
@@ -334,6 +343,15 @@ export const projectController = {
 
             if (accessCheck.rows.length === 0 && req.user.role !== 'admin') {
                 return res.status(403).json({ error: 'Only project owners can remove members' });
+            }
+
+            // TFA-08: the actor's own 2FA, regardless of whether they qualified
+            // via project ownership or global admin role.
+            if (!req.user.twoFactorEnabled) {
+                return res.status(403).json({
+                    error: 'Two-factor authentication is required to remove a team member',
+                    code: 'TWO_FACTOR_REQUIRED'
+                });
             }
 
             // Don't allow removing the last owner

@@ -72,6 +72,10 @@ const KanbanBoard = () => {
     const [columnConfig, setColumnConfig] = useState([]);
     const [epics, setEpics] = useState([]);
     const [filter, setFilter] = useState({ type: '', search: '' });
+    // KFA-01: clicking a sprint-participant avatar filters every column down
+    // to that person's cards (stories and sub-tasks alike); clicking the
+    // active avatar again, or "Show all users", clears it.
+    const [assigneeFilter, setAssigneeFilter] = useState(null);
     const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, story: null });
     const [members, setMembers] = useState([]);
     const [showMoveSubmenu, setShowMoveSubmenu] = useState(false);
@@ -330,6 +334,7 @@ const KanbanBoard = () => {
         return stories.filter(story => {
             if (filter.type && story.type !== filter.type) return false;
             if (filter.search && !story.title.toLowerCase().includes(filter.search.toLowerCase())) return false;
+            if (assigneeFilter && story.assigneeId !== assigneeFilter) return false;
             return true;
         });
     };
@@ -417,17 +422,39 @@ const KanbanBoard = () => {
                             </div>
                         </div>
                         {participants.length > 0 && (
-                            <div style={{ display: 'flex', gap: '4px' }}>
-                                {participants.map(p => (
-                                    <AssigneeAvatarWithHoverCard
-                                        key={p.assigneeId}
-                                        assigneeId={p.assigneeId}
-                                        assigneeName={p.assigneeName}
-                                        assigneeRole={p.assigneeRole}
-                                        assigneeEmail={p.assigneeEmail}
-                                        projectId={projectId}
-                                    />
-                                ))}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                    {participants.map(p => (
+                                        <div
+                                            key={p.assigneeId}
+                                            onClick={() => setAssigneeFilter(assigneeFilter === p.assigneeId ? null : p.assigneeId)}
+                                            title={p.assigneeName}
+                                            style={{
+                                                cursor: 'pointer',
+                                                borderRadius: '50%',
+                                                boxShadow: assigneeFilter === p.assigneeId ? '0 0 0 2px var(--color-primary)' : 'none',
+                                                lineHeight: 0
+                                            }}
+                                        >
+                                            <AssigneeAvatarWithHoverCard
+                                                assigneeId={p.assigneeId}
+                                                assigneeName={p.assigneeName}
+                                                assigneeRole={p.assigneeRole}
+                                                assigneeEmail={p.assigneeEmail}
+                                                projectId={projectId}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                                {assigneeFilter && (
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary btn-sm"
+                                        onClick={() => setAssigneeFilter(null)}
+                                    >
+                                        {t('kanban:showAllUsers')}
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>
@@ -486,8 +513,8 @@ const KanbanBoard = () => {
 
                             return (
                                 <div key={column.status} style={{
-                                    minWidth: '300px',
-                                    maxWidth: '350px',
+                                    minWidth: '360px',
+                                    maxWidth: '410px',
                                     backgroundColor: 'var(--color-surface)',
                                     borderRadius: 'var(--radius-md)',
                                     padding: 'var(--spacing-sm)',
