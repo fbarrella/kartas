@@ -9,6 +9,7 @@
     "noActiveSprintDescription": "Inicie um sprint para usar o quadro kanban",
     "goToSprints": "Ir para Sprints",
     "elapsedTime": "Tempo Decorrido",
+    "showAllUsers": "Mostrar todos os usuários",
     "searchPlaceholder": "Buscar histórias...",
     "allTypes": "Todos os Tipos",
     "storiesType": "Histórias",

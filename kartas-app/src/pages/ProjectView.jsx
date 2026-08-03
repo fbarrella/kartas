@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 import UserSelect from '../components/UserSelect';
 import { useAuth } from '../contexts/AuthContext';
+import { useStepUp } from '../contexts/StepUpContext';
 import Breadcrumb from '../components/Breadcrumb';
 import '../components/navigation.css';
 
@@ -13,6 +14,7 @@ const ProjectView = () => {
     const { projectId } = useParams();
     const { projectName, defaultLandingPage } = useOutletContext();
     const { user } = useAuth();
+    const { requestStepUp } = useStepUp();
     const [project, setProject] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showAddMemberModal, setShowAddMemberModal] = useState(false);
@@ -56,11 +58,15 @@ const ProjectView = () => {
     const handleRemoveMember = async (userId) => {
         if (!window.confirm(t('project:teamMembers.confirmRemove'))) return;
         try {
-            await api.delete(`/projects/${projectId}/members/${userId}`);
+            // STEPUP-02: a fresh 2FA re-verification is required on top of
+            // the existing twoFactorEnabled precondition.
+            const stepUpToken = await requestStepUp();
+            await api.delete(`/projects/${projectId}/members/${userId}`, { headers: { 'X-Step-Up-Token': stepUpToken } });
             fetchProject();
         } catch (error) {
+            if (error?.message === 'cancelled') return;
             console.error('Error removing member:', error);
-            alert(error.response?.data?.error || t('project:teamMembers.failedToRemove'));
+            alert(error.response?.data?.error || error.message || t('project:teamMembers.failedToRemove'));
         }
     };
 
@@ -150,6 +156,8 @@ const ProjectView = () => {
                                                     onClick={() => handleRemoveMember(member.id)}
                                                     className="btn btn-danger btn-sm"
                                                     style={{ padding: '4px 8px', fontSize: '0.8rem' }}
+                                                    disabled={!user?.twoFactorEnabled}
+                                                    title={!user?.twoFactorEnabled ? t('common:twoFactorRequiredTooltip') : undefined}
                                                 >
                                                     {t('project:teamMembers.remove')}
                                                 </button>

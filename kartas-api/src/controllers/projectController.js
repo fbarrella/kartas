@@ -1,5 +1,6 @@
 import { query } from '../config/database.js';
 import { generateUniqueTicketPrefix } from '../utils/ticketPrefix.js';
+import { hasValidStepUpGrant } from '../utils/stepUp.js';
 
 export const projectController = {
     // Create a new project
@@ -194,9 +195,26 @@ export const projectController = {
                 return res.status(403).json({ error: 'Only project owners can update projects' });
             }
 
+            // PROJ-01: the actor's own 2FA, regardless of whether they
+            // qualified via project ownership or global admin role.
+            if (!req.user.twoFactorEnabled) {
+                return res.status(403).json({
+                    error: 'Two-factor authentication is required to update a project',
+                    code: 'TWO_FACTOR_REQUIRED'
+                });
+            }
+
+            // STEPUP-01: a fresh re-verification, not just "2FA enabled at all".
+            if (!(await hasValidStepUpGrant(req))) {
+                return res.status(403).json({
+                    error: 'A fresh two-factor re-verification is required to update a project',
+                    code: 'STEP_UP_REQUIRED'
+                });
+            }
+
             const result = await query(
-                `UPDATE projects 
-         SET name = COALESCE($1, name), 
+                `UPDATE projects
+         SET name = COALESCE($1, name),
              description = COALESCE($2, description)
          WHERE id = $3
          RETURNING *`,
@@ -238,6 +256,23 @@ export const projectController = {
 
             if (accessCheck.rows.length === 0 && req.user.role !== 'admin') {
                 return res.status(403).json({ error: 'Only project owners can delete projects' });
+            }
+
+            // TFA-08: the actor's own 2FA, regardless of whether they qualified
+            // via project ownership or global admin role.
+            if (!req.user.twoFactorEnabled) {
+                return res.status(403).json({
+                    error: 'Two-factor authentication is required to delete a project',
+                    code: 'TWO_FACTOR_REQUIRED'
+                });
+            }
+
+            // STEPUP-01: a fresh re-verification, not just "2FA enabled at all".
+            if (!(await hasValidStepUpGrant(req))) {
+                return res.status(403).json({
+                    error: 'A fresh two-factor re-verification is required to delete a project',
+                    code: 'STEP_UP_REQUIRED'
+                });
             }
 
             const result = await query(
@@ -334,6 +369,23 @@ export const projectController = {
 
             if (accessCheck.rows.length === 0 && req.user.role !== 'admin') {
                 return res.status(403).json({ error: 'Only project owners can remove members' });
+            }
+
+            // TFA-08: the actor's own 2FA, regardless of whether they qualified
+            // via project ownership or global admin role.
+            if (!req.user.twoFactorEnabled) {
+                return res.status(403).json({
+                    error: 'Two-factor authentication is required to remove a team member',
+                    code: 'TWO_FACTOR_REQUIRED'
+                });
+            }
+
+            // STEPUP-01: a fresh re-verification, not just "2FA enabled at all".
+            if (!(await hasValidStepUpGrant(req))) {
+                return res.status(403).json({
+                    error: 'A fresh two-factor re-verification is required to remove a team member',
+                    code: 'STEP_UP_REQUIRED'
+                });
             }
 
             // Don't allow removing the last owner

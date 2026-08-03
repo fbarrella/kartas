@@ -14,10 +14,12 @@ import kanbanRoutes from './routes/kanban.js';
 import epicRoutes from './routes/epics.js';
 import inviteRoutes from './routes/invites.js';
 import userRoutes from './routes/users.js';
+import twoFactorRoutes from './routes/twoFactor.js';
 import sprintMetricsRoutes from './routes/sprintMetrics.js';
 import forYouRoutes from './routes/forYou.js';
 import systemSettingsRoutes from './routes/systemSettings.js';
 import searchRoutes from './routes/search.js';
+import { systemSettingsController } from './controllers/systemSettingsController.js';
 
 // Import database
 import pool from './config/database.js';
@@ -52,8 +54,14 @@ app.use('/api/sprints', sprintRoutes);
 app.use('/api/kanban', kanbanRoutes);
 app.use('/api/invites', inviteRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/users/2fa', twoFactorRoutes);
 app.use('/api/metrics', sprintMetricsRoutes);
 app.use('/api/for-you', forYouRoutes);
+// RECAP-01: public, no authenticateToken — Login/Register/AdminSetup need the
+// effective site key before any access token exists. Registered before the
+// authenticated /api/system-settings mount below so systemSettingsRoutes'
+// router-wide authenticateToken never applies to this one exact path.
+app.get('/api/system-settings/recaptcha/site-key', systemSettingsController.getRecaptchaSiteKey);
 app.use('/api/system-settings', systemSettingsRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api', epicRoutes);

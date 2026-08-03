@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useStepUp } from '../contexts/StepUpContext';
 import UserDropdown from '../components/UserDropdown';
 import Breadcrumb from '../components/Breadcrumb';
 import '../components/navigation.css';
@@ -14,6 +15,7 @@ const UserManagement = () => {
     const { t } = useTranslation(['users', 'common']);
     const roleLabel = (role) => t(`users:roles.${role}`, role);
     const { user: currentUser } = useAuth();
+    const { requestStepUp } = useStepUp();
     const [users, setUsers] = useState([]);
     const [pendingInvites, setPendingInvites] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -146,12 +148,16 @@ const UserManagement = () => {
         if (!window.confirm(t('users:management.confirmDeleteUser'))) return;
 
         try {
-            await api.delete(`/users/${userId}`);
+            // STEPUP-02: a fresh 2FA re-verification is required on top of
+            // the existing twoFactorEnabled precondition.
+            const stepUpToken = await requestStepUp();
+            await api.delete(`/users/${userId}`, { headers: { 'X-Step-Up-Token': stepUpToken } });
             setSuccessMessage(t('users:management.userDeleted'));
             fetchUsers();
             setTimeout(() => setSuccessMessage(''), 3000);
         } catch (error) {
-            setError(error.response?.data?.error || t('users:management.userDeleteFailed'));
+            if (error?.message === 'cancelled') return;
+            setError(error.response?.data?.error || error.message || t('users:management.userDeleteFailed'));
         }
     };
 
@@ -309,6 +315,8 @@ const UserManagement = () => {
                                                         onClick={() => handleDeleteUser(user.id)}
                                                         className="btn btn-danger btn-sm"
                                                         style={{ padding: '4px 8px', fontSize: '0.8rem' }}
+                                                        disabled={!currentUser?.twoFactorEnabled}
+                                                        title={!currentUser?.twoFactorEnabled ? t('common:twoFactorRequiredTooltip') : undefined}
                                                     >
                                                         {t('common:delete')}
                                                     </button>

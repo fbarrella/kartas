@@ -42,6 +42,22 @@
             "kanban": "Kanban",
             "reports": "Reports",
             "team": "Team Members"
+        },
+        "projectManagement": {
+            "title": "Project Management",
+            "description": "Admin/owner-only. Renaming or changing the description requires typing a confirmation word; deleting the project requires typing its exact name. Both also require a fresh two-factor code.",
+            "nameLabel": "Project Name",
+            "confirmLabel": "Type {{word}} to save",
+            "saveNameButton": "Save Name",
+            "saveDescriptionButton": "Save Description",
+            "saveSuccess": "Saved successfully",
+            "saveError": "Failed to save",
+            "deleteTitle": "Delete Project",
+            "deleteWarning": "This permanently deletes the project and everything in it — sprints, stories, epics, and all history. This action cannot be undone.",
+            "deleteConfirmLabel": "Type the project's name ({{name}}) to confirm",
+            "deleteButton": "Delete Project",
+            "deleting": "Deleting...",
+            "deleteError": "Failed to delete project"
         }
     }
 }

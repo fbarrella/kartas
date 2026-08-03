@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { StepUpProvider } from './contexts/StepUpContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ProjectLayout from './components/ProjectLayout';
 import api from './services/api';
@@ -148,7 +149,9 @@ function App() {
     return (
         <BrowserRouter>
             <AuthProvider>
-                <AppRoutes />
+                <StepUpProvider>
+                    <AppRoutes />
+                </StepUpProvider>
             </AuthProvider>
         </BrowserRouter>
     );

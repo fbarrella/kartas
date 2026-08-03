@@ -1,5 +1,6 @@
 import { query } from '../config/database.js';
 import bcrypt from 'bcrypt';
+import { hasValidStepUpGrant } from '../utils/stepUp.js';
 
 export const userController = {
     // Get all users (admin only)
@@ -111,7 +112,8 @@ export const userController = {
             const userId = req.user.userId;
 
             const result = await query(
-                `SELECT id, email, first_name, last_name, role, avatar_url, theme_preference, language_preference, created_at
+                `SELECT id, email, first_name, last_name, role, avatar_url, theme_preference, language_preference,
+                        two_factor_enabled, two_factor_method, created_at
                  FROM users WHERE id = $1`,
                 [userId]
             );
@@ -131,6 +133,8 @@ export const userController = {
                 avatarUrl: user.avatar_url,
                 themePreference: user.theme_preference,
                 languagePreference: user.language_preference,
+                twoFactorEnabled: user.two_factor_enabled,
+                twoFactorMethod: user.two_factor_method,
                 createdAt: user.created_at
             });
         } catch (error) {
@@ -325,6 +329,23 @@ export const userController = {
         try {
             if (req.user.role !== 'admin') {
                 return res.status(403).json({ error: 'Admin access required' });
+            }
+
+            // TFA-08: the actor's own 2FA, not the target's — nextsteps.txt's
+            // "admin only deletion processes ... allowed only if 2FA is activated"
+            if (!req.user.twoFactorEnabled) {
+                return res.status(403).json({
+                    error: 'Two-factor authentication is required to delete a user',
+                    code: 'TWO_FACTOR_REQUIRED'
+                });
+            }
+
+            // STEPUP-01: a fresh re-verification, not just "2FA enabled at all".
+            if (!(await hasValidStepUpGrant(req))) {
+                return res.status(403).json({
+                    error: 'A fresh two-factor re-verification is required to delete a user',
+                    code: 'STEP_UP_REQUIRED'
+                });
             }
 
             const { id } = req.params;

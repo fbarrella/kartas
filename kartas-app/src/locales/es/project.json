@@ -42,6 +42,22 @@
             "kanban": "Kanban",
             "reports": "Informes",
             "team": "Miembros del equipo"
+        },
+        "projectManagement": {
+            "title": "Gestión del Proyecto",
+            "description": "Solo administradores/propietarios. Cambiar el nombre o la descripción requiere escribir una palabra de confirmación; eliminar el proyecto requiere escribir su nombre exacto. Ambas acciones también requieren un código de dos factores reciente.",
+            "nameLabel": "Nombre del Proyecto",
+            "confirmLabel": "Escribe {{word}} para guardar",
+            "saveNameButton": "Guardar Nombre",
+            "saveDescriptionButton": "Guardar Descripción",
+            "saveSuccess": "Guardado correctamente",
+            "saveError": "No se pudo guardar",
+            "deleteTitle": "Eliminar Proyecto",
+            "deleteWarning": "Esto elimina permanentemente el proyecto y todo su contenido: sprints, historias, épicas y todo el historial. Esta acción no se puede deshacer.",
+            "deleteConfirmLabel": "Escribe el nombre del proyecto ({{name}}) para confirmar",
+            "deleteButton": "Eliminar Proyecto",
+            "deleting": "Eliminando...",
+            "deleteError": "No se pudo eliminar el proyecto"
         }
     }
 }

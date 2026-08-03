@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
+import RecaptchaWidget, { useRecaptchaSiteKey } from '../components/RecaptchaWidget';
 import kartasLogo from '../assets/kartas-logo.png';
 
 const AdminSetup = () => {
@@ -18,6 +19,11 @@ const AdminSetup = () => {
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+
+    // CAPTCHA-02/RECAP-03
+    const { siteKey: recaptchaSiteKey, loading: recaptchaLoading } = useRecaptchaSiteKey();
+    const [recaptchaToken, setRecaptchaToken] = useState(null);
+    const [recaptchaResetKey, setRecaptchaResetKey] = useState(0);
 
     const handleChange = (e) => {
         setFormData({
@@ -47,7 +53,8 @@ const AdminSetup = () => {
             formData.email,
             formData.password,
             formData.firstName,
-            formData.lastName
+            formData.lastName,
+            recaptchaToken
         );
 
         setLoading(false);
@@ -56,6 +63,8 @@ const AdminSetup = () => {
             navigate('/');
         } else {
             setError(result.error);
+            // CAPTCHA-02: a stale/consumed token can't be silently resubmitted.
+            setRecaptchaResetKey((k) => k + 1);
         }
     };
 
@@ -137,6 +146,8 @@ const AdminSetup = () => {
                         />
                     </div>
 
+                    <RecaptchaWidget onChange={setRecaptchaToken} resetKey={recaptchaResetKey} />
+
                     {error && (
                         <div className="form-error mb-md">
                             {error}
@@ -147,7 +158,7 @@ const AdminSetup = () => {
                         type="submit"
                         className="btn btn-primary btn-lg"
                         style={{ width: '100%' }}
-                        disabled={loading}
+                        disabled={loading || (!recaptchaLoading && recaptchaSiteKey && !recaptchaToken)}
                     >
                         {loading ? t('auth:adminSetup.creatingAdmin') : t('auth:adminSetup.createAdminButton')}
                     </button>

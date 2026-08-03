@@ -25,6 +25,88 @@
         "backups": {
             "title": "Backups",
             "description": "Admin-only. Configure automatic database backups, trigger one on demand, and restore from a previous backup."
+        },
+        "recaptcha": {
+            "title": "reCAPTCHA",
+            "description": "Admin-only. Configure Google reCAPTCHA for the Login, Register, and Admin Setup pages. Fields set via environment variables take precedence and can't be edited here."
+        },
+        "twoFactor": {
+            "title": "Two-Factor Authentication",
+            "description": "Add an extra layer of security to your account. Once enabled, deletions and admin settings changes you make also require it."
+        },
+        "twoFactorBanner": {
+            "message": "Enable Two-Factor Authentication on your account (Personal tab) to save settings or run backups."
+        }
+    },
+    "twoFactor": {
+        "statusDisabled": "Not enabled",
+        "statusEnabledTotp": "Enabled via Authenticator App",
+        "statusEnabledEmail": "Enabled via Email",
+        "enableButton": "Enable Two-Factor Authentication",
+        "regenerateButton": "Regenerate backup codes",
+        "disableButton": "Disable Two-Factor Authentication",
+        "chooseMethod": {
+            "title": "Choose a Method",
+            "totpOption": "Authenticator App",
+            "totpOptionHelp": "Use an app like Google Authenticator or Authy.",
+            "emailOption": "Email",
+            "emailOptionHelp": "Receive codes at your account email address.",
+            "emailUnavailable": "Ask an admin to configure email settings first.",
+            "startError": "Failed to start setup"
+        },
+        "totpSetup": {
+            "title": "Set Up Authenticator App",
+            "instructions": "Scan this QR code with your authenticator app, or enter the secret manually.",
+            "secretLabel": "Secret",
+            "codeLabel": "Enter the 6-digit code from your app",
+            "verifyButton": "Verify & Enable",
+            "verifying": "Verifying...",
+            "confirmError": "Invalid code"
+        },
+        "emailSetup": {
+            "title": "Set Up Email Verification",
+            "instructions": "We sent a verification code to your email address.",
+            "codeLabel": "Enter the 6-digit code",
+            "verifyButton": "Verify & Enable",
+            "verifying": "Verifying...",
+            "confirmError": "Invalid code",
+            "resendButton": "Resend code",
+            "resendCooldown": "Resend in {{seconds}}s",
+            "resendSuccess": "Code resent",
+            "resendError": "Failed to resend code"
+        },
+        "backupCodes": {
+            "title": "Save Your Backup Codes",
+            "description": "Use one of these codes to sign in if you lose access to your authenticator app or email. Each code works once.",
+            "copyAll": "Copy All",
+            "copied": "Copied!",
+            "acknowledge": "I've saved these codes somewhere safe",
+            "close": "Close"
+        },
+        "regenerateModal": {
+            "title": "Regenerate Backup Codes",
+            "description": "This invalidates your existing backup codes. Enter your password to confirm.",
+            "confirmButton": "Regenerate",
+            "regenerating": "Regenerating...",
+            "error": "Failed to regenerate backup codes"
+        },
+        "disableModal": {
+            "title": "Disable Two-Factor Authentication",
+            "description": "This removes the extra layer of security from your account, including access to any actions that require it. Enter your password to confirm.",
+            "confirmButton": "Disable",
+            "disabling": "Disabling...",
+            "error": "Failed to disable two-factor authentication"
+        },
+        "passwordLabel": "Current Password",
+        "trustedDevices": {
+            "title": "Trusted Devices",
+            "empty": "No trusted devices.",
+            "revoke": "Revoke",
+            "revokeAll": "Revoke All",
+            "unknownDevice": "Unknown device",
+            "expires": "Expires {{date}}",
+            "loadError": "Failed to load trusted devices",
+            "revokeError": "Failed to revoke trusted device"
         }
     },
     "paletteEditor": {
@@ -120,5 +202,15 @@
         "confirmLabel": "Type {{word}} to confirm",
         "restoreButton": "Restore Database",
         "restoring": "Restoring..."
+    },
+    "recaptchaSettings": {
+        "loading": "Loading system reCAPTCHA settings...",
+        "unavailable": "System reCAPTCHA settings unavailable",
+        "loadError": "Failed to load system reCAPTCHA settings",
+        "saveSuccess": "reCAPTCHA settings saved",
+        "saveError": "Failed to save reCAPTCHA settings",
+        "siteKey": "Site Key",
+        "secretKey": "Secret Key",
+        "saveButton": "Save reCAPTCHA Settings"
     }
 }

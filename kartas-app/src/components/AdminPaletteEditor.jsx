@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import api from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+import { useStepUp } from '../contexts/StepUpContext';
 import { BASE_CATEGORIES, PRESETS, deriveTokens, setCachedSystemTheme, getCachedSystemTheme } from '../utils/systemTheme';
 
 // Applies a draft (not-yet-saved) palette directly, without touching the shared
@@ -13,11 +15,12 @@ const previewDraft = (lightPalette, darkPalette) => {
     Object.entries(tokens).forEach(([key, value]) => document.documentElement.style.setProperty(key, value));
 };
 
-const PresetThumbnail = ({ preset, selected, onClick }) => (
+const PresetThumbnail = ({ preset, selected, onClick, disabled, title }) => (
     <button
         type="button"
         onClick={onClick}
-        title={preset.label}
+        disabled={disabled}
+        title={title || preset.label}
         style={{
             position: 'relative',
             width: '64px',
@@ -25,9 +28,10 @@ const PresetThumbnail = ({ preset, selected, onClick }) => (
             borderRadius: 'var(--radius-md)',
             border: selected ? '2px solid var(--color-primary)' : '2px solid var(--color-border)',
             padding: 0,
-            cursor: 'pointer',
+            cursor: disabled ? 'not-allowed' : 'pointer',
             overflow: 'hidden',
-            flexShrink: 0
+            flexShrink: 0,
+            opacity: disabled ? 0.5 : 1
         }}
     >
         <div style={{ position: 'absolute', inset: 0, backgroundColor: preset.light.primary, clipPath: 'polygon(0 0, 100% 0, 0 100%)' }} />
@@ -37,6 +41,13 @@ const PresetThumbnail = ({ preset, selected, onClick }) => (
 
 const AdminPaletteEditor = () => {
     const { t } = useTranslation(['settings', 'common']);
+    const { user } = useAuth();
+    const { requestStepUp } = useStepUp();
+    // TFA-09: every mutating action in this component (preset select, custom
+    // save) is gated on the backend behind requireTwoFactor (+ STEPUP-01's
+    // requireStepUp) — mirrored here as a disabled state, not the real
+    // enforcement.
+    const twoFactorRequired = !user?.twoFactorEnabled;
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [saving, setSaving] = useState(false);
@@ -68,17 +79,22 @@ const AdminPaletteEditor = () => {
         setSuccessMessage('');
         setSaving(true);
         try {
-            const response = await api.put('/system-settings/theme', payload);
+            // STEPUP-02: a fresh 2FA re-verification is required on top of
+            // the existing twoFactorEnabled precondition.
+            const stepUpToken = await requestStepUp();
+            const response = await api.put('/system-settings/theme', payload, { headers: { 'X-Step-Up-Token': stepUpToken } });
             setCurrent(response.data);
             setCachedSystemTheme(response.data);
             setSuccessMessage(t('settings:paletteEditor.saveSuccess'));
             setTimeout(() => setSuccessMessage(''), 3000);
             return true;
         } catch (err) {
-            setError(err.response?.data?.error || t('settings:paletteEditor.saveError'));
-            // Revert the live preview back to whatever is actually persisted.
-            const cached = getCachedSystemTheme();
-            if (cached) previewDraft(cached.lightPalette, cached.darkPalette);
+            if (err?.message !== 'cancelled') {
+                setError(err.response?.data?.error || err.message || t('settings:paletteEditor.saveError'));
+                // Revert the live preview back to whatever is actually persisted.
+                const cached = getCachedSystemTheme();
+                if (cached) previewDraft(cached.lightPalette, cached.darkPalette);
+            }
             return false;
         } finally {
             setSaving(false);
@@ -144,6 +160,8 @@ const AdminPaletteEditor = () => {
                                 preset={preset}
                                 selected={current.presetName === preset.name}
                                 onClick={() => selectPreset(preset)}
+                                disabled={saving || twoFactorRequired}
+                                title={twoFactorRequired ? t('common:twoFactorRequiredTooltip') : undefined}
                             />
                         ))}
                         <button
@@ -196,7 +214,13 @@ const AdminPaletteEditor = () => {
                     </div>
 
                     <div className="flex flex-gap-sm mt-lg">
-                        <button type="button" onClick={saveCustom} className="btn btn-primary" disabled={saving}>
+                        <button
+                            type="button"
+                            onClick={saveCustom}
+                            className="btn btn-primary"
+                            disabled={saving || twoFactorRequired}
+                            title={twoFactorRequired ? t('common:twoFactorRequiredTooltip') : undefined}
+                        >
                             {saving ? t('common:saving') : t('settings:paletteEditor.saveCustomPalette')}
                         </button>
                         <button type="button" onClick={cancelCustom} className="btn btn-secondary" disabled={saving}>

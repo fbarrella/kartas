@@ -25,6 +25,88 @@
         "backups": {
             "title": "Backups",
             "description": "Somente administradores. Configure backups automáticos do banco de dados, execute um sob demanda e restaure a partir de um backup anterior."
+        },
+        "recaptcha": {
+            "title": "reCAPTCHA",
+            "description": "Somente administradores. Configure o Google reCAPTCHA para as páginas de Login, Cadastro e Configuração de Administrador. Campos definidos por variáveis de ambiente têm prioridade e não podem ser editados aqui."
+        },
+        "twoFactor": {
+            "title": "Autenticação de Dois Fatores",
+            "description": "Adicione uma camada extra de segurança à sua conta. Uma vez ativada, exclusões e alterações nas configurações de administrador que você fizer também exigirão isso."
+        },
+        "twoFactorBanner": {
+            "message": "Ative a Autenticação de Dois Fatores na sua conta (aba Pessoal) para salvar configurações ou executar backups."
+        }
+    },
+    "twoFactor": {
+        "statusDisabled": "Não ativada",
+        "statusEnabledTotp": "Ativada via Aplicativo Autenticador",
+        "statusEnabledEmail": "Ativada via E-mail",
+        "enableButton": "Ativar Autenticação de Dois Fatores",
+        "regenerateButton": "Gerar novos códigos de backup",
+        "disableButton": "Desativar Autenticação de Dois Fatores",
+        "chooseMethod": {
+            "title": "Escolha um Método",
+            "totpOption": "Aplicativo Autenticador",
+            "totpOptionHelp": "Use um app como Google Authenticator ou Authy.",
+            "emailOption": "E-mail",
+            "emailOptionHelp": "Receba códigos no e-mail da sua conta.",
+            "emailUnavailable": "Peça a um administrador para configurar o e-mail primeiro.",
+            "startError": "Falha ao iniciar a configuração"
+        },
+        "totpSetup": {
+            "title": "Configurar Aplicativo Autenticador",
+            "instructions": "Escaneie este código QR com seu app autenticador, ou digite o segredo manualmente.",
+            "secretLabel": "Segredo",
+            "codeLabel": "Digite o código de 6 dígitos do seu app",
+            "verifyButton": "Verificar e Ativar",
+            "verifying": "Verificando...",
+            "confirmError": "Código inválido"
+        },
+        "emailSetup": {
+            "title": "Configurar Verificação por E-mail",
+            "instructions": "Enviamos um código de verificação para o seu endereço de e-mail.",
+            "codeLabel": "Digite o código de 6 dígitos",
+            "verifyButton": "Verificar e Ativar",
+            "verifying": "Verificando...",
+            "confirmError": "Código inválido",
+            "resendButton": "Reenviar código",
+            "resendCooldown": "Reenviar em {{seconds}}s",
+            "resendSuccess": "Código reenviado",
+            "resendError": "Falha ao reenviar o código"
+        },
+        "backupCodes": {
+            "title": "Salve Seus Códigos de Backup",
+            "description": "Use um destes códigos para entrar caso perca o acesso ao seu aplicativo autenticador ou e-mail. Cada código funciona uma única vez.",
+            "copyAll": "Copiar Todos",
+            "copied": "Copiado!",
+            "acknowledge": "Já salvei esses códigos em um lugar seguro",
+            "close": "Fechar"
+        },
+        "regenerateModal": {
+            "title": "Gerar Novos Códigos de Backup",
+            "description": "Isso invalida seus códigos de backup atuais. Digite sua senha para confirmar.",
+            "confirmButton": "Gerar Novos",
+            "regenerating": "Gerando...",
+            "error": "Falha ao gerar novos códigos de backup"
+        },
+        "disableModal": {
+            "title": "Desativar Autenticação de Dois Fatores",
+            "description": "Isso remove a camada extra de segurança da sua conta, incluindo o acesso a qualquer ação que a exija. Digite sua senha para confirmar.",
+            "confirmButton": "Desativar",
+            "disabling": "Desativando...",
+            "error": "Falha ao desativar a autenticação de dois fatores"
+        },
+        "passwordLabel": "Senha Atual",
+        "trustedDevices": {
+            "title": "Dispositivos Confiáveis",
+            "empty": "Nenhum dispositivo confiável.",
+            "revoke": "Revogar",
+            "revokeAll": "Revogar Todos",
+            "unknownDevice": "Dispositivo desconhecido",
+            "expires": "Expira em {{date}}",
+            "loadError": "Falha ao carregar dispositivos confiáveis",
+            "revokeError": "Falha ao revogar dispositivo confiável"
         }
     },
     "paletteEditor": {
@@ -120,5 +202,15 @@
         "confirmLabel": "Digite {{word}} para confirmar",
         "restoreButton": "Restaurar Banco de Dados",
         "restoring": "Restaurando..."
+    },
+    "recaptchaSettings": {
+        "loading": "Carregando as configurações de reCAPTCHA do sistema...",
+        "unavailable": "As configurações de reCAPTCHA do sistema não estão disponíveis",
+        "loadError": "Falha ao carregar as configurações de reCAPTCHA do sistema",
+        "saveSuccess": "Configurações de reCAPTCHA salvas",
+        "saveError": "Falha ao salvar as configurações de reCAPTCHA",
+        "siteKey": "Chave do Site",
+        "secretKey": "Chave Secreta",
+        "saveButton": "Salvar Configurações de reCAPTCHA"
     }
 }
